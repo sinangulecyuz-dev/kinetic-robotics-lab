@@ -1,0 +1,13 @@
+{
+  "name": "kinetic-robotics-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A virtual robotics lab for high-school students: build a rover, predict its balance, and program its motion.",
+  "engines": {"node": ">=20"},
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "node --test tests/physics.test.mjs",
+    "check": "node --check dist/app.js && node --check dist/physics.mjs && node --check scripts/serve.mjs"
+  }
+}
