@@ -21,7 +21,7 @@ The first command runs seven model/parser tests. The second checks JavaScript sy
 
 ## Continue in Codex or Claude Code
 
-Open this folder in your preferred coding tool. `AGENTS.md` explains the architecture, project boundaries, and validation workflow. `CLAUDE.md` points Claude Code at the same instructions. `docs/design-engineering.md` preserves the design skill selected by the project owner.
+Open this folder in your preferred coding tool. `AGENTS.md` explains the architecture, project boundaries, and validation workflow. `CLAUDE.md` points Claude Code at the same instructions. `HANDOFF.md` records where the last session left off, so either tool can pick up the work. `docs/design-engineering.md` preserves the design skill selected by the project owner.
 
 The existing hosted prototype is https://kinetic-robotics-lab.famousbadge2.chatgpt.site (private ChatGPT access). This export is independent of the hosting configuration: pushing it to GitHub does not automatically redeploy that prototype. Deploy `dist/` to a static host, or explicitly publish later changes through ChatGPT Sites.
 
