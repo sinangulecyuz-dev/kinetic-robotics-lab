@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121c2b">
+  <meta name="description" content="Build a rover. Test your ideas. Discover the mechanics of robotics in an interactive student lab.">
+  <title>Kinetic — Virtual Robotics Lab</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23fb693b'/%3E%3Cpath d='M12 9v22m17-22L14 22l15 9' stroke='white' stroke-width='4' fill='none'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Kinetic home"><span class="brand-mark">k<span>·</span></span><span>KINETIC<small>VIRTUAL ROBOTICS LAB</small></span></a>
+    <div class="project-title"><span class="project-icon" data-icon="box"></span><div>My first rover<small>LAB 001 <span> / </span> THE FOUNDATIONS</small></div></div>
+    <div class="header-actions"><span class="save-status" id="save-status">Saved on this device</span><button class="icon-btn dark" id="help" aria-label="Open lab guide" data-icon="help"></button><button class="avatar" id="notebook" aria-label="Open experiment notebook">S</button></div>
+  </header>
+  <div class="app-layout">
+    <aside class="rail" aria-label="Lab navigation">
+      <button class="rail-item active" id="lab-nav" aria-label="Workbench"><span data-icon="layers"></span><small>LAB</small></button>
+      <button class="rail-item" id="lessons-nav" aria-label="Open learning path"><span data-icon="book"></span><small>LEARN</small></button>
+      <button class="rail-item" id="notebook-nav" aria-label="Open notebook"><span data-icon="chart"></span><small>NOTES</small></button>
+      <div class="rail-spacer"></div><span class="rail-version">v0.1</span>
+    </aside>
+    <main>
+      <section class="page-heading"><div><div class="eyebrow"><span class="orange-dot"></span> YOUR WORKBENCH</div><h1>Small changes. Big discoveries.</h1><p>Build, predict, experiment. That’s how robotics clicks.</p></div><button class="button secondary guide-button" id="guide"><span data-icon="book"></span>Lab guide<span class="key-hint">?</span></button></section>
+      <section class="lesson-strip"><div class="lesson-number">01</div><div class="lesson-copy"><div class="eyebrow">TODAY’S EXPERIMENT <span>· 5 MIN</span></div><h2>Carry the load</h2><p>Can your rover keep its balance on a tilted surface?</p></div><div class="lesson-concept"><span data-icon="target"></span><div>Explore the concept<small>Center of mass & support polygon</small></div></div><button class="text-button" id="lesson-details">How it works <span>↗</span></button></section>
+      <div class="workspace">
+        <section class="workbench" aria-label="Interactive robot workbench">
+          <div class="bench-toolbar"><div class="tabs" role="tablist" aria-label="Workbench view"><button class="tab active" role="tab" aria-selected="true" id="build-tab"><span data-icon="sliders"></span>Build</button><button class="tab" role="tab" aria-selected="false" id="code-tab"><span data-icon="code"></span>Code</button><button class="tab" role="tab" aria-selected="false" id="results-tab"><span data-icon="chart"></span>Results<span class="count" id="result-count">0</span></button></div><span class="scene-status" id="scene-status"><i></i> Ready to experiment</span></div>
+          <div class="stage-wrap" id="stage-wrap">
+            <canvas id="scene" tabindex="0" aria-label="Interactive 3D-style rover view. Drag to orbit, scroll to zoom. Use the top and perspective view buttons for alternate views."></canvas>
+            <div class="stage-heading"><span class="live-badge">LIVE MODEL</span><h3 id="stage-title">Differential-drive rover</h3><p id="stage-subtitle">Two powered wheels. One little caster. Endless ideas.</p></div>
+            <div class="view-tools"><button class="icon-btn" id="view-perspective" title="Perspective view" aria-label="Perspective view" data-icon="box"></button><button class="icon-btn" id="view-top" title="Top view" aria-label="Top view" data-icon="top"></button><button class="icon-btn" id="zoom-in" title="Zoom in" aria-label="Zoom in" data-icon="plus"></button><button class="icon-btn" id="zoom-out" title="Zoom out" aria-label="Zoom out" data-icon="minus"></button><button class="icon-btn" id="view-reset" title="Reset camera" aria-label="Reset camera" data-icon="focus"></button></div>
+            <div class="canvas-label label-com" id="label-com"><i></i>Center of mass</div>
+            <div class="canvas-label label-support" id="label-support"><i></i>Support polygon</div>
+            <div class="stage-scale"><span></span>20 cm</div><div class="orbit-hint"><span data-icon="mouse"></span>Drag to orbit · Scroll to zoom</div>
+            <div class="stage-outcome" id="stage-outcome" hidden></div>
+            <div class="telemetry"><div><span>TOTAL MASS</span><strong id="metric-mass">3.8 <small>kg</small></strong></div><div><span>COM HEIGHT</span><strong id="metric-height">22.1 <small>cm</small></strong></div><div><span>BALANCE MARGIN <button class="tiny-help" id="margin-help" aria-label="Explain balance margin">?</button></span><strong id="metric-margin">+10.0 <small>cm</small></strong></div><div><span>SURFACE TILT</span><strong id="metric-tilt">0.0<small>°</small></strong></div></div>
+          </div>
+          <div class="code-panel" id="code-panel" hidden><div class="code-heading"><div><span class="eyebrow">ROVER SCRIPT</span><h3>Give your robot instructions.</h3></div><select id="code-example" aria-label="Load a code example"><option value="turn">Straight & turn</option><option value="square">Repeat a square</option><option value="sensor">Stop at an obstacle</option></select></div><div class="editor-wrap"><div class="line-numbers" id="line-numbers" aria-hidden="true"></div><textarea id="code-editor" spellcheck="false" aria-label="Robot pseudocode editor"></textarea></div><div class="code-error" id="code-error" role="alert" hidden></div><div class="code-footer"><span id="code-progress">Edit the script, then run your experiment.</span><button class="text-button" id="code-reference">Command reference ↗</button></div></div>
+          <div class="results-panel" id="results-panel" hidden><div class="results-heading"><span class="eyebrow">YOUR EXPERIMENT NOTEBOOK</span><h3>Every test tells a story.</h3><p>Compare what you expected with what your robot did.</p></div><div id="results-list"></div></div>
+          <div class="experiment-controls"><div class="experiment-mode"><span class="control-label">EXPERIMENT</span><select id="experiment-mode" aria-label="Experiment type"><option value="tilt">Balance on a ramp</option><option value="drive">Drive my program</option></select></div><div class="play-controls"><button class="icon-btn reset-btn" id="reset" aria-label="Reset experiment" title="Reset experiment" data-icon="reset"></button><button class="button primary" id="run"><span data-icon="play"></span><span id="run-text">Run experiment</span></button></div></div>
+          <div class="model-note"><span data-icon="info"></span><span id="model-note">Quasi-static balance model · Ideal grip · No sliding or impact physics</span><button class="text-button" id="model-details">About the model ↗</button></div>
+        </section>
+        <aside class="inspector" aria-label="Robot design controls">
+          <div class="inspector-header"><div><span class="eyebrow">MAKE IT YOURS</span><h2>Robot builder</h2></div><span data-icon="sliders"></span></div>
+          <button class="robot-picker" id="robot-picker"><span class="robot-mini" data-icon="robot"></span><span>Differential drive<small>MOBILE ROBOT · 2 MOTORS</small></span><span class="chevron">⌄</span></button>
+          <div class="preset-row"><button class="preset active" data-preset="balanced">Balanced</button><button class="preset" data-preset="tall">Top-heavy</button><button class="preset" data-preset="offset">Off-center</button></div>
+          <section class="parameter-section"><h3><span>01</span> Structure</h3><label class="range-label" for="width">Wheel spacing <output id="width-output">40 <small>cm</small></output></label><input id="width" type="range" min="24" max="60" step="1" value="40"><div class="range-ticks"><span>Narrow</span><span>Wide</span></div></section>
+          <section class="parameter-section"><h3><span>02</span> Payload</h3><label class="range-label" for="mass">Mass <output id="mass-output">1.5 <small>kg</small></output></label><input id="mass" type="range" min="0" max="3" step="0.1" value="1.5"><div class="range-ticks"><span>0 kg</span><span>3 kg</span></div><label class="range-label spaced" for="height">Height above deck <output id="height-output">24 <small>cm</small></output></label><input id="height" type="range" min="5" max="65" step="1" value="24"><div class="range-ticks"><span>Low</span><span>High</span></div><label class="range-label spaced" for="offset">Sideways position <output id="offset-output">0 <small>cm</small></output></label><input id="offset" type="range" min="-20" max="20" step="1" value="0"><div class="range-ticks"><span>← Left</span><span>Right →</span></div></section>
+          <section class="parameter-section"><h3><span>03</span> Experiment</h3><div id="tilt-setting"><label class="range-label" for="target">Target ramp angle <output id="target-output">25<small>°</small></output></label><input id="target" type="range" min="5" max="40" step="1" value="25"><div class="range-ticks"><span>Gentle</span><span>Steep</span></div></div><p id="drive-setting" class="small-note" hidden>Control each wheel in the Code tab. Test turning, loops, and a distance sensor on a flat surface.</p></section>
+          <div class="overlay-settings"><h3>Look beneath the surface</h3><label><span><i class="legend-dot orange"></i>Center of mass</span><input type="checkbox" id="show-com" checked role="switch"></label><label><span><i class="legend-dot teal"></i>Support polygon</span><input type="checkbox" id="show-support" checked role="switch"></label></div>
+          <div class="prediction-card"><span class="eyebrow">BEFORE YOU PRESS PLAY…</span><h3>What’s your prediction?</h3><div class="prediction-options"><button id="predict-stable" aria-pressed="false">It’ll hold <span>↗</span></button><button id="predict-tip" aria-pressed="false">It’ll tip <span>↘</span></button></div><p>Make a guess. Test it. Learn something.</p></div>
+        </aside>
+      </div>
+      <section class="discovery"><span class="discovery-icon" data-icon="bulb"></span><div><strong id="discovery-title">A wider stance gives your robot more room to balance.</strong><p id="discovery-copy">Try the top-heavy preset. Predict what will happen, then watch the center of mass as the ramp tilts.</p></div><span class="discovery-tag">LEARN BY DOING</span></section>
+      <footer><span>KINETIC <i> / </i> A little curiosity goes a long way.</span><span>Foundation lab <i>·</i> Built for exploring</span></footer>
+    </main>
+  </div>
+  <dialog id="modal"><div class="modal-top"><span class="eyebrow" id="modal-eyebrow">THE LAB GUIDE</span><button class="icon-btn" id="modal-close" aria-label="Close dialog" data-icon="close"></button></div><div id="modal-content"></div><button class="button primary modal-done" id="modal-done">Back to the workbench <span>→</span></button></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
