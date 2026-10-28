@@ -8,8 +8,7 @@ Status words used below: **local** (changed in the working tree, not committed),
 
 Last verified 2026-10-28 by Claude Code. Verify again with Git before relying on it.
 
-- Branch `main`. `origin/main` = `45d0b89` ("Add the selected design engineering guide"). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`.
-- The handoff setup is on branch `chore/codex-handoff` (pushed). It is not merged into `main` yet.
+- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`.
 - Milestone 1 exists: a differential-drive rover with adjustable structure and payload, the ramp-balance experiment, the bounded pseudocode controller, and the local experiment notebook (browser localStorage key `kinetic-v1`). The README and `AGENTS.md` describe the physics boundaries.
 - Verification on 2026-10-28: `npm test` 7/7 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
@@ -22,6 +21,7 @@ Last verified 2026-10-28 by Claude Code. Verify again with Git before relying on
 
 ## Decisions
 
+- One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28).
 - Design skill: Emil Design Engineering, kept at `docs/design-engineering.md`. It is identical to the copy installed for Claude Code (`~/.claude/skills/emil-design-eng`) and the shared copy (`~/.agents/skills/emil-design-eng`).
 - This file is the single shared record. Claude Code's project memory lives outside the repository, and Codex does not read it reliably. Anything the other tool needs goes here.
 
@@ -43,5 +43,5 @@ Entry template:
 
 - Changed: added `HANDOFF.md`, a handoff section in `AGENTS.md`, a pointer line in `CLAUDE.md`, and one sentence in the README's "Continue in Codex or Claude Code" section.
 - Verified: `npm test` 7/7, `npm run check` pass (no application code changed). The dev server was already running from an earlier session (`node scripts/serve.mjs`, PID 45760) and answered 200 on 127.0.0.1:5173. It was left running.
-- Status: committed together with this entry on branch `chore/codex-handoff` and pushed to `origin`. Not merged into `main`.
-- Next / open: merge into `main` once the owner approves. Development starts next.
+- Status: committed (`053be47`), fast-forwarded into `main`, and pushed. The temporary `chore/codex-handoff` branch was deleted locally and on GitHub.
+- Next / open: development starts next.
