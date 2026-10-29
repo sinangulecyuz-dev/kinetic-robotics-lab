@@ -42,6 +42,9 @@ export function stepDrive(pose,left,right,width,dt) {
   const next=pose.heading+omega*dt;
   return {x:pose.x+v/omega*(Math.cos(pose.heading)-Math.cos(next)),z:pose.z+v/omega*(Math.sin(next)-Math.sin(pose.heading)),heading:next};
 }
+// Readings a program can test. Units: distance m, heading and odom_heading degrees (positive turns left),
+// gyro_z rad/s, encoders counts since the start, odom_x and odom_y m, time s.
+export const SENSORS=['distance','heading','odom_heading','gyro_z','encoder_left','encoder_right','odom_x','odom_y','time'];
 // Bounded parser: no eval, arbitrary JavaScript, imports, or network access.
 export function parseProgram(source) {
   const lines=source.split('\n');let count=0,index=0;
@@ -58,6 +61,9 @@ export function parseProgram(source) {
       if((m=s.match(/^wheels\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/))){
         const l=+m[1],r=+m[2];if(Math.abs(l)>10||Math.abs(r)>10)fail(lineNo,'Wheel speeds must be between -10 and 10 rad/s.');
         nodes.push({type:'wheels',l,r,line:lineNo});
+      }else if((m=s.match(/^drive\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/))){
+        const v=+m[1],w=+m[2];if(Math.abs(v)>.75)fail(lineNo,'Forward speed v must be between -0.75 and 0.75 m/s.');if(Math.abs(w)>6)fail(lineNo,'Turn rate w must be between -6 and 6 rad/s.');
+        nodes.push({type:'drive',v,w,line:lineNo});
       }else if((m=s.match(/^wait\(\s*(\d+(?:\.\d+)?)\s*\)$/))){
         const time=+m[1];if(time<0.05||time>10)fail(lineNo,'Wait between 0.05 and 10 seconds.');
         nodes.push({type:'wait',time,line:lineNo});
@@ -66,12 +72,13 @@ export function parseProgram(source) {
         const n=+m[1];if(n<1||n>20)fail(lineNo,'Repeat between 1 and 20 times.');
         const block=parseBlock(depth+1);if(block.closing!=='end')fail(lineNo,'Close your repeat block with end.');
         nodes.push({type:'repeat',n,body:block.nodes,line:lineNo});
-      }else if((m=s.match(/^if\s+distance\s*<\s*(\d+(?:\.\d+)?)\s*:?$/))){
+      }else if((m=s.match(/^(if|while)\s+([a-z_]+)\s*(<=|>=|<|>)\s*(-?\d+(?:\.\d+)?)\s*:?$/))){
+        const [,kind,sensor,op,value]=m;if(!SENSORS.includes(sensor))fail(lineNo,`Unknown sensor ${sensor}. Use ${SENSORS.join(', ')}.`);
         const block=parseBlock(depth+1);let other=[];
-        if(block.closing==='else'){const b=parseBlock(depth+1);if(b.closing!=='end')fail(lineNo,'Close your if block with end.');other=b.nodes;}
-        else if(block.closing!=='end')fail(lineNo,'Close your if block with end.');
-        nodes.push({type:'if',distance:+m[1],body:block.nodes,other,line:lineNo});
-      }else fail(lineNo,'Try wheels(left, right), wait(seconds), stop(), repeat N, or if distance < N.');
+        if(kind==='if'&&block.closing==='else'){const b=parseBlock(depth+1);if(b.closing!=='end')fail(lineNo,'Close your if block with end.');other=b.nodes;}
+        else if(block.closing!=='end')fail(lineNo,`Close your ${kind} block with end.`);
+        nodes.push({type:kind,sensor,op,value:+value,body:block.nodes,other,line:lineNo});
+      }else fail(lineNo,'Try wheels(left, right), drive(v, w), wait(seconds), stop(), repeat N, or if/while sensor < N.');
     }
     return {nodes,closing:null};
   };

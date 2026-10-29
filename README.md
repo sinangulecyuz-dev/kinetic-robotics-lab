@@ -17,7 +17,7 @@ npm test
 npm run check
 ```
 
-The first command runs 20 model, dynamics, sensor, and parser tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 23 model, dynamics, sensor, and parser tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -42,7 +42,13 @@ The driving experiment lives in `dist/drive.mjs`. Frame convention: forward is +
 
 Runs are deterministic for a seed. Saved runs store their seed, so plots can be regenerated exactly.
 
-Known limits: slopes are assumed small, the friction model lets a parked rover creep a few mm/s on a slope, and every parameter is a typical datasheet value that has not been measured on a physical robot. A conservative circular footprint still stops the rover before a collision. The 30-second run limit, parser depth limit, and instruction budget bound student programs. User code is parsed into a small AST, never evaluated as JavaScript.
+Known limits: slopes are assumed small, the friction model lets a parked rover creep a few mm/s on a slope, and every parameter is a typical datasheet value that has not been measured on a physical robot. A conservative circular footprint still stops the rover before a collision.
+
+Student programs can command each wheel with `wheels(left, right)`, in rad/s. They can also command the whole rover with `drive(v, w)`, in m/s and rad/s, like ROS `/cmd_vel`. That command maps to wheel targets (v ± w·W/2)/R. If a wheel would pass 10 rad/s, both wheels are scaled down together, so the curve keeps its radius.
+
+`if` and `while` test sensor readings with `<`, `>`, `<=`, or `>=`. The readings are `distance`, `heading` (gyro-integrated IMU yaw in degrees), `odom_heading`, `gyro_z`, `encoder_left`, `encoder_right`, `odom_x`, `odom_y`, and `time`. A program always reads the latest sensor sample and never sees ground truth.
+
+The 30-second run limit, parser depth limit, and instruction budget bound student programs. A `while` loop without a `wait` hits the instruction guard. User code is parsed into a small AST, never evaluated as JavaScript.
 
 The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. That is a file export, not a live MATLAB connection.
 
@@ -55,7 +61,7 @@ Design, script, terrain, and the last 30 completed runs use browser localStorage
 ## Next bricks
 
 1. Validate dimensions, ramp thresholds, motor constants, and friction against a physical rover. The CSV columns are meant to line up with logs from a real robot.
-2. Let student programs read the sensors (heading, gyro, encoders) for closed-loop control. Evaluate Webots as a reference simulator for the new dynamics.
+2. Add a TurtleBot3 Waffle Pi preset and calibrate it against measured lab data, especially encoder drift when turning in place and IMU noise. Then add a guided lesson on odometry versus the true path. Evaluate Webots as a reference simulator for the dynamics.
 3. Add attachable structural parts with mass and inertia, and a common robot specification.
 4. Add omnidirectional bases, then an industrial arm. Treat humanoid standing before gait control.
 5. Add equivalent MATLAB / ROS 2 examples and a validated controller bridge. No live MATLAB or ROS 2 integration is claimed in this milestone.

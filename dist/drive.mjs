@@ -75,7 +75,7 @@ export class DriveSim{
     this.queue=[...program];this.waitSteps=0;this.instructions=0;this.sinceAdvance=0;this.line=program[0]?.line||1;this.phase='run';this.settleSteps=0;this.quietSteps=0;
     this.seed=seed;this.noise=noise;this.rand=random(seed);
     const bias=sd=>[0,1,2].map(()=>noise?gauss(this.rand)*sd:0);this.bias={gyro:bias(IMU.gyroBias),accel:bias(IMU.accelBias)};
-    this.odom={x:0,y:0,yaw:0};this.gyroYaw=0;this.imuPoints=[];this.imuFrames=[];this.heightPrev=null;
+    this.odom={x:0,y:0,yaw:0};this.gyroYaw=0;this.gyroZ=0;this.imuPoints=[];this.imuFrames=[];this.heightPrev=null;
     this.log=Object.fromEntries(CHANNELS.map(c=>[c,[]]));this.path=[];this.odomPath=[];
     this.updateContacts();this.start=this.axle();this.range=this.measureRange();
   }
@@ -111,11 +111,23 @@ export class DriveSim{
       if(!n){this.phase='settle';this.wheels.forEach(wh=>wh.ref=0);return;}
       this.line=n.line;
       if(n.type==='wheels'){this.wheels[0].ref=n.l;this.wheels[1].ref=n.r;}
+      else if(n.type==='drive'){
+        // Unicycle command to wheel targets (v ± w·W/2)/R. If a wheel would pass 10 rad/s, both slow together so the curve keeps its radius.
+        const half=this.width/2,l=(n.v-n.w*half)/WHEEL_RADIUS,r=(n.v+n.w*half)/WHEEL_RADIUS,k=Math.min(1,10/Math.max(Math.abs(l),Math.abs(r),1e-9));
+        this.wheels[0].ref=l*k;this.wheels[1].ref=r*k;
+      }
       else if(n.type==='wait')this.waitSteps=Math.max(1,Math.round(n.time/DT));
       else if(n.type==='repeat')this.queue.unshift(...Array.from({length:n.n},()=>n.body).flat());
-      else if(n.type==='if')this.queue.unshift(...(this.range<n.distance?n.body:n.other));
+      else if(n.type==='if')this.queue.unshift(...(this.test(n)?n.body:n.other));
+      else if(n.type==='while'&&this.test(n))this.queue.unshift(...n.body,n);
     }
   }
+  // What a program sees: the latest sensor samples, never the simulator's ground truth.
+  sensor(name){
+    const deg=180/Math.PI;
+    return {distance:this.range,heading:this.gyroYaw*deg,odom_heading:this.odom.yaw*deg,gyro_z:this.gyroZ,encoder_left:this.wheels[0].count,encoder_right:this.wheels[1].count,odom_x:this.odom.x,odom_y:this.odom.y,time:this.time}[name];
+  }
+  test(n){const v=this.sensor(n.sensor);return n.op==='<'?v<n.value:n.op==='>'?v>n.value:n.op==='<='?v<=n.value:v>=n.value;}
   // 1 kHz: support plane from the terrain under the three contacts, gravity components, and contact loads.
   updateContacts(){
     const s=Math.sin(this.heading),c=Math.cos(this.heading);
@@ -180,7 +192,7 @@ export class DriveSim{
     if(this.imuFrames.length===2){const [A,B]=this.imuFrames;gyro=[(dot(A.n,B.l)-dot(A.l,B.n))/(2*T),(dot(A.f,B.n)-dot(A.n,B.f))/(2*T),(dot(A.l,B.f)-dot(A.f,B.l))/(2*T)];}
     const read=(v,bias,sd,lsb)=>Math.round((v+bias+(this.noise?gauss(this.rand)*sd:0))/lsb)*lsb;
     accel=accel.map((v,i)=>read(v,this.bias.accel[i],IMU.accelNoise,IMU.accelLsb));gyro=gyro.map((v,i)=>read(v,this.bias.gyro[i],IMU.gyroNoise,IMU.gyroLsb));
-    this.gyroYaw+=gyro[2]*T;
+    this.gyroYaw+=gyro[2]*T;this.gyroZ=gyro[2];
     if(this.steps%RANGE_STEPS===0)this.range=this.measureRange();
     const axle=this.axle(),[L,R]=this.wheels,trueX=axle.z-this.start.z,trueY=axle.x-this.start.x;
     const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w];

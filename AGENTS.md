@@ -8,7 +8,7 @@ Read `docs/design-engineering.md` before interface implementation or review. It 
 
 ## Architecture
 
-- `dist/physics.mjs`: pure functions, SI units, balance geometry, ideal differential-drive kinematics, and a bounded pseudocode parser.
+- `dist/physics.mjs`: pure functions, SI units, balance geometry, ideal differential-drive kinematics, and a bounded pseudocode parser. The grammar is `wheels`, `drive(v, w)`, `wait`, `stop`, `repeat`, and `if`/`while` on the readings listed in `SENSORS`. Programs read sensor samples only, never ground truth.
 - `dist/drive.mjs`: the driving model, which is pure and DOM-free. It covers terrain, tire friction, DC motors with a PI speed loop, planar rigid-body dynamics, load transfer, sensors (encoders, IMU, range), odometry, the program runner, the 100 Hz log, and CSV export. Runs are deterministic for a given seed and do not depend on how frames split the time.
 - `dist/plots.mjs`: MATLAB-style canvas figures with crosshair, tooltip, and keyboard reading.
 - `dist/app.js`: application state, the ramp experiment, browser persistence, the plots panel, and orthographic canvas rendering.

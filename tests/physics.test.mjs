@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {DEFAULT,PRESETS,centerOfMass,balance,criticalAngle,stepDrive,parseProgram} from '../dist/physics.mjs';
+import {DEFAULT,PRESETS,centerOfMass,balance,criticalAngle,stepDrive,parseProgram,SENSORS} from '../dist/physics.mjs';
 const near=(a,b,epsilon=1e-8)=>assert.ok(Math.abs(a-b)<epsilon,`${a} != ${b}`);
 test('mass-weighted center of mass includes chassis, battery, and payload',()=>{
   const c=centerOfMass(DEFAULT);near(c.mass,3.8);near(c.x,0);near(c.y,(1.8*.115+.5*.09+1.5*.38)/3.8);
@@ -33,5 +33,14 @@ test('parser supports nested loops, sensor branches, comments, and line numbers'
   assert.equal(nodes[0].n,3);assert.equal(nodes[0].body[0].type,'if');assert.equal(nodes[0].body[0].body[0].l,0);assert.equal(nodes[0].body[0].other[0].l,4);assert.equal(nodes[0].line,2);
 });
 test('parser rejects unbounded or unsupported programs and malformed blocks',()=>{
-  for(const source of ['','wheels(100, 0)','repeat 999\nstop()\nend','wait(0)','wait(20)','repeat 2\nstop()','end','if distance < 1\nstop()','alert(1)','fetch("https://example.com")'])assert.throws(()=>parseProgram(source),/Line \d+:/);
+  for(const source of ['','wheels(100, 0)','repeat 999\nstop()\nend','wait(0)','wait(20)','repeat 2\nstop()','end','if distance < 1\nstop()','alert(1)','fetch("https://example.com")',
+    'drive(1, 0)','drive(0.2, 7)','drive(0.2)','if speed > 1\nstop()\nend','while time < 2\nwait(1)','while heading < 90\nwait(1)\nelse\nstop()\nend','while heading < 90 * 2\nwait(1)\nend','if heading = 90\nstop()\nend'])assert.throws(()=>parseProgram(source),/Line \d+:/);
+});
+test('parser reads drive commands and sensor conditions for if and while',()=>{
+  const nodes=parseProgram('drive(0.2, -1.5)\nwhile heading < 90\n  wait(0.05)\nend\nif encoder_left >= 1920\n  stop()\nelse\n  drive(0, 0.5)\nend');
+  assert.deepEqual(nodes[0],{type:'drive',v:.2,w:-1.5,line:1});
+  assert.equal(nodes[1].type,'while');assert.equal(nodes[1].sensor,'heading');assert.equal(nodes[1].op,'<');assert.equal(nodes[1].value,90);assert.equal(nodes[1].body[0].type,'wait');
+  assert.equal(nodes[2].type,'if');assert.equal(nodes[2].op,'>=');assert.equal(nodes[2].other[0].type,'drive');
+  for(const s of SENSORS)assert.equal(parseProgram(`if ${s} > -1\nstop()\nend`)[0].sensor,s);
+  assert.equal(parseProgram('if distance < 0.4\nstop()\nend')[0].value,.4,'the original sensor form still parses');
 });

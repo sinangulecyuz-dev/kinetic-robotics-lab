@@ -92,6 +92,24 @@ test('runs are deterministic for a seed, however the frames split the time',()=>
   const other=simulateRun({...opts,seed:43});assert.notDeepEqual(other.log.gz,whole.log.gz);
 });
 
+test('drive(v, w) gives the commanded speed and yaw rate, and saturation keeps the curve',()=>{
+  const L=drive('drive(0.2, 1)\nwait(4)').log,i0=250,i1=390,half=DEFAULT.width/200;
+  close((L.trueYaw[i1]-L.trueYaw[i0])/(L.t[i1]-L.t[i0]),1,.01,'yaw rate');close(mean(L.trueSpeed,i0,i1),.2,.003,'speed');
+  close(L.cmdR[300],(.2+1*half)/WHEEL_RADIUS,1e-12,'right target (v + w·W/2)/R');close(L.cmdL[300],(.2-1*half)/WHEEL_RADIUS,1e-12,'left target (v - w·W/2)/R');
+  const fast=drive('drive(0.75, 6)\nwait(1)').log;
+  assert.equal(Math.max(...fast.cmdR),10);close(fast.cmdL[50]/fast.cmdR[50],(.75-6*half)/(.75+6*half),1e-12,'wheel ratio, so the radius, is kept');
+});
+
+test('programs act on sensor samples: a gyro-guided turn and an encoder-measured wheel turn',()=>{
+  const deg=180/Math.PI,turn=drive('drive(0, 1)\nwhile heading < 90\n  wait(0.05)\nend\nstop()').log,stop=turn.cmdR.findIndex((v,i)=>i>0&&v===0);
+  assert.ok(turn.gyroYaw[stop]*deg>=90,'gyro had passed 90° when the stop arrived');assert.ok(turn.gyroYaw[stop-6]*deg<90,'and had not one poll earlier');
+  const final=turn.trueYaw.at(-1)*deg;assert.ok(final>90&&final<105,`overshoot from polling and braking stays small: ${final}`);
+  const wheel=drive('drive(0.2, 0)\nwhile encoder_left < 1920\n  wait(0.05)\nend\nstop()').log,s=wheel.cmdL.findIndex((v,i)=>i>0&&v===0);
+  assert.ok(wheel.encL[s]>=ENCODER_CPR&&wheel.encL[s-6]<ENCODER_CPR,'stopped on the first poll past one revolution');
+  close(wheel.trueX.at(-1),2*Math.PI*WHEEL_RADIUS,.03,'travelled about one wheel circumference');
+  assert.match(drive('drive(0, 1)\nwhile heading < 90\nend').message,/instruction limit/,'a loop without waits is still stopped');
+});
+
 test('CSV export has one unit-labelled column per channel and one row per sample',()=>{
   const sim=drive('wheels(2, 2)\nwait(0.3)'),rows=toCsv(sim.log).trim().split('\n');
   assert.equal(rows.length,sim.log.t.length+1);assert.equal(rows[0].split(',').length,CHANNELS.length);

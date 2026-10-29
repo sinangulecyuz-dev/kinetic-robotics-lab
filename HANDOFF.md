@@ -15,8 +15,9 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: rotating wheels and a swiveling caster in the 3D view.
   - New: simulated encoders, IMU, motor current, and range sensor, logged at 100 Hz.
   - New: a Plots tab with nine MATLAB-style figures (`dist/plots.mjs`) and CSV export.
+  - New: closed-loop control. Student programs can use `drive(v, w)` and test sensor readings in `if` and `while`.
 - The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 20/20 pass, `npm run check` passes.
+- Verification on 2026-10-29: `npm test` 23/23 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
 
@@ -27,14 +28,20 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
 - **Validation data offered (2026-10-29):** the owner's ME425 TurtleBot3 Waffle Pi lab reports contain real measurements (odometry, five in-place turns, IMU at rest). A quick check found a gap. Over five turns in place, the real robot's encoder heading ran 47° ahead of the IMU heading. The sim's encoder heading drifts only about 1° per turn on concrete. The sim's IMU noise is also about 10× lower than the measured az spread. The owner has been asked for the Lab 1 `.mat` files. Put only numbers into the repo, never names, student IDs, or photos.
-- Next steps the owner already named: let student programs read the sensors (`if heading > 90`, gyro, encoders) for closed-loop control. After that comes validation against a physical rover (README "Next bricks").
+- Next steps in the owner's agreed order: (2) add a TurtleBot3 Waffle Pi preset and calibrate it against the lab data, and add "desired vs odometry" plots. (3) Build a guided lesson "Experiment 02: where am I?" with short missions.
 
 ## Decisions
 
 - One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28).
 - Left/right fixed (owner approved, 2026-10-28). Before the fix, `wheels(l, r)` drove the physically mirrored wheels, so `wheels(2, 5)` turned right. Now the robot's left is +x, a faster right wheel turns left, and positive yaw is counterclockwise (ROS REP-103). Old saved drive runs replay with the corrected direction.
 - Physics depth: planar rigid-body dynamics with motors, tire slip, load transfer, and terrain following (owner's choice, 2026-10-28). Full 3D contact, bouncing, and flight are out of scope. A lifting contact stops the run with a message.
-- Sensors are measured and plotted only for now. Student code cannot read them yet (owner's choice, 2026-10-28).
+- Sensors were plotted only at first (owner's choice, 2026-10-28). Since 2026-10-29, programs can read them (owner chose closed-loop control as the next step). They read the latest sample only, never ground truth.
+- Rover script additions, with the existing parser limits unchanged and no `eval`:
+  - `drive(v, w)`: |v| ≤ 0.75 m/s, |w| ≤ 6 rad/s. It maps to wheel targets (v ± w·W/2)/R. Above 10 rad/s, both wheels scale down together so the radius is kept.
+  - `while sensor op N … end`, and `if` with any sensor. Operators are `< > <= >=`.
+  - Sensors: `distance` (m), `heading` (gyro-integrated IMU yaw in degrees, positive left), `odom_heading` (degrees), `gyro_z` (rad/s), `encoder_left` and `encoder_right` (counts), `odom_x` and `odom_y` (m), `time` (s).
+  - A loop without `wait` hits the existing guard.
+- Item 2 scope (owner's decisions, 2026-10-29): the TurtleBot3 preset is for the driving experiment only, with no ramp. The 30-second run limit stays, so the in-place test uses 4 turns and compares drift per turn. The measured lab numbers may go into the repo, but never names, student IDs, or photos.
 - Plot colors: MATLAB colororder slots 1, 2, and 4 (#0072BD, #D95319, #7E2F8E). Slot 3 (#EDB120) fails the lightness and contrast checks on white. Color follows the entity: true path is orange, odometry blue, gyro purple, left wheel blue, right wheel orange.
 - Load transfer lags acceleration by 20 ms. Without the lag, traction and load form an instantaneous loop that diverges for tall rovers (loop gain μ·h/0.30 > 1) and produces false wheelies.
 - Speed loop gains: kp 1, ki 1.5. On concrete the step overshoot is 0.2%. Wheelspin on ice still overshoots, as a real controller would.
@@ -54,6 +61,23 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-10-29 — Claude Code — closed-loop control (item 1)
+
+- Changed:
+  - `dist/physics.mjs`: `SENSORS`, `drive(v, w)`, and `if`/`while` on any sensor with four operators.
+  - `dist/drive.mjs`: drive-to-wheel mapping with saturation scaling, `sensor()`/`test()` that read samples only, and `while` execution.
+  - `dist/app.js` and `dist/index.html`: two new examples ("Turn 90° with the gyro", "Drive 0.5 m by encoders") and a rewritten command reference with a sensor list.
+  - Tests: 1 parser test, the reject list extended, and 2 drive tests. README and `AGENTS.md` updated.
+- Verified:
+  - `npm test` 23/23, `npm run check` pass.
+  - `drive(0.2, 1)` gives a 0.999 rad/s yaw rate at 0.199 m/s. Wheel targets match (v ± w·W/2)/R exactly. At saturation the wheel ratio is kept.
+  - A gyro-guided 90° turn stops at about 96° true (polling plus braking). An encoder-guided turn travels one wheel circumference within 3 cm.
+  - Headless Chrome on 5174: both new examples run, invalid programs show line-numbered errors and do not start, zero console errors.
+  - Not verified: real devices.
+- Known limit: on ice, a slow 90° turn shows only about 2° between the gyro and the encoders, because in-place scrubbing is under-modelled (see the TurtleBot gap in Open items). The tests therefore make no "gyro beats encoders on ice" claim yet.
+- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
+- Next / open: item 2 (TurtleBot3 preset and calibration).
 
 ### 2026-10-29 — Claude Code — wheels turn, terrain, sensors, MATLAB-style plots
 
