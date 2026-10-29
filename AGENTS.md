@@ -8,16 +8,28 @@ Read `docs/design-engineering.md` before interface implementation or review. It 
 
 ## Architecture
 
-- `dist/physics.mjs`: pure functions, SI units, balance geometry, differential-drive kinematics, and a bounded pseudocode parser.
-- `dist/app.js`: application state, experiment runner, browser persistence, and orthographic canvas rendering.
+- `dist/physics.mjs`: pure functions, SI units, balance geometry, ideal differential-drive kinematics, and a bounded pseudocode parser.
+- `dist/drive.mjs`: the driving model, which is pure and DOM-free. It covers terrain, tire friction, DC motors with a PI speed loop, planar rigid-body dynamics, load transfer, sensors (encoders, IMU, range), odometry, the program runner, the 100 Hz log, and CSV export. Runs are deterministic for a given seed and do not depend on how frames split the time.
+- `dist/plots.mjs`: MATLAB-style canvas figures with crosshair, tooltip, and keyboard reading.
+- `dist/app.js`: application state, the ramp experiment, browser persistence, the plots panel, and orthographic canvas rendering.
 - `dist/index.html` and `dist/style.css`: responsive workbench.
-- `tests/physics.test.mjs`: independent numerical checks and parser behavior.
+- `tests/physics.test.mjs` and `tests/drive.test.mjs`: independent numerical checks and parser behavior.
 
-Keep model logic separate from rendering. Student programs must never use eval or execute arbitrary JavaScript. Keep existing parser limits. Keep state changes reversible and restore prior experiments without mutating their recorded parameters.
+Frame convention: forward is +z, up is +y, and the robot's left is +x. Positive yaw turns left (counterclockwise seen from above, as in ROS REP-103). The left wheel sits at +x. Sensor axes are x forward, y left, z up. Keep model logic separate from rendering. Student programs must never use eval or execute arbitrary JavaScript. Keep existing parser limits. Keep state changes reversible and restore prior experiments without mutating their recorded parameters.
 
 ## Physics boundaries
 
-The ramp uses quasi-static support geometry, held wheels, and ideal grip. It does not simulate slipping, contact impacts, or dynamic balance. The drive experiment uses ideal no-slip kinematics. Its conservative collision stop is not a rigid-body contact solver. Falling animation illustrates support loss. Preserve visible explanations of these assumptions.
+The ramp uses quasi-static support geometry, held wheels, and ideal grip. It does not simulate slipping, contact impacts, or dynamic balance. Falling animation illustrates support loss.
+
+The drive experiment is a planar rigid-body model (forward, sideways, yaw) on three terrains: flat concrete, rough gravel with deterministic bumps of about 2 cm, and an ice-like surface.
+- Motors: two 12 V gear motors with back-EMF (1.36 N·m stall, 34.6 rad/s free at the wheel) and a 100 Hz feedforward-plus-PI speed loop on encoder speed.
+- Tires: a velocity-based Pacejka-style friction curve on combined slip, plus rolling resistance and caster drag.
+- Load transfer: three-point static support, with a 20 ms lag that stands in for compliance.
+- Terrain: the body follows the bumps. Slopes are assumed small, and there is no suspension, bounce, or flight.
+- Tipping: if a contact would lift, the run stops, because dynamic tipping is not simulated.
+- Creep: the speed-based friction lets a rover parked on a slope creep a few mm/s.
+
+Parameters are typical datasheet values, not measurements. The collision stop is a conservative footprint check, not a contact solver. Preserve visible explanations of these assumptions in the interface and the README.
 
 MATLAB and ROS 2 are planned integrations, not current capabilities. Do not claim live integration until it exists and has been tested. Keep humanoid walking out of the first milestone. Prefer validating the rover against a physical experiment before expanding robot families.
 
@@ -31,7 +43,7 @@ npm test
 npm run check
 ```
 
-Open http://localhost:5173 after starting the dev server. If changing models, check an independently derived physical or geometric expectation. If changing the interface, inspect the live page when browser tooling is available. Preserve keyboard operation and responsive layouts.
+Open http://127.0.0.1:5173 after starting the dev server (it listens on IPv4 only). If port 5173 is busy, another copy of this lab may be serving it. Run `PORT=5174 npm run dev`, or set `$env:PORT=5174` in PowerShell first. If changing models, check an independently derived physical or geometric expectation. If changing the interface, inspect the live page when browser tooling is available. Preserve keyboard operation and responsive layouts.
 
 ## Handoff between Codex and Claude Code
 

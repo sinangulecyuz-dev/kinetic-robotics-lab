@@ -1,6 +1,6 @@
 # Kinetic — Virtual Robotics Lab
 
-First student-facing milestone: a differential-drive rover with an adjustable structure and payload, a ramp-balance experiment, an editable pseudocode controller, and a local experiment notebook.
+First student-facing milestone: a differential-drive rover with an adjustable structure and payload, a ramp-balance experiment, an editable pseudocode controller, and a local experiment notebook. The rover drives on flat, rough, or slippery ground. Its encoders, IMU, motors, and range sensor are logged and plotted in MATLAB-style figures.
 
 ## Run
 
@@ -10,14 +10,14 @@ This is a buildless, dependency-free static site. Install Node.js 20 or newer, o
 npm run dev
 ```
 
-Open http://localhost:5173. There is no dependency installation step. Alternatively, serve `dist/` with any HTTP static server. Entry point: `dist/index.html`. Modules require HTTP rather than `file://`.
+Open http://127.0.0.1:5173. The server listens on IPv4 only, so `localhost` can fail where it resolves to IPv6 first. If port 5173 is already taken, run `PORT=5174 npm run dev`. There is no dependency installation step. Alternatively, serve `dist/` with any HTTP static server. Entry point: `dist/index.html`. Modules require HTTP rather than `file://`.
 
 ```sh
 npm test
 npm run check
 ```
 
-The first command runs seven model/parser tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 20 model, dynamics, sensor, and parser tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -31,18 +31,31 @@ All physics functions in `dist/physics.mjs` use SI units; the builder displays c
 
 The two drive contacts and caster form a triangle. The tilt table rotates around the forward axis, rising to the right. The gravity intersection in ramp coordinates is `x_com - y_com * tan(angle)` and `z_com`. Signed perpendicular distance to the closest triangle edge is the static margin. A binary search finds the first zero-margin positive tilt. Static contact loss triggers an illustrative falling animation; there is no contact solver, sliding, motor holding torque model, deformation, or impact simulation. Assume held wheels and ideal grip.
 
-The driving experiment is separate: ideal no-slip differential-drive kinematics integrated along an exact arc for each constant wheel-speed time slice. Wheel radius is 0.075 m. There is no acceleration or dynamic tipping model. A ray sensor checks one box up to 3 m ahead; conservative circular footprint proximity stops the rover before a collision. The 30-second run limit, parser depth limit, and instruction budget bound student programs. User code is parsed into a small AST, never evaluated as JavaScript.
+The driving experiment lives in `dist/drive.mjs`. Frame convention: forward is +z, up is +y, the robot's left is +x, and positive yaw turns left (ROS REP-103). The rover is a planar rigid body (forward, sideways, yaw), integrated at 10 kHz with semi-implicit Euler.
+- **Motors.** Each 0.075 m wheel is driven by a 12 V gear motor with back-EMF, gearbox friction, and reflected inertia: 1.36 N·m stall torque and 34.6 rad/s free speed at the wheel. `wheels(left, right)` sets speed targets. A 100 Hz firmware-style loop (feedforward plus PI on encoder speed, with anti-windup) sets each motor voltage.
+- **Tires.** Each tire's force follows a velocity-based Pacejka-style curve on combined longitudinal and lateral slip. Grip peaks at 5 cm/s of slip and settles at the sliding coefficient. The model adds rolling resistance and a drag force on the swivel caster.
+- **Terrain.** Concrete has μ 0.90 peak and 0.75 sliding, gravel 0.65 and 0.55, ice 0.15 and 0.10. Rough ground adds deterministic bumps of about 2 cm. The body follows them through a support plane fitted to the three contacts, so slopes add a gravity component.
+- **Load transfer.** Normal loads come from the three-point static support. The point where gravity minus acceleration meets the ground is lagged by 20 ms, which stands in for tire and chassis compliance. If any contact would lift, the run stops and says which one, because dynamic tipping, bouncing, and jumps are not simulated.
+- **Encoders.** 1920 counts per wheel revolution. Odometry is dead reckoning from encoder counts only, so it drifts when wheels slip.
+- **IMU.** MPU-6050 class, 100 Hz. The accelerometer reading comes from the IMU point's own 3D trajectory and the gyro reading from the change of the body axes. Both have noise, a seeded bias, and 16-bit steps.
+- **Range sensor.** It checks the obstacle box up to 3 m ahead at 20 Hz, with about 1% noise.
+
+Runs are deterministic for a seed. Saved runs store their seed, so plots can be regenerated exactly.
+
+Known limits: slopes are assumed small, the friction model lets a parked rover creep a few mm/s on a slope, and every parameter is a typical datasheet value that has not been measured on a physical robot. A conservative circular footprint still stops the rover before a collision. The 30-second run limit, parser depth limit, and instruction budget bound student programs. User code is parsed into a small AST, never evaluated as JavaScript.
+
+The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. That is a file export, not a live MATLAB connection.
 
 The orthographic canvas renderer uses the same dimensions and transforms as the models. It supports orbit, zoom, top view, and overlay toggles without external packages. The static floor grid is illustrative; exact measurements appear in the controls and telemetry.
 
 ## Persistence
 
-Design, script, and the last 30 completed runs use browser localStorage (`kinetic-v1`). This is per-device, not a multi-user classroom backend. Resets preserve design. Run restoration restores parameters and, for drive runs, the executed script. No analytics or external requests are required by the app.
+Design, script, terrain, and the last 30 completed runs use browser localStorage (`kinetic-v1`). This is per-device, not a multi-user classroom backend. Resets preserve design. Run restoration restores parameters and, for drive runs, the executed script and terrain. Sensor logs are not stored. A drive run stores its seed instead, and its plots are replayed from design, terrain, script, and seed. Runs saved before seeds existed replay under the current model with a seed derived from their id. No analytics or external requests are required by the app.
 
 ## Next bricks
 
-1. Validate dimensions and ramp thresholds against a physical rover; replace ideal assumptions where needed.
-2. Add motor and friction models in a dedicated physics adapter (evaluate Webots for reference simulation).
+1. Validate dimensions, ramp thresholds, motor constants, and friction against a physical rover. The CSV columns are meant to line up with logs from a real robot.
+2. Let student programs read the sensors (heading, gyro, encoders) for closed-loop control. Evaluate Webots as a reference simulator for the new dynamics.
 3. Add attachable structural parts with mass and inertia, and a common robot specification.
 4. Add omnidirectional bases, then an industrial arm. Treat humanoid standing before gait control.
 5. Add equivalent MATLAB / ROS 2 examples and a validated controller bridge. No live MATLAB or ROS 2 integration is claimed in this milestone.

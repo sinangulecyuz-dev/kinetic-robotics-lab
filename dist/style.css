@@ -4,3 +4,33 @@
 @media(max-width:850px){.rail{display:none}.topbar{height:68px;padding:0 20px}.brand{font-size:17px}.brand small{font-size:7px}.brand-mark{width:37px;height:38px;line-height:37px;font-size:33px;padding-left:8px}.brand-mark span{font-size:30px}.project-title{padding-left:20px;font-size:10px}.header-actions{gap:10px}main{padding:24px 18px 0}.workspace{grid-template-columns:minmax(0,1fr) 240px;gap:12px}.page-heading h1{font-size:23px}.page-heading p{font-size:10px}.guide-button{font-size:10px;padding:9px}.key-hint{display:none}.lesson-strip{padding:15px;gap:12px}.lesson-copy p{font-size:10px}.stage-heading p{max-width:200px;line-height:1.6}.bench-toolbar{padding:0 13px}.scene-status{display:none}.model-note .text-button{display:none}.model-note{font-size:7px;padding:10px}.telemetry{left:10px;right:10px}.telemetry>div{padding-left:9px}.telemetry strong{font-size:16px}.telemetry span{font-size:5px;letter-spacing:.4px}.tiny-help{display:none}.experiment-controls{padding:13px 12px}.experiment-controls .button{min-width:0;padding:11px;font-size:9px}.play-controls{gap:8px}.experiment-mode select{font-size:9px;max-width:135px}.stage-wrap{height:540px}.orbit-hint{display:none}.canvas-label{font-size:8px;padding:6px}.stage-scale{bottom:96px}.inspector{padding:17px 13px}.view-tools{right:11px}.code-heading{align-items:flex-start;flex-direction:column}.code-heading select{margin-bottom:12px}}
 @media(max-width:650px){.project-title{display:none}.topbar{height:66px}.topbar .header-actions{gap:14px}main{padding:23px 14px 0}.page-heading{margin-bottom:20px}.page-heading h1{font-size:21px;letter-spacing:-.6px;margin-top:9px}.page-heading p{max-width:215px;line-height:1.5}.eyebrow{font-size:8px}.guide-button{padding:8px;font-size:0;gap:0}.guide-button svg{width:17px;height:17px}.lesson-strip{margin-bottom:15px;padding:14px 12px;gap:11px}.lesson-number{width:35px;height:40px;font-size:16px;flex-shrink:0}.lesson-copy h2{font-size:14px}.lesson-copy p{font-size:9px;line-height:1.6}.lesson-copy .eyebrow{font-size:6px;letter-spacing:1px}.lesson-strip .text-button{font-size:0}.lesson-strip .text-button span{font-size:15px;margin:0}.workspace{display:flex;flex-direction:column;gap:15px}.workbench,.inspector{width:100%}.stage-wrap{height:440px}.stage-heading p{max-width:none;font-size:9px}.stage-heading{top:22px;left:17px}.telemetry{height:60px;bottom:12px}.telemetry span{font-size:6px}.telemetry strong{font-size:16px}.telemetry small{font-size:9px}.stage-scale{bottom:90px}.inspector{padding:20px}.inspector-header{margin-bottom:14px}.preset-row{margin-bottom:15px}.preset{font-size:9px;padding:8px}.parameter-section{padding-top:16px;margin-top:18px}.range-label{font-size:11px}.range-label output{font-size:11px}.range-ticks{font-size:8px}input[type=range]{height:4px;margin:16px 0 12px}input[type=range]::-webkit-slider-thumb{width:17px;height:17px}.parameter-section h3{font-size:11px}.parameter-section h3>span{font-size:8px}.robot-picker{font-size:12px;padding:12px}.robot-picker small{font-size:7px}.overlay-settings label{font-size:11px}.overlay-settings h3{font-size:11px}input[role=switch]{width:30px;height:17px}input[role=switch]:after{width:13px;height:13px}input[role=switch]:checked:after{transform:translateX(13px)}.prediction-card{padding:15px}.prediction-card .eyebrow{font-size:8px}.prediction-card h3{font-size:13px}.prediction-options button{font-size:11px;padding:10px}.prediction-card p{font-size:9px}.model-note{font-size:7px}.experiment-controls .button{font-size:11px;padding:12px 14px}.experiment-mode select{font-size:10px;max-width:155px}.discovery{padding:14px;gap:10px;margin-top:15px}.discovery strong{font-size:10px;line-height:1.5}.discovery p{font-size:9px}.discovery-icon{width:28px;height:32px}footer{font-size:7px;line-height:1.7;padding:19px 0}footer>span:last-child{display:none}.code-panel,.results-panel{padding:20px 15px}.code-heading{flex-direction:row;gap:8px}.code-heading h3{font-size:11px}.code-heading select{max-width:135px;font-size:9px}.code-footer{flex-direction:column;align-items:flex-start}.stage-outcome{font-size:9px;max-width:90%;white-space:normal;text-align:center;bottom:101px}.code-error{line-height:1.7}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+.terrain-row{display:flex;gap:5px;margin:8px 0 4px}
+.terrain-row .preset{transition:transform .16s ease-out,background .16s,color .16s,border-color .16s}
+.terrain-row .preset:active{transform:scale(.97)}
+.blue{background:#5b9bd0}
+.result-actions{display:flex;gap:16px;flex-wrap:wrap}
+.plots-panel{padding:22px 24px 26px;background:#fafbfc;border-top:1px solid var(--line)}
+.plots-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.plots-heading h3{font-size:19px;letter-spacing:-.5px;margin:9px 0}
+.plots-heading p{font-size:11px;color:#919aa5;margin:0}
+.plots-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.plots-actions .button{padding:8px 12px;font-size:10px}
+.plots-actions .button svg{width:14px;height:14px}
+.plots-meta{font-size:9px;color:#8b95a0;line-height:1.9;margin:14px 0 0}
+.plots-meta strong{color:#4f5b68;font-weight:600}
+.plots-meta code{font:10px "SFMono-Regular",Consolas,monospace;background:#eef1f4;color:#4f5b68;padding:2px 5px;border-radius:3px;white-space:normal;overflow-wrap:anywhere}
+.plot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.plot{position:relative;margin:0;background:#fff;border:1px solid #e2e7eb;border-radius:8px;overflow:hidden}
+.plot canvas{display:block;width:100%;height:240px;cursor:crosshair;touch-action:pan-y}
+.plot canvas:focus-visible{outline-offset:-3px}
+.plot-tip{position:absolute;z-index:2;pointer-events:none;background:#fff;border:1px solid #262626;padding:6px 8px;font:10px/1.6 Helvetica,Arial,sans-serif;color:#262626;white-space:nowrap;box-shadow:0 2px 6px #0000001a}
+.plot-tip-head{color:#6b6b6b;margin-bottom:2px}
+.plot-tip b{font-weight:700;font-variant-numeric:tabular-nums}
+.plot-tip span{color:#6b6b6b;margin-left:6px}
+.plot-tip i{display:inline-block;width:12px;border-top:2px solid;margin-right:6px;vertical-align:middle}
+.plot-tip i.dash{border-top-style:dashed}
+body[data-tab=plots] .stage-wrap{height:300px}
+body[data-tab=plots] .stage-heading p{display:none}
+body[data-tab=plots] .stage-scale,body[data-tab=plots] .orbit-hint{display:none}
+@media(max-width:1120px){.plot-grid{grid-template-columns:1fr}}
+@media(max-width:650px){.plots-panel{padding:20px 15px}.plot canvas{height:220px}.result-actions{gap:10px}}

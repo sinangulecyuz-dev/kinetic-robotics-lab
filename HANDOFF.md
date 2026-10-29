@@ -6,22 +6,38 @@ Status words used below: **local** (changed in the working tree, not committed),
 
 ## Current state
 
-Last verified 2026-10-28 by Claude Code. Verify again with Git before relying on it.
+Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on it.
 
-- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`.
-- Milestone 1 exists: a differential-drive rover with adjustable structure and payload, the ramp-balance experiment, the bounded pseudocode controller, and the local experiment notebook (browser localStorage key `kinetic-v1`). The README and `AGENTS.md` describe the physics boundaries.
-- Verification on 2026-10-28: `npm test` 7/7 pass, `npm run check` passes.
+- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`. The driving-dynamics work below is committed and pushed to `main` (the commit after `414feb1`).
+- What exists:
+  - Milestone 1: rover builder, ramp-balance experiment, bounded pseudocode controller, local notebook (`kinetic-v1`).
+  - New: a realistic driving model (`dist/drive.mjs`) on flat, rough, and slippery terrain.
+  - New: rotating wheels and a swiveling caster in the 3D view.
+  - New: simulated encoders, IMU, motor current, and range sensor, logged at 100 Hz.
+  - New: a Plots tab with nine MATLAB-style figures (`dist/plots.mjs`) and CSV export.
+- The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
+- Verification on 2026-10-29: `npm test` 20/20 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
-- Dev server: `npm run dev` listens on **127.0.0.1:5173 only**. Open http://127.0.0.1:5173. `http://localhost:5173` can fail when `localhost` resolves to IPv6 `::1` first (curl failed this way on 2026-10-28). If the port is busy (`EADDRINUSE`), a server from an earlier session is usually still running. Check it in PowerShell with `Get-NetTCPConnection -LocalPort 5173` before starting another one.
+- Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
 
 ## Open items
 
-- **Known issue, not fixed:** `scripts/serve.mjs` prints `http://localhost:5173`, and the README and `AGENTS.md` say the same, but the server binds `127.0.0.1` only. The owner has not asked for a fix.
-- Roadmap: README, section "Next bricks" (physical validation of the rover comes first).
+- **Finding, not fixed:** the builder's "Sideways position" slider labels (`← Left` / `Right →`) are in viewer terms for the default camera, where the rover faces the viewer. They are the opposite of the robot's own left and right. The drive model now loads the wheels by payload offset, so a payload set to `Right →` loads the robot's **left** wheel. Waiting for the owner to decide.
+- **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `AGENTS.md` now say 127.0.0.1.
+- **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
+- Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
+- **Validation data offered (2026-10-29):** the owner's ME425 TurtleBot3 Waffle Pi lab reports contain real measurements (odometry, five in-place turns, IMU at rest). A quick check found a gap. Over five turns in place, the real robot's encoder heading ran 47° ahead of the IMU heading. The sim's encoder heading drifts only about 1° per turn on concrete. The sim's IMU noise is also about 10× lower than the measured az spread. The owner has been asked for the Lab 1 `.mat` files. Put only numbers into the repo, never names, student IDs, or photos.
+- Next steps the owner already named: let student programs read the sensors (`if heading > 90`, gyro, encoders) for closed-loop control. After that comes validation against a physical rover (README "Next bricks").
 
 ## Decisions
 
 - One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28).
+- Left/right fixed (owner approved, 2026-10-28). Before the fix, `wheels(l, r)` drove the physically mirrored wheels, so `wheels(2, 5)` turned right. Now the robot's left is +x, a faster right wheel turns left, and positive yaw is counterclockwise (ROS REP-103). Old saved drive runs replay with the corrected direction.
+- Physics depth: planar rigid-body dynamics with motors, tire slip, load transfer, and terrain following (owner's choice, 2026-10-28). Full 3D contact, bouncing, and flight are out of scope. A lifting contact stops the run with a message.
+- Sensors are measured and plotted only for now. Student code cannot read them yet (owner's choice, 2026-10-28).
+- Plot colors: MATLAB colororder slots 1, 2, and 4 (#0072BD, #D95319, #7E2F8E). Slot 3 (#EDB120) fails the lightness and contrast checks on white. Color follows the entity: true path is orange, odometry blue, gyro purple, left wheel blue, right wheel orange.
+- Load transfer lags acceleration by 20 ms. Without the lag, traction and load form an instantaneous loop that diverges for tall rovers (loop gain μ·h/0.30 > 1) and produces false wheelies.
+- Speed loop gains: kp 1, ki 1.5. On concrete the step overshoot is 0.2%. Wheelspin on ice still overshoots, as a real controller would.
 - Design skill: Emil Design Engineering, kept at `docs/design-engineering.md`. It is identical to the copy installed for Claude Code (`~/.claude/skills/emil-design-eng`) and the shared copy (`~/.agents/skills/emil-design-eng`).
 - This file is the single shared record. Claude Code's project memory lives outside the repository, and Codex does not read it reliably. Anything the other tool needs goes here.
 
@@ -39,9 +55,27 @@ Entry template:
 - Next / open: what remains, decisions waiting for the owner
 ```
 
+### 2026-10-29 — Claude Code — wheels turn, terrain, sensors, MATLAB-style plots
+
+- Changed:
+  - New `dist/drive.mjs`: terrain, friction curve, motors with PI loop, planar dynamics, load transfer, encoders, IMU, range sensor, odometry, program runner, log, and CSV.
+  - New `dist/plots.mjs`: figures with crosshair, tooltip, keyboard reading, and min/max decimation.
+  - `dist/physics.mjs`: the `wheelVelocity` sign is fixed.
+  - `dist/app.js`: wired to the new sim, with terrain selector, Plots tab, rotating wheels and caster, shaded rough terrain, icy floor, odometry trail, drive telemetry (speed, slip, dynamic margin, range), and model text updated in the modals.
+  - `dist/index.html` and `dist/style.css`: Plots tab and panel, terrain buttons, odometry toggle.
+  - Tests: new `tests/drive.test.mjs` (13 tests), and the spin expectation in `tests/physics.test.mjs` changed to -1.5.
+  - `package.json`: scripts cover the new files. `README.md` and `AGENTS.md` updated.
+- Verified:
+  - `npm test` 20/20, `npm run check` pass.
+  - The tests check independent expectations: lever-arm loads and load transfer; friction peak and asymptote; stall torque and free speed; a parked rover reading 9.81 m/s²; steady-state speed R·ω; turn yaw rate against R(ωr−ωl)/W, with the gyro reading it; centripetal a_y = ω·v and a_x = ω²·0.08 from rigid-body kinematics; encoder tick counting; ice acceleration ≤ μ·g; odometry drifting more than 3× on ice; roll and pitch rates only on rough ground; a tall rover lifting the caster under hard braking; seed determinism across frame splits; CSV shape.
+  - In the browser: headless Chrome 155 over CDP against this repo on 127.0.0.1:5174. Every tab worked. A square run on rough ground and a hard start plus spin on ice both completed. Hovering a figure showed the tooltip. After a reload, saved runs replayed with identical odometry errors (4.7 cm and 8.4 cm). At 390 px phone width there was no horizontal overflow. Zero console errors or exceptions.
+  - Correction to the 2026-10-28 entry: the server answering on 5173 was the `robotikLab` copy, not this repo.
+- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
+- Next / open: the owner reviews the feature in a browser on 5174 and decides about the slider labels. The next task is closed-loop control (`drive(v, w)`, sensor conditions, `while`).
+
 ### 2026-10-28 — Claude Code — handoff setup
 
 - Changed: added `HANDOFF.md`, a handoff section in `AGENTS.md`, a pointer line in `CLAUDE.md`, and one sentence in the README's "Continue in Codex or Claude Code" section.
-- Verified: `npm test` 7/7, `npm run check` pass (no application code changed). The dev server was already running from an earlier session (`node scripts/serve.mjs`, PID 45760) and answered 200 on 127.0.0.1:5173. It was left running.
+- Verified: `npm test` 7/7, `npm run check` pass (no application code changed). A server answered 200 on 127.0.0.1:5173 (PID 45760), but see the 2026-10-29 correction: it serves the `robotikLab` copy.
 - Status: committed (`053be47`), fast-forwarded into `main`, and pushed. The temporary `chore/codex-handoff` branch was deleted locally and on GitHub.
 - Next / open: development starts next.

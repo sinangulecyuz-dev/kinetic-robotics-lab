@@ -32,8 +32,9 @@ export function criticalAngle(p) {
   return hi;
 }
 export const WHEEL_RADIUS=0.075;
+// Forward is +z and the robot's left is +x. Positive omega turns left (counterclockwise seen from above).
 export function wheelVelocity(left,right,width) {
-  return {v:WHEEL_RADIUS*(left+right)/2,omega:WHEEL_RADIUS*(left-right)/(width/100)};
+  return {v:WHEEL_RADIUS*(left+right)/2,omega:WHEEL_RADIUS*(right-left)/(width/100)};
 }
 export function stepDrive(pose,left,right,width,dt) {
   const {v,omega}=wheelVelocity(left,right,width);

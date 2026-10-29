@@ -22,7 +22,10 @@ test('payload offset can put the gravity line outside support even at zero tilt'
 });
 test('wheel kinematics: straight motion, pure rotation, and consistent arcs',()=>{
   const start={x:0,z:0,heading:0};const straight=stepDrive(start,4,4,40,2);near(straight.x,0);near(straight.z,.6);near(straight.heading,0);
-  const spin=stepDrive(start,4,-4,40,1);near(spin.x,0);near(spin.z,0);near(spin.heading,1.5);
+  // Left wheel forward, right wheel back: the rover spins clockwise seen from above, so yaw is negative.
+  const spin=stepDrive(start,4,-4,40,1);near(spin.x,0);near(spin.z,0);near(spin.heading,-1.5);
+  // A faster right wheel turns left. Forward is +z, so the robot's left is +x (up × forward).
+  const left=stepDrive(start,2,5,40,1.5);assert.ok(left.heading>0);assert.ok(left.x>0);
   const a=stepDrive(start,2,5,40,2),b=stepDrive(stepDrive(start,2,5,40,1),2,5,40,1);near(a.x,b.x);near(a.z,b.z);near(a.heading,b.heading);
 });
 test('parser supports nested loops, sensor branches, comments, and line numbers',()=>{
