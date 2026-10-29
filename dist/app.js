@@ -2,6 +2,7 @@ import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram} from './physics.mjs'
 import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,TERRAINS,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
 import {MISSIONS,missionById} from './missions.mjs';
+import {EXAMPLES} from './examples.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -30,18 +31,6 @@ const icons={
 function icon(name){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.box}</svg>`;}
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 
-const EXAMPLES={
-  turn:'# Both wheel speeds are in rad/s.\n# The rover moves while it waits.\nwheels(4, 4)\nwait(1.2)\nwheels(2, 5)\nwait(1.5)\nstop()',
-  square:'# Tune the turn time to close the square.\nrepeat 4\n  wheels(4, 4)\n  wait(1.4)\n  wheels(4, -4)\n  wait(1.15)\nend\nstop()',
-  sensor:'# distance is a front ray sensor, in meters.\n# Sample it once every 0.1 seconds.\nrepeat 20\n  if distance < 0.4\n    stop()\n  else\n    wheels(4, 4)\n  end\n  wait(0.1)\nend\nstop()',
-  gyro:'# Turn 90° left and stop on the IMU heading (degrees).\n# Then try odom_heading, and compare both on slippery ground.\ndrive(0, 1)\nwhile heading < 90\n  wait(0.05)\nend\nstop()',
-  odometry:'# Drive 0.5 m as measured by the wheel encoders.\n# Open Plots: does the true path agree?\ndrive(0.25, 0)\nwhile odom_x < 0.5\n  wait(0.05)\nend\nstop()',
-  lidar:'# Drive until the LiDAR sees the box 0.6 m ahead, turn a quarter left with the gyro,\n# then drive on until the LiDAR sees the wall. One clear beam is not enough to pass:\n# the rover is much wider than a ray. LiDAR scans 5 times per second.\ndrive(0.25, 0)\nwhile lidar_front > 0.6\n  wait(0.05)\nend\ndrive(0, 1)\nwhile heading < 90\n  wait(0.05)\nend\ndrive(0.25, 0)\nwhile lidar_front > 0.6\n  wait(0.05)\nend\nstop()',
-  fusion:'# Complementary filter: filter(alpha) weighs the gyro against the encoders for heading.\n# filter(1) trusts only the gyro, filter(0) only the encoders, 0.999 is the default.\n# Drive a square on ice, then compare filtered and encoder odometry in Plots.\nfilter(0.999)\nrepeat 4\n  drive(0.2, 0)\n  wait(2.5)\n  drive(0, 1)\n  wait(1.57)\nend\nstop()',
-  lab1a:'# ME425 Lab 1, Part A: three times forward 3 s, stop 1 s, back 3 s, stop 1 s, at 0.10 m/s.\n# Try it on the TurtleBot3. In Plots, compare odometry with the desired path.\nrepeat 3\n  drive(0.1, 0)\n  wait(3)\n  stop()\n  wait(1)\n  drive(-0.1, 0)\n  wait(3)\n  stop()\n  wait(1)\nend',
-  lab1b:'# ME425 Lab 1, Part B: one circle at v = 0.10 m/s, w = 0.30 rad/s (T = 2π/w = 20.94 s).\n# On the TurtleBot3, change v to 0.2: the outer wheel hits the motor limit and the circle opens.\ndrive(0.1, 0.3)\nwait(10)\nwait(10)\nwait(0.94)\nstop()',
-  lab1c:'# ME425 Lab 1, Part C: turn in place at 1 rad/s. Four turns fit the 30 s limit (25.13 s).\n# In Plots, compare the IMU heading with the encoder heading, and both with the truth.\ndrive(0, 1)\nwait(10)\nwait(10)\nwait(5.13)\nstop()'
-};
 let p={...DEFAULT},records=[],code=EXAMPLES.turn,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[];
 try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(saved.lesson===2)lesson=2;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 let tab='build',mode='tilt',prediction=null,showCom=true,showSupport=true,showOdom=true,showLidar=true,showFused=true;

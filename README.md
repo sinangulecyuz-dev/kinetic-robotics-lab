@@ -17,7 +17,7 @@ npm test
 npm run check
 ```
 
-The first command runs 47 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, and mission tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 49 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, and example tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 

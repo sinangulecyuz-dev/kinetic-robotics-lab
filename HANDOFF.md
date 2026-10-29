@@ -21,7 +21,7 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: a complementary filter (gyro and encoder heading) with filtered odometry, `filter(alpha)` and `fused_*` readings, a green filtered path, and filter series in Plots.
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
 - The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 47/47 pass, `npm run check` passes.
+- Verification on 2026-10-29: `npm test` 49/49 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
 
@@ -76,6 +76,21 @@ Entry template:
 - Next / open: what remains, decisions waiting for the owner
 ```
 
+### 2026-10-29 — Claude Code — example scripts fixed and put under test
+
+- The owner reported that "Repeat a square" did not draw a square. Cause: it used `wheels(4, -4)` for a fixed time. The turn rate R·Δω/W depends on wheel spacing and robot, so the square only closed at 44 cm. At 24 cm a corner was −175°, at 60 cm −66°, and on the TurtleBot3 −59°.
+- Changed:
+  - "Repeat a square" now uses `drive(0.2, 0)` for 2 s and `drive(0, 1)` for 1.6 s. That is π/2 plus spin-up and slow-down time, and it turns left.
+  - "Straight & turn" (`wheels(4, 4)` 1 s, then `wheels(1, 5)` 1.5 s) no longer reaches the box at 60 cm.
+  - The examples moved from `app.js` into `dist/examples.mjs`.
+  - New `tests/examples.test.mjs` (2 tests): every example must finish without hitting anything on flat ground with Kinetic at 24, 44, and 60 cm and with the TurtleBot3, and the square must turn 90 ± 3° per corner and close within 6 cm. That test is what found the "Straight & turn" collision.
+- Verified:
+  - `npm test` 49/49, `npm run check` pass.
+  - The square turns 88.5–91.5° per corner and ends 1.2–3.6 cm from the start on all four setups.
+  - Headless Chrome top view shows a closed square. Zero console errors.
+- Status: committed and pushed to `origin/main` with the three commits before it (owner's go-ahead, 2026-10-29).
+- Next / open: none.
+
 ### 2026-10-29 — Claude Code — complementary filter
 
 - Changed:
@@ -90,8 +105,8 @@ Entry template:
   - α = 1 equals gyro integration and α = 0 equals encoder odometry, to 1e-12.
   - With a parked rover, the steady state matches bias × α·T/(1 − α).
   - Headless Chrome: on ice the filtered path ends about 4.5 cm from the truth, against about 9.5 cm for encoder odometry. Zero console errors.
-- Status: three local commits after `d2d18c0` (frame, LiDAR, filter), not pushed. Waiting for the owner.
-- Next / open: push decision.
+- Status: pushed to `origin/main` with the next entry (owner's go-ahead, 2026-10-29).
+- Next / open: none for this entry.
 
 ### 2026-10-29 — Claude Code — rover-frame camera and labels, then a 2D LiDAR
 
