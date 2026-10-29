@@ -25,7 +25,6 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
 
 ## Open items
 
-- **Finding, not fixed:** the builder's "Sideways position" slider labels (`← Left` / `Right →`) are in viewer terms for the default camera, where the rover faces the viewer. They are the opposite of the robot's own left and right. The drive model now loads the wheels by payload offset, so a payload set to `Right →` loads the robot's **left** wheel. Waiting for the owner to decide.
 - **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `AGENTS.md` now say 127.0.0.1.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
@@ -54,6 +53,7 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - The two ball casters share their load equally, which keeps moment balance with the three-point solve.
   - Desired paths are drawn as a dotted ink reference line, not a series hue.
 - Item 2 scope (owner's decisions, 2026-10-29): the TurtleBot3 preset is for the driving experiment only, with no ramp. The 30-second run limit stays, so the in-place test uses 4 turns and compares drift per turn. The measured lab numbers may go into the repo, but never names, student IDs, or photos.
+- One frame everywhere (owner approved, 2026-10-29). The default camera looks from behind the rover (`VIEW_YAW` = π + 0.73), so its own left is on the screen's left. The top view puts forward up the screen. The Sideways position slider is `dir="rtl"` and reads "N cm left/right" in the rover's frame. The ramp text now says it lifts the rover's left side. Physics, stored values, and tests are unchanged.
 - Plot colors: MATLAB colororder slots 1, 2, and 4 (#0072BD, #D95319, #7E2F8E). Slot 3 (#EDB120) fails the lightness and contrast checks on white. Color follows the entity: true path is orange, odometry blue, gyro purple, left wheel blue, right wheel orange.
 - Load transfer lags acceleration by 20 ms. Without the lag, traction and load form an instantaneous loop that diverges for tall rovers (loop gain μ·h/0.30 > 1) and produces false wheelies.
 - Speed loop gains: kp 1, ki 1.5. On concrete the step overshoot is 0.2%. Wheelspin on ice still overshoots, as a real controller would.

@@ -16,7 +16,7 @@ Read `docs/design-engineering.md` before interface implementation or review. It 
 - `dist/index.html` and `dist/style.css`: responsive workbench.
 - `tests/physics.test.mjs` and `tests/drive.test.mjs`: independent numerical checks and parser behavior.
 
-Frame convention: forward is +z, up is +y, and the robot's left is +x. Positive yaw turns left (counterclockwise seen from above, as in ROS REP-103). The left wheel sits at +x. Sensor axes are x forward, y left, z up. Keep model logic separate from rendering. Student programs must never use eval or execute arbitrary JavaScript. Keep existing parser limits. Keep state changes reversible and restore prior experiments without mutating their recorded parameters.
+Frame convention: forward is +z, up is +y, and the robot's left is +x. Positive yaw turns left (counterclockwise seen from above, as in ROS REP-103). The left wheel sits at +x. Sensor axes are x forward, y left, z up. The default camera looks from behind the rover, so the rover's left is on the screen's left; keep labels in the rover's own frame. Keep model logic separate from rendering. Student programs must never use eval or execute arbitrary JavaScript. Keep existing parser limits. Keep state changes reversible and restore prior experiments without mutating their recorded parameters.
 
 ## Physics boundaries
 
