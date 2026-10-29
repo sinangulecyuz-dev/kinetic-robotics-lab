@@ -34,3 +34,8 @@ body[data-tab=plots] .stage-heading p{display:none}
 body[data-tab=plots] .stage-scale,body[data-tab=plots] .orbit-hint{display:none}
 @media(max-width:1120px){.plot-grid{grid-template-columns:1fr}}
 @media(max-width:650px){.plots-panel{padding:20px 15px}.plot canvas{height:220px}.result-actions{gap:10px}}
+.plot-tip i.dot{border-top-style:dotted}
+.robot-option{width:100%;background:none;color:inherit;text-align:left;border-radius:6px;transition:background .16s,transform .16s ease-out}
+.robot-option:active{transform:scale(.98)}
+@media(hover:hover) and (pointer:fine){.robot-option:hover{background:#fafbfc}}
+.robot-note{margin:12px 0 0;padding:10px 11px;background:#f7f8fa;border:1px solid #edf0f2;border-radius:6px}

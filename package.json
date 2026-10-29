@@ -7,7 +7,7 @@
   "engines": {"node": ">=20"},
   "scripts": {
     "dev": "node scripts/serve.mjs",
-    "test": "node --test tests/physics.test.mjs tests/drive.test.mjs",
+    "test": "node --test tests/physics.test.mjs tests/drive.test.mjs tests/turtlebot3.test.mjs",
     "check": "node --check dist/app.js && node --check dist/physics.mjs && node --check dist/drive.mjs && node --check dist/plots.mjs && node --check scripts/serve.mjs"
   }
 }

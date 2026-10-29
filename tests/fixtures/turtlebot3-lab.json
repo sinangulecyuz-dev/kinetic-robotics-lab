@@ -1,0 +1,111 @@
+{
+  "description": "Measurements from one TurtleBot3 Waffle Pi in a university mobile-robotics lab course, October 2026, driven from MATLAB over ROS 2. Values marked approximate were read from the report plots. usedToFit marks the only values the simulator was tuned to; every other value is an independent check, and notReproduced marks the ones the simulator does not match.",
+  "robot": {
+    "wheelRadius_m": 0.033,
+    "track_m": 0.287,
+    "maxLinear_m_s": 0.26,
+    "maxAngular_rad_s": 1.82
+  },
+  "lab1": {
+    "circles": [
+      {
+        "v_m_s": 0.05,
+        "w_rad_s": 0.3,
+        "finalOdomHeading_deg": 360,
+        "approximate": true,
+        "finalError_m": 0.003
+      },
+      {
+        "v_m_s": 0.1,
+        "w_rad_s": 0.3,
+        "finalOdomHeading_deg": 358,
+        "approximate": true,
+        "finalError_m": 0.008
+      },
+      {
+        "v_m_s": 0.15,
+        "w_rad_s": 0.3,
+        "finalOdomHeading_deg": 357,
+        "approximate": true,
+        "finalError_m": 0.045,
+        "notReproduced": "finalError_m: the real robot drifted 4.5 cm although its wheels stayed well below the motor limit; the simulator stays under 1 cm"
+      },
+      {
+        "v_m_s": 0.2,
+        "w_rad_s": 0.3,
+        "finalOdomHeading_deg": 333,
+        "approximate": true,
+        "usedToFit": "battery",
+        "finalError_m": 0.35
+      },
+      {
+        "v_m_s": 0.1,
+        "w_rad_s": 0.5,
+        "finalOdomHeading_deg": 360,
+        "approximate": true,
+        "finalError_m": 0.007
+      },
+      {
+        "v_m_s": 0.1,
+        "w_rad_s": 0.8,
+        "finalOdomHeading_deg": 360,
+        "approximate": true,
+        "finalError_m": 0.012
+      },
+      {
+        "v_m_s": 0.1,
+        "w_rad_s": 0.2,
+        "finalOdomHeading_deg": 355,
+        "approximate": true,
+        "note": "31.4 s run, longer than the 30 s simulator limit; not replayed",
+        "finalError_m": 0.036
+      }
+    ],
+    "inPlace": {
+      "w_rad_s": 1,
+      "turns": 5,
+      "encoderMinusImu_deg": 47,
+      "approximate": true,
+      "usedToFit": "ballFriction"
+    },
+    "linear": {
+      "v_m_s": 0.1,
+      "legSeconds": 3,
+      "forwardLegOdometry_m": [
+        0.275,
+        0.28
+      ],
+      "yErrorMax_m": 0.0013,
+      "yErrorRms_m": 0.000579,
+      "maxHeading_deg": 0.4,
+      "note": "forward legs fall short while backward legs are nearly complete; the simulator does not reproduce this asymmetry"
+    }
+  },
+  "lab0": {
+    "imuStationary": {
+      "azMean_m_s2": 9.9,
+      "azRange_m_s2": [
+        9.3,
+        10.4
+      ],
+      "axMean_m_s2": -0.16,
+      "approximate": true,
+      "usedToFit": "imu noise and offsets"
+    },
+    "rotation": {
+      "command_rad_s": 0.5,
+      "gyroZ_rad_s": [
+        0.47,
+        0.5
+      ],
+      "approximate": true
+    },
+    "forward": {
+      "v_m_s": 0.26,
+      "seconds": 3,
+      "leftWheel_rad": 22,
+      "approximate": true,
+      "note": "recorded on a different day with an unknown battery state; not used"
+    }
+  }
+}

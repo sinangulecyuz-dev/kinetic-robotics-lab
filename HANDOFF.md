@@ -16,8 +16,9 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: simulated encoders, IMU, motor current, and range sensor, logged at 100 Hz.
   - New: a Plots tab with nine MATLAB-style figures (`dist/plots.mjs`) and CSV export.
   - New: closed-loop control. Student programs can use `drive(v, w)` and test sensor readings in `if` and `while`.
+  - New: a TurtleBot3 Waffle Pi preset (driving only), calibrated to the owner's lab data. Also new: "desired" logging, a Lab 1–style position-error figure, and Lab 1 A, B, and C examples.
 - The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 23/23 pass, `npm run check` passes.
+- Verification on 2026-10-29: `npm test` 31/31 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
 
@@ -27,8 +28,12 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
 - **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `AGENTS.md` now say 127.0.0.1.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
-- **Validation data offered (2026-10-29):** the owner's ME425 TurtleBot3 Waffle Pi lab reports contain real measurements (odometry, five in-place turns, IMU at rest). A quick check found a gap. Over five turns in place, the real robot's encoder heading ran 47° ahead of the IMU heading. The sim's encoder heading drifts only about 1° per turn on concrete. The sim's IMU noise is also about 10× lower than the measured az spread. The owner has been asked for the Lab 1 `.mat` files. Put only numbers into the repo, never names, student IDs, or photos.
-- Next steps in the owner's agreed order: (2) add a TurtleBot3 Waffle Pi preset and calibrate it against the lab data, and add "desired vs odometry" plots. (3) Build a guided lesson "Experiment 02: where am I?" with short missions.
+- **TurtleBot3 calibration, open points.** The full table is in the README, "TurtleBot3 Waffle Pi calibration".
+  - Not reproduced: the shorter forward legs of the straight-line test (forward/backward asymmetry), and the 4.5 cm drift of the v = 0.15 m/s circle.
+  - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
+  - The Lab 1 `.mat` files were not found on this machine. The owner will save CSV (`writetable`) in future labs.
+  - The Kinetic rover itself (a made-up design) remains unvalidated.
+- Next step in the owner's agreed order: (3) a guided lesson "Experiment 02: where am I?" with short missions.
 
 ## Decisions
 
@@ -41,6 +46,12 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - `while sensor op N … end`, and `if` with any sensor. Operators are `< > <= >=`.
   - Sensors: `distance` (m), `heading` (gyro-integrated IMU yaw in degrees, positive left), `odom_heading` (degrees), `gyro_z` (rad/s), `encoder_left` and `encoder_right` (counts), `odom_x` and `odom_y` (m), `time` (s).
   - A loop without `wait` hits the existing guard.
+- TurtleBot3 model choices (2026-10-29):
+  - Only two parameters are fitted: battery 10.93 V and ball-caster friction 0.261.
+  - A command-latency parameter was tried and dropped. The circle data fit best with zero latency (rms 1.9° over five circles).
+  - Speed loop gains are kp 0.3, ki 1 (0% overshoot straight, 3% spinning).
+  - The two ball casters share their load equally, which keeps moment balance with the three-point solve.
+  - Desired paths are drawn as a dotted ink reference line, not a series hue.
 - Item 2 scope (owner's decisions, 2026-10-29): the TurtleBot3 preset is for the driving experiment only, with no ramp. The 30-second run limit stays, so the in-place test uses 4 turns and compares drift per turn. The measured lab numbers may go into the repo, but never names, student IDs, or photos.
 - Plot colors: MATLAB colororder slots 1, 2, and 4 (#0072BD, #D95319, #7E2F8E). Slot 3 (#EDB120) fails the lightness and contrast checks on white. Color follows the entity: true path is orange, odometry blue, gyro purple, left wheel blue, right wheel orange.
 - Load transfer lags acceleration by 20 ms. Without the lag, traction and load form an instantaneous loop that diverges for tall rovers (loop gain μ·h/0.30 > 1) and produces false wheelies.
@@ -61,6 +72,29 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-10-29 — Claude Code — TurtleBot3 preset and calibration (item 2)
+
+- Changed:
+  - `dist/drive.mjs`:
+    - `ROBOTS` specification for `kinetic` and `turtlebot3`, and `TB3_FIT`.
+    - `supportLoads` generalized to N casters.
+    - Firmware v/w limits without wheel rescaling for the TurtleBot3.
+    - Desired-trajectory channels `desX`, `desY`, `desYaw` (CSV columns `desired_*`).
+  - `dist/app.js`, `dist/index.html`, and `dist/style.css`:
+    - Robot picker that can select either robot; the TurtleBot3 hides the builder sliders and disables the ramp.
+    - Simplified Waffle Pi drawing.
+    - Desired series and a position-error figure in Plots.
+    - Lab 1 A, B, and C examples, and a TurtleBot3 section in "About the model".
+  - `dist/plots.mjs`: dotted line patterns.
+  - Tests: new `tests/fixtures/turtlebot3-lab.json` (numbers only) and `tests/turtlebot3.test.mjs` (8 tests). `package.json`, README, and `AGENTS.md` updated.
+- Verified:
+  - Kinetic rover unchanged. Before refactoring, 144 cases (8 programs × 3 designs × 3 terrains × noise on/off) were fingerprinted, and all 144 were bit-identical after the refactor. They were identical again after the desired channels were added, with those channels excluded from the hash.
+  - `npm test` 31/31, `npm run check` pass.
+  - Headless Chrome on 5174: the picker selects the TurtleBot3, the ramp is disabled and the sliders hidden, the v = 0.20 circle opens as in the lab figure, and 10 figures render. Switching back to Kinetic restores the builder, and a ramp run succeeds. Zero console errors.
+  - Not verified: real devices.
+- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
+- Next / open: item 3, the guided lesson.
 
 ### 2026-10-29 — Claude Code — closed-loop control (item 1)
 

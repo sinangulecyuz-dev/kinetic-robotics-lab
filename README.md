@@ -17,7 +17,7 @@ npm test
 npm run check
 ```
 
-The first command runs 23 model, dynamics, sensor, and parser tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 31 model, dynamics, sensor, parser, and TurtleBot3 calibration tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -52,6 +52,35 @@ The 30-second run limit, parser depth limit, and instruction budget bound studen
 
 The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. That is a file export, not a live MATLAB connection.
 
+### TurtleBot3 Waffle Pi calibration
+
+The TurtleBot3 preset is for driving only. It starts from datasheet values:
+- 0.033 m wheels, 0.287 m track, 1.8 kg, and two ball casters.
+- Dynamixel XM430-W210 servos: 3.0 N·m stall and 77 rpm at 12 V.
+- 4096-count encoders.
+- Firmware limits of 0.26 m/s and 1.82 rad/s, applied to `drive(v, w)` without rescaling the wheels.
+
+Two parameters were then fitted to one robot's measurements from an ME425 lab course. The measurements are in `tests/fixtures/turtlebot3-lab.json`, numbers only. Every other row below is an independent check, and `tests/turtlebot3.test.mjs` enforces the matching ones.
+
+| Quantity | Measured (≈ read from plots) | Simulated | Role |
+|---|---|---|---|
+| v = 0.20 m/s circle, final odometry heading | 333° | 333.5° | fitted: battery 10.93 V (outer wheel at the motor limit) |
+| Turning in place at 1 rad/s, encoder minus IMU | 9.4° per turn | 9.4° per turn | fitted: ball-caster friction 0.261 |
+| Circles at w = 0.3, v = 0.05 / 0.10 / 0.15, final heading | 360 / 358 / 357° | 358.8 / 359.4 / 359.6° | predicted, within ±3° reading error |
+| Circles at v = 0.1, w = 0.5 / 0.8, final heading | 360 / 360° | 359.3 / 357.1° | predicted |
+| v = 0.20 m/s circle, final odometry-vs-desired error | 0.35 m | 0.33 m | follows from the battery fit |
+| Other circles, final error | 0.003–0.012 m | 0.004–0.005 m | predicted, within 1 cm |
+| v = 0.15 m/s circle, final error | 0.045 m | 0.004 m | **not reproduced** |
+| Gyro during a 0.5 rad/s spin (Lab 0) | 0.47–0.50 rad/s | 0.469 rad/s | predicted (at the edge) |
+| IMU at rest: az mean and spread, ax mean | 9.9, 9.3–10.4, −0.16 m/s² | matched | fitted |
+| Straight line at 0.1 m/s, forward leg by odometry | 0.275–0.28 m | 0.297 m | **not reproduced** (forward/backward asymmetry) |
+
+The fit also produces a testable prediction. Ball-caster drag makes the wheels creep, so odometry should overstate straight-line distance by about 3%. A tape measure can check this without the IMU.
+
+The 31.4 s run at w = 0.2 rad/s exceeds the 30 s limit and is not replayed. Lab 0's forward run was recorded on another day with an unknown battery charge and is not used.
+
+All of this comes from one robot, on one floor, at one battery charge, with values read from plots. It is a calibration, not a general validation. The Plots tab shows the desired (commanded) path and a Lab 1–style error figure, which separates two things the lab could not tell apart: the robot leaving its command (true vs desired) and the odometry misjudging the robot (odometry vs true).
+
 The orthographic canvas renderer uses the same dimensions and transforms as the models. It supports orbit, zoom, top view, and overlay toggles without external packages. The static floor grid is illustrative; exact measurements appear in the controls and telemetry.
 
 ## Persistence
@@ -61,7 +90,7 @@ Design, script, terrain, and the last 30 completed runs use browser localStorage
 ## Next bricks
 
 1. Validate dimensions, ramp thresholds, motor constants, and friction against a physical rover. The CSV columns are meant to line up with logs from a real robot.
-2. Add a TurtleBot3 Waffle Pi preset and calibrate it against measured lab data, especially encoder drift when turning in place and IMU noise. Then add a guided lesson on odometry versus the true path. Evaluate Webots as a reference simulator for the dynamics.
+2. Compare full curves against raw lab logs (CSV or `.mat`) instead of values read from plots. Run the tape-measure test of the predicted 3% straight-line overstatement, and look for the cause of the two unreproduced effects. Then add a guided lesson on odometry versus the true path. Evaluate Webots as a reference simulator for the dynamics.
 3. Add attachable structural parts with mass and inertia, and a common robot specification.
 4. Add omnidirectional bases, then an industrial arm. Treat humanoid standing before gait control.
 5. Add equivalent MATLAB / ROS 2 examples and a validated controller bridge. No live MATLAB or ROS 2 integration is claimed in this milestone.

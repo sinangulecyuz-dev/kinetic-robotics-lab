@@ -9,7 +9,7 @@ Read `docs/design-engineering.md` before interface implementation or review. It 
 ## Architecture
 
 - `dist/physics.mjs`: pure functions, SI units, balance geometry, ideal differential-drive kinematics, and a bounded pseudocode parser. The grammar is `wheels`, `drive(v, w)`, `wait`, `stop`, `repeat`, and `if`/`while` on the readings listed in `SENSORS`. Programs read sensor samples only, never ground truth.
-- `dist/drive.mjs`: the driving model, which is pure and DOM-free. It covers terrain, tire friction, DC motors with a PI speed loop, planar rigid-body dynamics, load transfer, sensors (encoders, IMU, range), odometry, the program runner, the 100 Hz log, and CSV export. Runs are deterministic for a given seed and do not depend on how frames split the time.
+- `dist/drive.mjs`: the driving model, which is pure and DOM-free. `ROBOTS` holds each robot's specification (geometry, mass, motor, controller, encoder, IMU, casters, limits): `kinetic` and `turtlebot3`. It covers terrain, tire friction, DC motors with a PI speed loop, planar rigid-body dynamics, load transfer, sensors (encoders, IMU, range), odometry, the program runner, the 100 Hz log, and CSV export. Runs are deterministic for a given seed and do not depend on how frames split the time.
 - `dist/plots.mjs`: MATLAB-style canvas figures with crosshair, tooltip, and keyboard reading.
 - `dist/app.js`: application state, the ramp experiment, browser persistence, the plots panel, and orthographic canvas rendering.
 - `dist/index.html` and `dist/style.css`: responsive workbench.
@@ -29,7 +29,11 @@ The drive experiment is a planar rigid-body model (forward, sideways, yaw) on th
 - Tipping: if a contact would lift, the run stops, because dynamic tipping is not simulated.
 - Creep: the speed-based friction lets a rover parked on a slope creep a few mm/s.
 
-Parameters are typical datasheet values, not measurements. The collision stop is a conservative footprint check, not a contact solver. Preserve visible explanations of these assumptions in the interface and the README.
+The Kinetic rover's parameters are typical datasheet values, not measurements.
+
+The TurtleBot3 preset (driving only) is datasheet-based, with exactly two parameters fitted to one robot's lab data: `TB3_FIT` battery voltage and ball-caster friction. The data are in `tests/fixtures/turtlebot3-lab.json`, numbers only, never names or IDs. `tests/turtlebot3.test.mjs` separates fitted values from independent checks. Keep `usedToFit` and `notReproduced` honest. Never retune `TB3_FIT` to pass a check: rerun the fit, then update the README's calibration table. Call it a calibration of one robot, not a validated simulator.
+
+The collision stop is a conservative footprint check, not a contact solver. Preserve visible explanations of these assumptions in the interface and the README.
 
 MATLAB and ROS 2 are planned integrations, not current capabilities. Do not claim live integration until it exists and has been tested. Keep humanoid walking out of the first milestone. Prefer validating the rover against a physical experiment before expanding robot families.
 

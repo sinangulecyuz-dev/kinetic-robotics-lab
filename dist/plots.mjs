@@ -10,6 +10,8 @@ function limits(lo,hi,count){
   const step=niceStep(hi-lo,count);return {lo:Math.floor(lo/step+1e-9)*step,hi:Math.ceil(hi/step-1e-9)*step,step};
 }
 function ticks({lo,hi,step}){const out=[];for(let v=Math.ceil(lo/step-1e-9)*step;v<=hi+step*1e-6;v+=step)out.push(Math.abs(v)<step*1e-6?0:v);return out;}
+// dash: false for solid, true for dashed (MATLAB '--'), or an explicit pattern such as [2, 3] for dotted (':').
+const pattern=d=>Array.isArray(d)?d:d?[6,4]:[];
 const tickLabel=(v,step)=>v.toFixed(Math.min(4,Math.max(0,Math.ceil(-Math.log10(step)-1e-9))));
 function extent(spec,key){
   let lo=Infinity,hi=-Infinity;
@@ -59,7 +61,7 @@ export class Figure{
     ctx.save();ctx.beginPath();ctx.rect(box.l,box.t,pw,ph);ctx.clip();
     for(const p of spec.patches||[]){const x=X(p.x0),y=Y(p.y1),pw2=X(p.x1)-x,ph2=Y(p.y0)-y;ctx.fillStyle='#d9d9d9';ctx.fillRect(x,y,pw2,ph2);ctx.strokeStyle='#a6a6a6';ctx.strokeRect(x+.5,y+.5,pw2-1,ph2-1);}
     ctx.lineJoin='round';ctx.lineWidth=1.5;
-    for(const s of spec.series){ctx.strokeStyle=s.color;ctx.setLineDash(s.dash?[6,4]:[]);ctx.beginPath();this.trace(s,X,Y,pw);ctx.stroke();}
+    for(const s of spec.series){ctx.strokeStyle=s.color;ctx.setLineDash(pattern(s.dash));ctx.beginPath();this.trace(s,X,Y,pw);ctx.stroke();}
     ctx.setLineDash([]);
     if(this.cursor!==null)this.drawCursor(X,Y,box);
     ctx.restore();
@@ -94,7 +96,7 @@ export class Figure{
     const [x,y]=best;ctx.fillStyle='#fff';ctx.fillRect(x,y,lw,lh);ctx.strokeStyle=INK;ctx.lineWidth=.75;ctx.strokeRect(x+.5,y+.5,lw,lh);
     items.forEach((it,i)=>{const cy=y+11+i*15;
       if(it.patch){ctx.fillStyle='#d9d9d9';ctx.fillRect(x+8,cy-4,20,8);ctx.strokeStyle='#a6a6a6';ctx.lineWidth=1;ctx.strokeRect(x+8.5,cy-3.5,19,7);}
-      else{ctx.strokeStyle=it.color;ctx.lineWidth=1.5;ctx.setLineDash(it.dash?[5,3]:[]);ctx.beginPath();ctx.moveTo(x+8,cy);ctx.lineTo(x+28,cy);ctx.stroke();ctx.setLineDash([]);}
+      else{ctx.strokeStyle=it.color;ctx.lineWidth=1.5;ctx.setLineDash(pattern(it.dash));ctx.beginPath();ctx.moveTo(x+8,cy);ctx.lineTo(x+28,cy);ctx.stroke();ctx.setLineDash([]);}
       ctx.fillStyle=INK;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(it.label,x+34,cy);});
   }
   drawCursor(X,Y,box){
@@ -104,7 +106,7 @@ export class Figure{
   }
   updateTip(){
     const {tip,spec,map}=this;if(this.cursor===null||!map||!spec){tip.hidden=true;return;}
-    const i=this.cursor,digits=spec.digits??3,row=(s,value)=>{const r=document.createElement('div'),key=document.createElement('i'),b=document.createElement('b'),name=document.createElement('span');key.style.borderTopColor=s.color;if(s.dash)key.className='dash';b.textContent=value;name.textContent=s.label;r.append(key,b,name);return r;};
+    const i=this.cursor,digits=spec.digits??3,row=(s,value)=>{const r=document.createElement('div'),key=document.createElement('i'),b=document.createElement('b'),name=document.createElement('span');key.style.borderTopColor=s.color;if(s.dash)key.className=Array.isArray(s.dash)?'dot':'dash';b.textContent=value;name.textContent=s.label;r.append(key,b,name);return r;};
     const head=document.createElement('div');head.className='plot-tip-head';let px,rows;
     if(spec.kind==='xy'){const s=spec.series[this.cursorSeries];if(!s||i>=s.x.length){tip.hidden=true;return;}head.textContent=`t = ${s.t[i].toFixed(2)} s`;rows=[row(s,`${s.x[i].toFixed(digits)}, ${s.y[i].toFixed(digits)} m`)];px=map.X(s.x[i]);}
     else{const t=spec.series[0].x[i];head.textContent=`t = ${t.toFixed(2)} s`;rows=spec.series.map(s=>row(s,`${s.y[i].toFixed(digits)}${spec.unit?' '+spec.unit:''}`));px=map.X(t);}
