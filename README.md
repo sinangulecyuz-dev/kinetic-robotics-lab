@@ -17,7 +17,7 @@ npm test
 npm run check
 ```
 
-The first command runs 31 model, dynamics, sensor, parser, and TurtleBot3 calibration tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 36 model, dynamics, sensor, parser, TurtleBot3 calibration, and mission tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -81,6 +81,20 @@ The 31.4 s run at w = 0.2 rad/s exceeds the 30 s limit and is not replayed. Lab 
 
 All of this comes from one robot, on one floor, at one battery charge, with values read from plots. It is a calibration, not a general validation. The Plots tab shows the desired (commanded) path and a Lab 1–style error figure, which separates two things the lab could not tell apart: the robot leaving its command (true vs desired) and the odometry misjudging the robot (odometry vs true).
 
+### Experiment 02: Where am I?
+
+The lesson strip switches between Experiment 01 (balance on a ramp) and Experiment 02, which is about odometry, the gyro, and ground truth. Experiment 02 has three missions in `dist/missions.mjs`:
+
+| Mission | Robot and ground | Passes when |
+|---|---|---|
+| Stop 20 cm from the box | Kinetic rover, flat | the true gap is 20 ± 3 cm and the rover did not touch the box |
+| Turn exactly once around | TurtleBot3, flat | the true heading change is 360 ± 3° and the rover stayed within 5 cm |
+| Close a square on ice | Kinetic rover, slippery | the path is at least 1.6 m and the rover ends within 10 cm of the start |
+
+Missions are judged on the simulator's ground truth, which student programs never see. That plays the role of a motion-capture system or a tape measure in a real lab. Each starter script is a reasonable first try that falls short on purpose: it ignores braking, trusts the encoders, or uses timing on ice. The hint appears after a failed attempt.
+
+`tests/missions.test.mjs` checks, for four seeds each, that every starter fails and a sensor-based reference solution passes. The reference solutions live only in the tests, so the lab never shows the answers. Completed missions are stored per device.
+
 The orthographic canvas renderer uses the same dimensions and transforms as the models. It supports orbit, zoom, top view, and overlay toggles without external packages. The static floor grid is illustrative; exact measurements appear in the controls and telemetry.
 
 ## Persistence
@@ -90,7 +104,7 @@ Design, script, terrain, and the last 30 completed runs use browser localStorage
 ## Next bricks
 
 1. Validate dimensions, ramp thresholds, motor constants, and friction against a physical rover. The CSV columns are meant to line up with logs from a real robot.
-2. Compare full curves against raw lab logs (CSV or `.mat`) instead of values read from plots. Run the tape-measure test of the predicted 3% straight-line overstatement, and look for the cause of the two unreproduced effects. Then add a guided lesson on odometry versus the true path. Evaluate Webots as a reference simulator for the dynamics.
+2. Compare full curves against raw lab logs (CSV or `.mat`) instead of values read from plots. Run the tape-measure test of the predicted 3% straight-line overstatement, and look for the cause of the two unreproduced effects. Evaluate Webots as a reference simulator for the dynamics.
 3. Add attachable structural parts with mass and inertia, and a common robot specification.
 4. Add omnidirectional bases, then an industrial arm. Treat humanoid standing before gait control.
 5. Add equivalent MATLAB / ROS 2 examples and a validated controller bridge. No live MATLAB or ROS 2 integration is claimed in this milestone.

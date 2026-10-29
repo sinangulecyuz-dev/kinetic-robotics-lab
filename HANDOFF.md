@@ -8,7 +8,7 @@ Status words used below: **local** (changed in the working tree, not committed),
 
 Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on it.
 
-- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`. The driving-dynamics work below is committed and pushed to `main` (the commit after `414feb1`).
+- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`. Everything listed below is committed and pushed to `main`. Check `git log` for the latest commit.
 - What exists:
   - Milestone 1: rover builder, ramp-balance experiment, bounded pseudocode controller, local notebook (`kinetic-v1`).
   - New: a realistic driving model (`dist/drive.mjs`) on flat, rough, and slippery terrain.
@@ -17,8 +17,9 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: a Plots tab with nine MATLAB-style figures (`dist/plots.mjs`) and CSV export.
   - New: closed-loop control. Student programs can use `drive(v, w)` and test sensor readings in `if` and `while`.
   - New: a TurtleBot3 Waffle Pi preset (driving only), calibrated to the owner's lab data. Also new: "desired" logging, a Lab 1–style position-error figure, and Lab 1 A, B, and C examples.
+  - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
 - The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 31/31 pass, `npm run check` passes.
+- Verification on 2026-10-29: `npm test` 36/36 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
 
@@ -33,7 +34,7 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
   - The Lab 1 `.mat` files were not found on this machine. The owner will save CSV (`writetable`) in future labs.
   - The Kinetic rover itself (a made-up design) remains unvalidated.
-- Next step in the owner's agreed order: (3) a guided lesson "Experiment 02: where am I?" with short missions.
+- Items 0–3 of the agreed plan are done. Candidate next steps, none chosen yet: a 2D LiDAR, a complementary filter (encoder plus gyro), slider-label decision, raw-log comparison after the next lab.
 
 ## Decisions
 
@@ -72,6 +73,19 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-10-29 — Claude Code — Experiment 02 lesson and missions (item 3)
+
+- Changed:
+  - New `dist/missions.mjs` with three missions: stop 20 cm from the box (Kinetic, flat), turn exactly once around (TurtleBot3, flat), and close a square on ice (Kinetic, slippery). Each has a starter that falls short on purpose, a judge on ground truth, and a hint shown after a failed attempt.
+  - `dist/app.js`, `dist/index.html`, and `dist/style.css`: lesson switch, mission card in the builder, judging when a run finishes, mission result on result cards, lesson 02 details, and persisted progress (`lesson`, `mission`, `missionsDone`).
+  - Tests: new `tests/missions.test.mjs` (5 tests) holding the reference solutions, which are never shown in the interface. `package.json`, README, and `AGENTS.md` updated.
+- Verified:
+  - `npm test` 36/36, `npm run check` pass.
+  - Over 6 seeds, every starter fails and every reference solution passes.
+  - Headless Chrome on 5174: the stop starter shows "Not yet" with a 14.7 cm gap, the solution passes at 20.1 cm and the mission shows DONE. The turn starter on the TurtleBot3 fails at 352.3° with the encoder hint. Result cards show mission status, switching back to lesson 01 restores the ramp, the phone width has no overflow, and there are zero app console errors.
+- Status: committed together with this entry and pushed to `origin/main` (owner approved "everything", 2026-10-29).
+- Next / open: no next item chosen yet.
 
 ### 2026-10-29 — Claude Code — TurtleBot3 preset and calibration (item 2)
 

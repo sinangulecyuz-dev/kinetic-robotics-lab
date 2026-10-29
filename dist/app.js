@@ -1,6 +1,7 @@
 import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram} from './physics.mjs';
 import {DriveSim,simulateRun,toCsv,terrainHeight,rangeTo,TERRAINS,OBSTACLE,CASTER,ROBOTS,TB3_FIT} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
+import {MISSIONS,missionById} from './missions.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -39,8 +40,8 @@ const EXAMPLES={
   lab1b:'# ME425 Lab 1, Part B: one circle at v = 0.10 m/s, w = 0.30 rad/s (T = 2π/w = 20.94 s).\n# On the TurtleBot3, change v to 0.2: the outer wheel hits the motor limit and the circle opens.\ndrive(0.1, 0.3)\nwait(10)\nwait(10)\nwait(0.94)\nstop()',
   lab1c:'# ME425 Lab 1, Part C: turn in place at 1 rad/s. Four turns fit the 30 s limit (25.13 s).\n# In Plots, compare the IMU heading with the encoder heading, and both with the truth.\ndrive(0, 1)\nwait(10)\nwait(10)\nwait(5.13)\nstop()'
 };
-let p={...DEFAULT},records=[],code=EXAMPLES.turn,terrain='flat',robot='kinetic';
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+let p={...DEFAULT},records=[],code=EXAMPLES.turn,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[];
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(saved.lesson===2)lesson=2;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 let tab='build',mode='tilt',prediction=null,showCom=true,showSupport=true,showOdom=true;
 let state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};
 // sim is the drive run in progress; idle is a parked rover that only places the model on the terrain.
@@ -49,7 +50,7 @@ const canvas=$('scene'),ctx=canvas.getContext('2d');
 let cw=800,ch=536,zoom=1,yaw=0.73,elevation=0.43,drag=null,lastFrame=0,needsRender=true;
 function view(){if(sim)return sim;const key=JSON.stringify(p)+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false});idleKey=key;}return idle;}
 const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
-function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,robot,records}));$('save-status').textContent='Saved on this device';}catch{$('save-status').textContent='Saving unavailable';}}
+function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,robot,lesson,mission,missionsDone,records}));$('save-status').textContent='Saved on this device';}catch{$('save-status').textContent='Saving unavailable';}}
 function toast(s){$('toast').textContent=s;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500);}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function changeTab(next){tab=next;document.body.dataset.tab=next;for(const t of ['build','code','plots','results']){$(`${t}-tab`).classList.toggle('active',t===next);$(`${t}-tab`).setAttribute('aria-selected',t===next);}$('code-panel').hidden=next!=='code';$('plots-panel').hidden=next!=='plots';$('results-panel').hidden=next!=='results';if(next==='code'&&mode!=='drive')changeMode('drive');if(next==='results')renderResults();if(next==='plots')renderPlots();needsRender=true;}
@@ -89,6 +90,30 @@ function setTerrain(next){
   if(mode==='drive')$('model-note').textContent=driveNote();updateTelemetry();needsRender=true;
 }
 document.querySelectorAll('[data-terrain]').forEach(b=>b.onclick=()=>{setTerrain(b.dataset.terrain);persist();});
+const LESSONS={
+  1:{time:'· 5 MIN',title:'Carry the load',question:'Can your rover keep its balance on a tilted surface?',concept:'Center of mass & support polygon',discovery:['A wider stance gives your robot more room to balance.','Try the top-heavy preset. Predict what will happen, then watch the center of mass as the ramp tilts.']},
+  2:{time:'· 15 MIN',title:'Where am I?',question:'Can your rover tell where it is using only its own sensors?',concept:'Odometry, gyro & ground truth',discovery:['Your rover only knows what its sensors tell it.','Pick a mission in the builder. Each starter script falls a little short on purpose.']}
+};
+function setLesson(n,user=true){
+  lesson=n===2?2:1;const L=LESSONS[lesson];
+  document.querySelectorAll('[data-lesson]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.lesson===lesson));
+  $('lesson-time').textContent=L.time;$('lesson-title').textContent=L.title;$('lesson-question').textContent=L.question;$('lesson-concept-text').textContent=L.concept;
+  [$('discovery-title').textContent,$('discovery-copy').textContent]=L.discovery;$('mission-card').hidden=lesson!==2;renderMissions();
+  if(user){if(lesson===1){setRobot('kinetic');changeMode('tilt');changeTab('build');}else changeMode('drive');persist();}
+}
+document.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>setLesson(+b.dataset.lesson));
+// Status carries a label as well as a color, so it never depends on color alone.
+function renderMissions(){
+  $('mission-list').innerHTML=MISSIONS.map(m=>{const done=missionsDone.includes(m.id);return `<button class="mission" data-mission="${m.id}" aria-pressed="${mission===m.id}"><span>${esc(m.title)}<small>${esc(ROBOTS[m.robot].label)} · ${esc(TERRAINS[m.terrain].label)} ground</small></span><span class="mission-status${done?' done':''}">${done?'DONE ✓':'TO DO'}</span></button>`;}).join('');
+  document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>loadMission(b.dataset.mission));
+  const m=missionById(mission);$('mission-goal').textContent=m?m.goal:'Pick a mission. Each starter script falls a little short on purpose. The judge uses the true position, which your program never sees.';
+}
+function loadMission(id){
+  const m=missionById(id);if(!m)return;mission=id;setRobot(m.robot);setTerrain(m.terrain);changeMode('drive');
+  $('code-editor').value=m.starter;updateLines();renderMissions();persist();changeTab('code');
+  $('discovery-title').textContent=`Mission: ${m.title}`;$('discovery-copy').textContent=m.goal;
+  toast('Mission loaded into the editor. Run it, then improve it.');
+}
 function reset(){state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};sim=null;$('stage-outcome').hidden=true;$('code-error').hidden=true;$('code-progress').textContent='Edit the script, then run your experiment.';setRunButton();updateTelemetry();needsRender=true;}
 function setRunButton(){const running=state.status==='running',paused=state.status==='paused';$('run').innerHTML=icon(running?'pause':'play')+`<span id="run-text">${running?'Pause':paused?'Resume':'Run experiment'}</span>`;$('scene-status').innerHTML=`<i></i>${running?'Experiment in progress':paused?'Experiment paused':state.status==='done'?'Experiment complete':'Ready to experiment'}`;}
 $('reset').onclick=()=>{reset();toast('Experiment reset. Your design is ready.');};
@@ -107,12 +132,20 @@ function finish(success,message){
   state.status='done';state.l=0;state.r=0;setRunButton();
   $('stage-outcome').hidden=false;$('stage-outcome').classList.toggle('failed',!success);$('stage-outcome').textContent=message;
   if(mode==='drive')$('code-progress').textContent=`${message} · ${sim.time.toFixed(1)} s`;
-  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,odomError:sim.summary().odomError}:{};
+  // A mission is judged only on the robot and ground it was written for, using the simulator's ground truth.
+  const m=mode==='drive'&&lesson===2?missionById(mission):null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain?m.judge(sim):null;
+  if(judged?.pass&&!missionsDone.includes(m.id))missionsDone.push(m.id);
+  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
   const record={id:Date.now(),mode,design:{...state.runDesign},success,message,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
   if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;}
   records.unshift(record);records=records.slice(0,30);persist();renderResults();if(tab==='plots')renderPlots();
   $('discovery-title').textContent=mode==='tilt'?(success?'Your rover held its balance. What could you change next?':'The gravity line crossed the edge of the support polygon.'):'Your instructions became a path, and your sensors recorded it.';
   $('discovery-copy').textContent=mode==='tilt'?(success?'Try increasing the payload height while keeping everything else the same. Can you find the tipping point?':'Try lowering the payload, widening the wheel spacing, or shifting the load uphill. Change one thing and test again.'):'Open Plots to compare the encoder odometry with the true path. Then try the same script on slippery ground.';
+  if(judged){
+    $('discovery-title').textContent=judged.pass?`Mission complete: ${m.title}.`:`Not yet: ${m.title}.`;
+    $('discovery-copy').textContent=judged.pass?`${judged.text} Try another mission next.`:`${judged.text} ${m.lesson}`;
+    toast(judged.pass?'Mission complete!':'Not yet. The hint is below the stage.');renderMissions();
+  }else if(m)$('discovery-copy').textContent=`This run was not judged. “${m.title}” needs the ${ROBOTS[m.robot].label} on ${TERRAINS[m.terrain].label.toLowerCase()} ground.`;
 }
 function tick(dt){
   if(state.status==='running'){
@@ -139,7 +172,7 @@ function updateTelemetry(){
 function renderResults(){
   $('result-count').textContent=records.length;
   if(!records.length){$('results-list').innerHTML='<div class="empty-state">Your notebook starts with a question.<br>Make a prediction and run your first experiment.<br><button class="text-button" id="back-build">Back to the builder →</button></div>';$('back-build').onclick=()=>changeTab('build');return;}
-  $('results-list').innerHTML=records.map((r,i)=>`<article class="result-card"><div class="result-card-top"><h4>${r.mode==='tilt'?'Ramp balance test':'Rover program'} <span style="color:#a5afb9;font-size:9px"> / ${records.length-i}</span></h4><span class="result-badge ${r.success?'':'fail'}">${r.success?'COMPLETED':r.mode==='tilt'?'TIPPED':'STOPPED'}</span></div><p>${esc(r.message)} ${r.mode==='tilt'?(r.prediction?`Your prediction: <strong>${r.prediction==='stable'?'it would hold':'it would tip'}</strong>. ${((r.prediction==='stable')===r.success)?'Your prediction matched.':'A useful surprise—try changing one variable.'}`:'No prediction recorded. Make one before your next test.'):''}</p><div class="result-specs">${robotOf(r)==='turtlebot3'?'TurtleBot3 Waffle Pi':`Wheel spacing ${Number(r.design.width)} cm · Payload ${Number(r.design.mass).toFixed(1)} kg · Height ${Number(r.design.height)} cm · Offset ${Number(r.design.offset)} cm`}${r.mode==='drive'?` · ${TERRAINS[terrainOf(r)].label} terrain · ${Number(r.time).toFixed(1)} s${Number.isFinite(r.odomError)?` · Odometry error ${(r.odomError*100).toFixed(1)} cm`:''}`:` · Target ${Number(r.design.target)}°`}</div><div class="result-actions"><button class="text-button" data-restore="${i}">Restore this setup ↗</button>${r.mode==='drive'?`<button class="text-button" data-plot="${i}">Open plots ↗</button>`:''}</div></article>`).join('');
+  $('results-list').innerHTML=records.map((r,i)=>`<article class="result-card"><div class="result-card-top"><h4>${r.mode==='tilt'?'Ramp balance test':'Rover program'} <span style="color:#a5afb9;font-size:9px"> / ${records.length-i}</span></h4><span class="result-badge ${r.success?'':'fail'}">${r.success?'COMPLETED':r.mode==='tilt'?'TIPPED':'STOPPED'}</span></div><p>${esc(r.message)} ${r.mode==='tilt'?(r.prediction?`Your prediction: <strong>${r.prediction==='stable'?'it would hold':'it would tip'}</strong>. ${((r.prediction==='stable')===r.success)?'Your prediction matched.':'A useful surprise—try changing one variable.'}`:'No prediction recorded. Make one before your next test.'):''}</p><div class="result-specs">${robotOf(r)==='turtlebot3'?'TurtleBot3 Waffle Pi':`Wheel spacing ${Number(r.design.width)} cm · Payload ${Number(r.design.mass).toFixed(1)} kg · Height ${Number(r.design.height)} cm · Offset ${Number(r.design.offset)} cm`}${r.mode==='drive'?` · ${TERRAINS[terrainOf(r)].label} terrain · ${Number(r.time).toFixed(1)} s${Number.isFinite(r.odomError)?` · Odometry error ${(r.odomError*100).toFixed(1)} cm`:''}${r.mission&&missionById(r.mission)?` · Mission “${esc(missionById(r.mission).title)}”: ${r.missionPass?'passed':'not yet'}`:''}`:` · Target ${Number(r.design.target)}°`}</div><div class="result-actions"><button class="text-button" data-restore="${i}">Restore this setup ↗</button>${r.mode==='drive'?`<button class="text-button" data-plot="${i}">Open plots ↗</button>`:''}</div></article>`).join('');
   document.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{const r=records[+b.dataset.restore];reset();p={...DEFAULT,...r.design};setRobot(robotOf(r));changeMode(r.mode);if(r.mode==='drive')setTerrain(terrainOf(r));if(r.code){$('code-editor').value=r.code;updateLines();}updateInputs();updateTelemetry();persist();changeTab(r.mode==='drive'?'code':'build');toast('Experiment setup restored.');});
   document.querySelectorAll('[data-plot]').forEach(b=>b.onclick=()=>{plotRunId=records[+b.dataset.plot].id;changeTab('plots');});
 }
@@ -192,7 +225,9 @@ function commandReference(){openModal('ROVER SCRIPT REFERENCE','<h2>Small instru
 function learningPath(){openModal('YOUR LEARNING PATH','<h2>One discovery at a time.</h2><div class="roadmap-item"><span>01</span><div><strong>Structure & balance</strong><small>Center of mass · Support polygon · Ramp tests</small></div><b>IN THIS LAB</b></div><div class="roadmap-item"><span>02</span><div><strong>Make a rover move</strong><small>Wheel speeds · Terrain · Encoders, IMU & plots</small></div><b>IN THIS LAB</b></div><div class="roadmap-item"><span>03</span><div><strong>Movement in every direction</strong><small>Omniwheels · Holonomic movement</small></div><b class="later">PLANNED</b></div><div class="roadmap-item"><span>04</span><div><strong>Reach, pick & place</strong><small>Industrial arms · Joints · Torque</small></div><b class="later">PLANNED</b></div><div class="roadmap-item"><span>05</span><div><strong>A balancing act</strong><small>Humanoids · Standing · Weight shifts</small></div><b class="later">PLANNED</b></div>');}
 ['guide','help'].forEach(id=>$(id).onclick=guide);$('lab-nav').onclick=()=>{changeTab('build');window.scrollTo({top:0,behavior:'smooth'});};$('lessons-nav').onclick=learningPath;
 ['notebook','notebook-nav'].forEach(id=>$(id).onclick=()=>{changeTab('results');$('results-panel').scrollIntoView({behavior:'smooth',block:'nearest'});});
-$('lesson-details').onclick=()=>openModal('EXPERIMENT 01 · CARRY THE LOAD','<h2>Can you keep the load balanced?</h2><p>Start with the balanced rover and a 25° ramp. The green triangle joins the three places where the robot touches the surface. This is its <strong>support polygon</strong>.</p><p>The orange point is its <strong>center of mass</strong>. The dashed vertical line follows gravity to the surface. When that line reaches a polygon edge, static support is lost.</p><ol><li>Run the balanced preset.</li><li>Try the top-heavy preset at the same target angle.</li><li>Lower only the payload height and test again.</li><li>Compare your predictions and tipping angles in Results.</li></ol><p><strong>Think about it:</strong> Can changing payload height affect balance on a flat floor? What changes when the floor tilts?</p>');
+const lessonTwo=()=>openModal('EXPERIMENT 02 · WHERE AM I?','<h2>Can your rover tell where it is?</h2><p>A real robot cannot see its own position. It has to <strong>estimate</strong> it. Encoders count wheel turns, so <strong>odometry</strong> adds those turns up into a position and heading. The <strong>IMU</strong> measures how fast the body turns, and adding that up over time gives a heading that drifts slowly.</p><p>Both estimates go wrong in their own ways. Wheels slip and casters drag, and gyros have bias. In a lab you need a camera system or a tape measure to know the truth. This simulator always knows it, and the missions are judged on it. Your program never sees it.</p><ol><li><strong>Stop 20 cm from the box.</strong> The sensor and your loop react late, and braking takes distance.</li><li><strong>Turn exactly once around</strong> on the TurtleBot3. Should you trust the encoders or the IMU?</li><li><strong>Close a square on ice.</strong> Time is not distance, and wheel turns are not body turns.</li></ol><p>Each starter script falls short on purpose. Run it, open <strong>Plots</strong> to see why, change one thing, and try again.</p>');
+const lessonOne=()=>openModal('EXPERIMENT 01 · CARRY THE LOAD','<h2>Can you keep the load balanced?</h2><p>Start with the balanced rover and a 25° ramp. The green triangle joins the three places where the robot touches the surface. This is its <strong>support polygon</strong>.</p><p>The orange point is its <strong>center of mass</strong>. The dashed vertical line follows gravity to the surface. When that line reaches a polygon edge, static support is lost.</p><ol><li>Run the balanced preset.</li><li>Try the top-heavy preset at the same target angle.</li><li>Lower only the payload height and test again.</li><li>Compare your predictions and tipping angles in Results.</li></ol><p><strong>Think about it:</strong> Can changing payload height affect balance on a flat floor? What changes when the floor tilts?</p>');
+$('lesson-details').onclick=()=>lesson===2?lessonTwo():lessonOne();
 $('model-details').onclick=modelDetails;$('code-reference').onclick=commandReference;
 $('margin-help').onclick=()=>openModal('READING YOUR ROBOT','<h2>What is balance margin?</h2><p>It is the shortest signed distance from the gravity-line intersection to an edge of the support polygon, measured along the ramp surface.</p><p><strong>Positive:</strong> inside the polygon.<br><strong>Zero:</strong> at the static tipping boundary.<br><strong>Negative:</strong> outside the polygon.</p><p>On the ramp, the margin describes the static model. While driving, it also includes acceleration. Braking moves the point forward and speeding up moves it back. If the point reaches an edge, a wheel or the caster lifts and the run stops.</p>');
 $('robot-picker').onclick=()=>{const option=(id,name,detail)=>`<button class="roadmap-item robot-option" data-robot="${id}"><span>${icon('robot')}</span><div><strong>${name}</strong><small>${detail}</small></div><b${robot===id?'':' class="later"'}>${robot===id?'SELECTED':'CHOOSE'}</b></button>`;
@@ -324,4 +359,4 @@ canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','Ar
 $('view-perspective').onclick=$('view-reset').onclick=()=>{yaw=.73;elevation=.43;zoom=1;needsRender=true;};$('view-top').onclick=()=>{yaw=0;elevation=1.5;zoom=1;needsRender=true;};$('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+.15);needsRender=true;};$('zoom-out').onclick=()=>{zoom=Math.max(.45,zoom-.15);needsRender=true;};
 function frame(time){const dt=lastFrame?Math.min((time-lastFrame)/1000,.25):0;lastFrame=time;tick(dt);if(needsRender){render();needsRender=false;}requestAnimationFrame(frame);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.status==='running'){state.status='paused';setRunButton();}});
-setTerrain(terrain);setRobot(robot);updateInputs();updateLines();updateTelemetry();renderResults();requestAnimationFrame(frame);
+setTerrain(terrain);setRobot(robot);setLesson(lesson,false);updateInputs();updateLines();updateTelemetry();renderResults();requestAnimationFrame(frame);

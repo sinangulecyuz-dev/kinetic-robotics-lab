@@ -39,3 +39,18 @@ body[data-tab=plots] .stage-scale,body[data-tab=plots] .orbit-hint{display:none}
 .robot-option:active{transform:scale(.98)}
 @media(hover:hover) and (pointer:fine){.robot-option:hover{background:#fafbfc}}
 .robot-note{margin:12px 0 0;padding:10px 11px;background:#f7f8fa;border:1px solid #edf0f2;border-radius:6px}
+.lesson-switch{display:flex;gap:6px;flex-shrink:0}
+button.lesson-number{background:#f3f4f6;color:#a4aab2;transition:background .16s,color .16s,transform .16s ease-out}
+button.lesson-number[aria-pressed=true]{background:#fff0e8;color:#db673d}
+button.lesson-number:active{transform:scale(.97)}
+.mission-card{background:#f7f8fa;border:1px solid #edf0f2;border-radius:7px;padding:12px;margin-top:18px}
+.mission-card .eyebrow{font-size:6px;letter-spacing:1.2px}
+.mission-card h3{font-size:11px;font-weight:600;margin:6px 0 8px}
+.mission{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:#fff;border:1px solid #e0e5e9;border-radius:6px;padding:8px 9px;margin-top:6px;color:#4f5b68;font-size:9px;font-weight:600;transition:transform .16s ease-out,border-color .16s,background .16s}
+.mission:active{transform:scale(.98)}
+.mission[aria-pressed=true]{border-color:var(--orange);background:#fff3ec}
+.mission small{display:block;color:#99a1aa;font-size:7px;font-weight:500;margin-top:3px;letter-spacing:.4px}
+.mission-status{margin-left:auto;font-size:7px;font-weight:700;letter-spacing:.8px;color:#a4aab2;white-space:nowrap}
+.mission-status.done{color:#308574}
+.mission-goal{font-size:8px;color:#8b95a0;line-height:1.7;margin:10px 0 0}
+@media(max-width:650px){.lesson-switch{gap:4px}.lesson-switch .lesson-number{width:32px}.mission-card{padding:15px}.mission-card .eyebrow{font-size:8px}.mission-card h3{font-size:13px}.mission{font-size:11px;padding:10px}.mission small{font-size:9px}.mission-status{font-size:8px}.mission-goal{font-size:10px}}
