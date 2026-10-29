@@ -54,3 +54,4 @@ button.lesson-number:active{transform:scale(.97)}
 .mission-status.done{color:#308574}
 .mission-goal{font-size:8px;color:#8b95a0;line-height:1.7;margin:10px 0 0}
 @media(max-width:650px){.lesson-switch{gap:4px}.lesson-switch .lesson-number{width:32px}.mission-card{padding:15px}.mission-card .eyebrow{font-size:8px}.mission-card h3{font-size:13px}.mission{font-size:11px;padding:10px}.mission small{font-size:9px}.mission-status{font-size:8px}.mission-goal{font-size:10px}}
+.purple{background:#7E2F8E}

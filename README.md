@@ -17,7 +17,7 @@ npm test
 npm run check
 ```
 
-The first command runs 36 model, dynamics, sensor, parser, TurtleBot3 calibration, and mission tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 43 model, dynamics, sensor, LiDAR, parser, TurtleBot3 calibration, and mission tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -38,7 +38,8 @@ The driving experiment lives in `dist/drive.mjs`. Frame convention: forward is +
 - **Load transfer.** Normal loads come from the three-point static support. The point where gravity minus acceleration meets the ground is lagged by 20 ms, which stands in for tire and chassis compliance. If any contact would lift, the run stops and says which one, because dynamic tipping, bouncing, and jumps are not simulated.
 - **Encoders.** 1920 counts per wheel revolution. Odometry is dead reckoning from encoder counts only, so it drifts when wheels slip.
 - **IMU.** MPU-6050 class, 100 Hz. The accelerometer reading comes from the IMU point's own 3D trajectory and the gyro reading from the change of the body axes. Both have noise, a seeded bias, and 16-bit steps.
-- **Range sensor.** It checks the obstacle box up to 3 m ahead at 20 Hz, with about 1% noise.
+- **Range sensor.** It looks up to 3 m ahead at 20 Hz, with about 1% noise. Low walls at ±2.5 m surround the arena, and the range sensor sees them as well as the box.
+- **2D LiDAR.** Both robots carry an LDS-01-class LiDAR: 360 beams at 1°, 5 scans per second, 0.12–3.5 m. Accuracy is ±10 mm below 0.5 m and ±3.5% beyond, taken as 2σ, with readings in millimetres. Each 10 ms adds the next 18 beams from the pose at that moment, so a moving rover sees a slightly smeared scan. The scan plane is horizontal and ignores the robot's own body. LiDAR noise uses its own random stream, so the IMU noise sequence is unchanged.
 
 Runs are deterministic for a seed. Saved runs store their seed, so plots can be regenerated exactly.
 
@@ -46,11 +47,11 @@ Known limits: slopes are assumed small, the friction model lets a parked rover c
 
 Student programs can command each wheel with `wheels(left, right)`, in rad/s. They can also command the whole rover with `drive(v, w)`, in m/s and rad/s, like ROS `/cmd_vel`. That command maps to wheel targets (v ± w·W/2)/R. If a wheel would pass 10 rad/s, both wheels are scaled down together, so the curve keeps its radius.
 
-`if` and `while` test sensor readings with `<`, `>`, `<=`, or `>=`. The readings are `distance`, `heading` (gyro-integrated IMU yaw in degrees), `odom_heading`, `gyro_z`, `encoder_left`, `encoder_right`, `odom_x`, `odom_y`, and `time`. A program always reads the latest sensor sample and never sees ground truth.
+`if` and `while` test sensor readings with `<`, `>`, `<=`, or `>=`. The readings are `distance`, `heading` (gyro-integrated IMU yaw in degrees), `odom_heading`, `gyro_z`, `encoder_left`, `encoder_right`, `odom_x`, `odom_y`, `time`, and the LiDAR beams `lidar_front`, `lidar_left`, `lidar_back`, `lidar_right` (0 when closer than 0.12 m, infinity with no return), plus `lidar_min` and `lidar_min_angle`. A program always reads the latest sensor sample and never sees ground truth.
 
 The 30-second run limit, parser depth limit, and instruction budget bound student programs. A `while` loop without a `wait` hits the instruction guard. User code is parsed into a small AST, never evaluated as JavaScript.
 
-The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. That is a file export, not a live MATLAB connection.
+The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. **LiDAR CSV** writes one row per scan, with 360 ranges from 0° counterclockwise and 0 for no return, like the LDS-01 and the filter in a typical MATLAB `polarplot` script. The Plots tab also draws the last scan as a polar plot. That is a file export, not a live MATLAB connection.
 
 ### TurtleBot3 Waffle Pi calibration
 

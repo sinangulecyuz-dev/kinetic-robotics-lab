@@ -44,7 +44,9 @@ export function stepDrive(pose,left,right,width,dt) {
 }
 // Readings a program can test. Units: distance m, heading and odom_heading degrees (positive turns left),
 // gyro_z rad/s, encoders counts since the start, odom_x and odom_y m, time s.
-export const SENSORS=['distance','heading','odom_heading','gyro_z','encoder_left','encoder_right','odom_x','odom_y','time'];
+// LiDAR beams in m at 0° (front), 90° (left), 180° (back), 270° (right): 0 when too close, Infinity with no return.
+// lidar_min is the closest return in m and lidar_min_angle its direction in degrees, counterclockwise from the front.
+export const SENSORS=['distance','heading','odom_heading','gyro_z','encoder_left','encoder_right','odom_x','odom_y','time','lidar_front','lidar_left','lidar_back','lidar_right','lidar_min','lidar_min_angle'];
 // Bounded parser: no eval, arbitrary JavaScript, imports, or network access.
 export function parseProgram(source) {
   const lines=source.split('\n');let count=0,index=0;

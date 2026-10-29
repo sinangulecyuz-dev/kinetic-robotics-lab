@@ -45,6 +45,7 @@ export class Figure{
     const dpr=Math.min(devicePixelRatio||1,2);
     if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+    if(spec.kind==='polar')return this.drawPolar(w,h);
     const box={l:58,r:w-20,t:28,b:h-40},pw=box.r-box.l,ph=box.b-box.t;let xr,yr;
     if(spec.kind==='xy'){
       // axis equal: one meter is the same length on both axes.
@@ -77,10 +78,26 @@ export class Figure{
     ctx.font=`bold 11px ${FONT}`;ctx.textBaseline='alphabetic';ctx.fillText(spec.title,(box.l+box.r)/2,18);
     this.legend(X,Y,box);this.updateTip();
   }
+  drawPolar(w,h){
+    const {ctx,spec}=this,s=spec.series[0],rmax=spec.rmax,cx=w/2,R=Math.max(20,Math.min(w-90,h-84)/2),cy=42+R,step=niceStep(rmax,4);
+    const box={l:cx-R,r:cx+R,t:cy-R,b:cy+R};this.map={polar:true,cx,cy,R,rmax,box};
+    ctx.lineWidth=1;ctx.strokeStyle=GRID;ctx.beginPath();
+    for(let r=step;r<=rmax+1e-9;r+=step){ctx.moveTo(cx+R*r/rmax,cy);ctx.arc(cx,cy,R*r/rmax,0,Math.PI*2);}
+    for(let a=0;a<360;a+=30){const t=a*Math.PI/180;ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(t),cy-R*Math.sin(t));}
+    ctx.stroke();ctx.strokeStyle=INK;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+    ctx.font=`10px ${FONT}`;ctx.fillStyle=INK;ctx.textAlign='center';ctx.textBaseline='middle';
+    for(let a=0;a<360;a+=30){const t=a*Math.PI/180;ctx.fillText(`${a}°`,cx+(R+16)*Math.cos(t),cy-(R+12)*Math.sin(t));}
+    ctx.textAlign='left';for(let r=step;r<=rmax+1e-9;r+=step){const t=80*Math.PI/180;ctx.fillText(tickLabel(r,step),cx+R*r/rmax*Math.cos(t)+3,cy-R*r/rmax*Math.sin(t));}
+    ctx.fillStyle=s.color;for(let i=0;i<s.x.length;i++){const t=s.x[i]*Math.PI/180,q=R*s.y[i]/rmax;ctx.fillRect(cx+q*Math.cos(t)-1.5,cy-q*Math.sin(t)-1.5,3,3);}
+    if(this.cursor!==null&&this.cursor<s.x.length){const t=s.x[this.cursor]*Math.PI/180,q=R*s.y[this.cursor]/rmax;ctx.beginPath();ctx.arc(cx+q*Math.cos(t),cy-q*Math.sin(t),4,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
+    ctx.fillStyle=INK;ctx.font=`bold 11px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText(spec.title,cx,18);
+    if(spec.caption){ctx.font=`10px ${FONT}`;ctx.fillStyle='#6b6b6b';ctx.textAlign='left';ctx.fillText(spec.caption,8,h-8);}
+    this.updateTip();
+  }
   // Dense series keep their spikes: each pixel column draws its first, min, max and last value.
   trace(s,X,Y,pw){
     const {ctx}=this,n=s.x.length;if(!n)return;
-    if(this.spec.kind==='xy'||n<=pw*2){for(let i=0;i<n;i++){const px=X(s.x[i]),py=Y(s.y[i]);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}return;}
+    if(this.spec.kind==='xy'||n<=pw*2||!s.y.every(Number.isFinite)){let pen=false;for(let i=0;i<n;i++){if(!Number.isFinite(s.y[i])){pen=false;continue;}const px=X(s.x[i]),py=Y(s.y[i]);pen?ctx.lineTo(px,py):ctx.moveTo(px,py);pen=true;}return;}
     let col=null,lo,hi,first,last;const flush=()=>{if(col===null)return;ctx.lineTo(col,first);ctx.lineTo(col,lo);ctx.lineTo(col,hi);ctx.lineTo(col,last);};
     ctx.moveTo(X(s.x[0]),Y(s.y[0]));
     for(let i=0;i<n;i++){const c=Math.round(X(s.x[i])),py=Y(s.y[i]);if(c!==col){flush();col=c;lo=hi=first=last=py;}else{if(py<lo)lo=py;if(py>hi)hi=py;last=py;}}
@@ -102,20 +119,22 @@ export class Figure{
   drawCursor(X,Y,box){
     const {ctx,spec}=this,i=this.cursor,marks=spec.kind==='xy'?[[spec.series[this.cursorSeries],i]]:spec.series.map(s=>[s,i]);
     if(spec.kind!=='xy'){const x=Math.round(X(spec.series[0].x[i]))+.5;ctx.strokeStyle='#26262699';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,box.t);ctx.lineTo(x,box.b);ctx.stroke();}
-    for(const [s,j] of marks){if(!s||j>=s.x.length)continue;ctx.beginPath();ctx.arc(X(s.x[j]),Y(s.y[j]),4,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
+    for(const [s,j] of marks){if(!s||j>=s.x.length||!Number.isFinite(s.y[j]))continue;ctx.beginPath();ctx.arc(X(s.x[j]),Y(s.y[j]),4,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
   }
   updateTip(){
     const {tip,spec,map}=this;if(this.cursor===null||!map||!spec){tip.hidden=true;return;}
     const i=this.cursor,digits=spec.digits??3,row=(s,value)=>{const r=document.createElement('div'),key=document.createElement('i'),b=document.createElement('b'),name=document.createElement('span');key.style.borderTopColor=s.color;if(s.dash)key.className=Array.isArray(s.dash)?'dot':'dash';b.textContent=value;name.textContent=s.label;r.append(key,b,name);return r;};
     const head=document.createElement('div');head.className='plot-tip-head';let px,rows;
-    if(spec.kind==='xy'){const s=spec.series[this.cursorSeries];if(!s||i>=s.x.length){tip.hidden=true;return;}head.textContent=`t = ${s.t[i].toFixed(2)} s`;rows=[row(s,`${s.x[i].toFixed(digits)}, ${s.y[i].toFixed(digits)} m`)];px=map.X(s.x[i]);}
-    else{const t=spec.series[0].x[i];head.textContent=`t = ${t.toFixed(2)} s`;rows=spec.series.map(s=>row(s,`${s.y[i].toFixed(digits)}${spec.unit?' '+spec.unit:''}`));px=map.X(t);}
+    if(spec.kind==='polar'){const s=spec.series[0];if(!s||i>=s.x.length){tip.hidden=true;return;}head.textContent=`θ = ${s.x[i]}°`;rows=[row(s,`${s.y[i].toFixed(digits)} m`)];px=map.cx+map.R*s.y[i]/map.rmax*Math.cos(s.x[i]*Math.PI/180);}
+    else if(spec.kind==='xy'){const s=spec.series[this.cursorSeries];if(!s||i>=s.x.length){tip.hidden=true;return;}head.textContent=`t = ${s.t[i].toFixed(2)} s`;rows=[row(s,`${s.x[i].toFixed(digits)}, ${s.y[i].toFixed(digits)} m`)];px=map.X(s.x[i]);}
+    else{const t=spec.series[0].x[i];head.textContent=`t = ${t.toFixed(2)} s`;rows=spec.series.map(s=>row(s,Number.isFinite(s.y[i])?`${s.y[i].toFixed(digits)}${spec.unit?' '+spec.unit:''}`:'no return'));px=map.X(t);}
     tip.replaceChildren(head,...rows);tip.hidden=false;
     const width=tip.offsetWidth;tip.style.left=`${px+14+width>map.box.r?px-14-width:px+14}px`;tip.style.top=`${map.box.t+6}px`;
   }
   setCursor(i){if(i===this.cursor)return;this.cursor=i;this.draw();if(i===null)this.tip.hidden=true;}
   hover(e){
     if(!this.map||!this.spec)return;const r=this.canvas.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,{X,Y,box,xr}=this.map;
+    if(this.spec.kind==='polar'){const s=this.spec.series[0],{cx,cy,R,rmax}=this.map;let best=null,bd=Infinity;for(let i=0;i<s.x.length;i++){const a=s.x[i]*Math.PI/180,d=(cx+R*s.y[i]/rmax*Math.cos(a)-px)**2+(cy-R*s.y[i]/rmax*Math.sin(a)-py)**2;if(d<bd){bd=d;best=i;}}return this.setCursor(bd<900?best:null);}
     if(px<box.l-8||px>box.r+8||py<box.t-8||py>box.b+8)return this.setCursor(null);
     if(this.spec.kind==='xy'){
       // Nearest point on any path, so the pointer only has to be closest, not on the line.

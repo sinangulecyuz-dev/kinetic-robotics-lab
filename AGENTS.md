@@ -34,6 +34,8 @@ The Kinetic rover's parameters are typical datasheet values, not measurements.
 
 The TurtleBot3 preset (driving only) is datasheet-based, with exactly two parameters fitted to one robot's lab data: `TB3_FIT` battery voltage and ball-caster friction. The data are in `tests/fixtures/turtlebot3-lab.json`, numbers only, never names or IDs. `tests/turtlebot3.test.mjs` separates fitted values from independent checks. Keep `usedToFit` and `notReproduced` honest. Never retune `TB3_FIT` to pass a check: rerun the fit, then update the README's calibration table. Call it a calibration of one robot, not a validated simulator.
 
+The arena has low walls at ±2.5 m. The front range sensor and the LDS-01-class 2D LiDAR (`LIDAR`, `castRay`, `lidarMeasure`) both see the walls and the box. The LiDAR scans progressively, so motion smears the scan. Its plane is horizontal and ignores self-occlusion.
+
 The collision stop is a conservative footprint check, not a contact solver. Preserve visible explanations of these assumptions in the interface and the README.
 
 MATLAB and ROS 2 are planned integrations, not current capabilities. Do not claim live integration until it exists and has been tested. Keep humanoid walking out of the first milestone. Prefer validating the rover against a physical experiment before expanding robot families.
