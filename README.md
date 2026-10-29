@@ -1,6 +1,8 @@
 # Kinetic — Virtual Robotics Lab
 
-First student-facing milestone: a differential-drive rover with an adjustable structure and payload, a ramp-balance experiment, an editable pseudocode controller, and a local experiment notebook. The rover drives on flat, rough, or slippery ground. Its encoders, IMU, motors, and range sensor are logged and plotted in MATLAB-style figures.
+First student-facing milestone: a differential-drive rover with an adjustable structure and payload, a ramp-balance experiment, an editable pseudocode controller, and a local experiment notebook. The rover drives on flat, rough, or slippery ground. Its encoders, IMU, motors, and range sensor are logged and plotted in MATLAB-style figures. The interface is in English, Turkish, and French.
+
+Live: https://kinetic-robotics-lab.vercel.app (Vercel, see "Hosting").
 
 ## Run
 
@@ -17,7 +19,7 @@ npm test
 npm run check
 ```
 
-The first command runs 49 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, and example tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 54 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -113,9 +115,24 @@ Missions are judged on the simulator's ground truth, which student programs neve
 
 The orthographic canvas renderer uses the same dimensions and transforms as the models. It supports orbit, zoom, top view, and overlay toggles without external packages. The static floor grid is illustrative; exact measurements appear in the controls and telemetry.
 
+## Languages
+
+The header has a language picker: English, Türkçe, Français. On a first visit the lab uses the browser's language if it is one of the three, and English otherwise. The choice is saved with the rest of the lab.
+
+- Visible text lives in `dist/lang/en.mjs`, `tr.mjs`, and `fr.mjs`, one key per string, and `dist/i18n.mjs` looks it up. The page marks static text with `data-i18n` attributes. A key missing from a translation falls back to English.
+- Rover script keywords (`wheels`, `drive`, `while`), sensor names, and CSV columns stay in English, as in a real programming language. Example scripts and mission starters translate only their comments: the code lines are copied from the English version, so every language runs the same program.
+- Numbers use a decimal point in every language, to match the code, the CSV files, and MATLAB.
+- Simulator, parser, and judge messages carry a key and values, so a finished run, an error, or a saved result is shown again in the new language after a switch.
+- `tests/i18n.test.mjs` checks that all three dictionaries have the same keys and placeholders, that code inside the help text is unchanged, that translated examples and starters run the same code, and that every key the interface uses exists and every key is used.
+- The French text was written by Claude Code and still needs a review by a native speaker. The Turkish text needs a review by the owner.
+
 ## Persistence
 
-Design, script, terrain, and the last 30 completed runs use browser localStorage (`kinetic-v1`). This is per-device, not a multi-user classroom backend. Resets preserve design. Run restoration restores parameters and, for drive runs, the executed script and terrain. Sensor logs are not stored. A drive run stores its seed instead, and its plots are replayed from design, terrain, script, and seed. Runs saved before seeds existed replay under the current model with a seed derived from their id. No analytics or external requests are required by the app.
+Design, script, terrain, language, and the last 30 completed runs use browser localStorage (`kinetic-v1`). This is per-device, not a multi-user classroom backend. Resets preserve design. Run restoration restores parameters and, for drive runs, the executed script and terrain. Sensor logs are not stored. A drive run stores its seed instead, and its plots are replayed from design, terrain, script, and seed. Runs saved before seeds existed replay under the current model with a seed derived from their id. No analytics or external requests are required by the app.
+
+## Hosting
+
+The lab is a Vercel project (`kinetic-robotics-lab`, account `sinangulecyuz-dev`). `vercel.json` serves the `dist` folder with no build step, so only the app is public. Tests, docs, and lab data are not served. Production: https://kinetic-robotics-lab.vercel.app. The Vercel project is connected to this GitHub repository, so every push to `main` deploys production. A manual deploy from a working tree is `vercel deploy`. The older ChatGPT Sites prototype is separate and is not updated by either.
 
 ## Next bricks
 

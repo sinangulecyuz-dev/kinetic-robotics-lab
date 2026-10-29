@@ -51,44 +51,45 @@ export const SENSORS=['distance','heading','odom_heading','gyro_z','encoder_left
 // Bounded parser: no eval, arbitrary JavaScript, imports, or network access.
 export function parseProgram(source) {
   const lines=source.split('\n');let count=0,index=0;
-  const fail=(line,msg)=>{throw new Error(`Line ${line}: ${msg}`);};
+  // Errors carry a key and params as well as English text, so the interface can explain them in the student's language.
+  const fail=(line,msg,key,params={})=>{const e=new Error(`Line ${line}: ${msg}`);e.line=line;e.key=key;e.params=params;throw e;};
   const parseBlock=(depth=0)=>{
-    if(depth>5)fail(index+1,'Use at most five nested blocks.');
+    if(depth>5)fail(index+1,'Use at most five nested blocks.','nesting');
     const nodes=[];
     while(index<lines.length){
       const lineNo=index+1,s=lines[index].split('#')[0].trim();index++;
       if(!s)continue;
-      if(++count>300)fail(lineNo,'Keep your program under 300 instructions.');
+      if(++count>300)fail(lineNo,'Keep your program under 300 instructions.','tooLong');
       if(s==='end'||s==='else')return {nodes,closing:s,line:lineNo};
       let m;
       if((m=s.match(/^wheels\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/))){
-        const l=+m[1],r=+m[2];if(Math.abs(l)>10||Math.abs(r)>10)fail(lineNo,'Wheel speeds must be between -10 and 10 rad/s.');
+        const l=+m[1],r=+m[2];if(Math.abs(l)>10||Math.abs(r)>10)fail(lineNo,'Wheel speeds must be between -10 and 10 rad/s.','wheelRange');
         nodes.push({type:'wheels',l,r,line:lineNo});
       }else if((m=s.match(/^drive\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/))){
-        const v=+m[1],w=+m[2];if(Math.abs(v)>.75)fail(lineNo,'Forward speed v must be between -0.75 and 0.75 m/s.');if(Math.abs(w)>6)fail(lineNo,'Turn rate w must be between -6 and 6 rad/s.');
+        const v=+m[1],w=+m[2];if(Math.abs(v)>.75)fail(lineNo,'Forward speed v must be between -0.75 and 0.75 m/s.','driveV');if(Math.abs(w)>6)fail(lineNo,'Turn rate w must be between -6 and 6 rad/s.','driveW');
         nodes.push({type:'drive',v,w,line:lineNo});
       }else if((m=s.match(/^filter\(\s*(\d+(?:\.\d+)?)\s*\)$/))){
-        const alpha=+m[1];if(alpha>1)fail(lineNo,'The filter weight alpha must be between 0 and 1.');
+        const alpha=+m[1];if(alpha>1)fail(lineNo,'The filter weight alpha must be between 0 and 1.','filterRange');
         nodes.push({type:'filter',alpha,line:lineNo});
       }else if((m=s.match(/^wait\(\s*(\d+(?:\.\d+)?)\s*\)$/))){
-        const time=+m[1];if(time<0.05||time>10)fail(lineNo,'Wait between 0.05 and 10 seconds.');
+        const time=+m[1];if(time<0.05||time>10)fail(lineNo,'Wait between 0.05 and 10 seconds.','waitRange');
         nodes.push({type:'wait',time,line:lineNo});
       }else if(s==='stop()')nodes.push({type:'wheels',l:0,r:0,line:lineNo});
       else if((m=s.match(/^repeat\s+(\d+)\s*:?$/))){
-        const n=+m[1];if(n<1||n>20)fail(lineNo,'Repeat between 1 and 20 times.');
-        const block=parseBlock(depth+1);if(block.closing!=='end')fail(lineNo,'Close your repeat block with end.');
+        const n=+m[1];if(n<1||n>20)fail(lineNo,'Repeat between 1 and 20 times.','repeatRange');
+        const block=parseBlock(depth+1);if(block.closing!=='end')fail(lineNo,'Close your repeat block with end.','closeRepeat');
         nodes.push({type:'repeat',n,body:block.nodes,line:lineNo});
       }else if((m=s.match(/^(if|while)\s+([a-z_]+)\s*(<=|>=|<|>)\s*(-?\d+(?:\.\d+)?)\s*:?$/))){
-        const [,kind,sensor,op,value]=m;if(!SENSORS.includes(sensor))fail(lineNo,`Unknown sensor ${sensor}. Use ${SENSORS.join(', ')}.`);
+        const [,kind,sensor,op,value]=m;if(!SENSORS.includes(sensor))fail(lineNo,`Unknown sensor ${sensor}. Use ${SENSORS.join(', ')}.`,'unknownSensor',{sensor,list:SENSORS.join(', ')});
         const block=parseBlock(depth+1);let other=[];
-        if(kind==='if'&&block.closing==='else'){const b=parseBlock(depth+1);if(b.closing!=='end')fail(lineNo,'Close your if block with end.');other=b.nodes;}
-        else if(block.closing!=='end')fail(lineNo,`Close your ${kind} block with end.`);
+        if(kind==='if'&&block.closing==='else'){const b=parseBlock(depth+1);if(b.closing!=='end')fail(lineNo,'Close your if block with end.','closeIf');other=b.nodes;}
+        else if(block.closing!=='end')fail(lineNo,`Close your ${kind} block with end.`,'closeBlock',{kind});
         nodes.push({type:kind,sensor,op,value:+value,body:block.nodes,other,line:lineNo});
-      }else fail(lineNo,'Try wheels(left, right), drive(v, w), wait(seconds), stop(), filter(alpha), repeat N, or if/while sensor < N.');
+      }else fail(lineNo,'Try wheels(left, right), drive(v, w), wait(seconds), stop(), filter(alpha), repeat N, or if/while sensor < N.','unknown');
     }
     return {nodes,closing:null};
   };
-  const result=parseBlock();if(result.closing)fail(result.line,`Unexpected ${result.closing}.`);
-  if(!result.nodes.length)fail(1,'Add at least one instruction.');
+  const result=parseBlock();if(result.closing)fail(result.line,`Unexpected ${result.closing}.`,'unexpected',{word:result.closing});
+  if(!result.nodes.length)fail(1,'Add at least one instruction.','empty');
   return result.nodes;
 }

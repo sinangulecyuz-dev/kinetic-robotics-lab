@@ -1,6 +1,7 @@
 // MATLAB-style line figures on canvas: white axes, box, grid, inward ticks, legend.
 // Colors are MATLAB colororder slots 1, 2 and 4; slot 3 (#EDB120) fails contrast on a white background.
 // Slot 5 (#77AC30) is a fourth hue for the complementary filter; it is below 3:1 contrast, so it always appears with a legend and in the CSV.
+import {t} from './i18n.mjs';
 export const COLORS=['#0072BD','#D95319','#7E2F8E','#77AC30'];
 const INK='#262626',GRID='#e1e1e1',FONT='Helvetica, Arial, sans-serif';
 
@@ -37,7 +38,7 @@ export class Figure{
   }
   set(spec){
     this.spec=spec;if(this.cursor!==null&&this.cursor>=this.length())this.cursor=this.length()?this.length()-1:null;
-    this.canvas.setAttribute('aria-label',`${spec.title}. ${spec.series.map(s=>s.label).join(', ')}. Use the arrow keys to read values.`);
+    this.canvas.setAttribute('aria-label',t('plot.aria',{title:spec.title,series:spec.series.map(s=>s.label).join(', ')}));
     this.draw();
   }
   length(){return this.spec?.series[this.spec.kind==='xy'?this.cursorSeries:0]?.x.length||0;}
@@ -128,7 +129,7 @@ export class Figure{
     const head=document.createElement('div');head.className='plot-tip-head';let px,rows;
     if(spec.kind==='polar'){const s=spec.series[0];if(!s||i>=s.x.length){tip.hidden=true;return;}head.textContent=`θ = ${s.x[i]}°`;rows=[row(s,`${s.y[i].toFixed(digits)} m`)];px=map.cx+map.R*s.y[i]/map.rmax*Math.cos(s.x[i]*Math.PI/180);}
     else if(spec.kind==='xy'){const s=spec.series[this.cursorSeries];if(!s||i>=s.x.length){tip.hidden=true;return;}head.textContent=`t = ${s.t[i].toFixed(2)} s`;rows=[row(s,`${s.x[i].toFixed(digits)}, ${s.y[i].toFixed(digits)} m`)];px=map.X(s.x[i]);}
-    else{const t=spec.series[0].x[i];head.textContent=`t = ${t.toFixed(2)} s`;rows=spec.series.map(s=>row(s,Number.isFinite(s.y[i])?`${s.y[i].toFixed(digits)}${spec.unit?' '+spec.unit:''}`:'no return'));px=map.X(t);}
+    else{const time=spec.series[0].x[i];head.textContent=`t = ${time.toFixed(2)} s`;rows=spec.series.map(s=>row(s,Number.isFinite(s.y[i])?`${s.y[i].toFixed(digits)}${spec.unit?' '+spec.unit:''}`:t('plot.noReturn')));px=map.X(time);}
     tip.replaceChildren(head,...rows);tip.hidden=false;
     const width=tip.offsetWidth;tip.style.left=`${px+14+width>map.box.r?px-14-width:px+14}px`;tip.style.top=`${map.box.t+6}px`;
   }

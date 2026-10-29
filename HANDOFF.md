@@ -2,13 +2,13 @@
 
 Codex and Claude Code work on this repository one after the other. This file is the record they share: where the work stands, what was decided, and what the last session did. The protocol for reading and updating it is in `AGENTS.md` under "Handoff between Codex and Claude Code".
 
-Status words used below: **local** (changed in the working tree, not committed), **committed**, **pushed** (on `origin/main`), **deployed** (published to the ChatGPT Sites prototype). Pushing never deploys.
+Status words used below: **local** (changed in the working tree, not committed), **committed**, **pushed** (on `origin/main`), **deployed** (live on Vercel production, https://kinetic-robotics-lab.vercel.app). Since 2026-10-29 the Vercel project is connected to the GitHub repository, so a push to `main` also deploys. The older ChatGPT Sites prototype is separate and never updated from here.
 
 ## Current state
 
 Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on it.
 
-- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`. Everything listed below is committed and pushed to `main`. Check `git log` for the latest commit.
+- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`. Everything listed below is committed, pushed to `main`, and deployed on Vercel. Check `git log` for the latest commit and `vercel ls` for the latest deployment.
 - What exists:
   - Milestone 1: rover builder, ramp-balance experiment, bounded pseudocode controller, local notebook (`kinetic-v1`).
   - New: a realistic driving model (`dist/drive.mjs`) on flat, rough, and slippery terrain.
@@ -20,13 +20,16 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: a 2D LiDAR (LDS-01 class) on both robots, arena walls at ±2.5 m, LiDAR program readings, a scan overlay, a polar scan plot, a ranges plot, and LiDAR CSV export.
   - New: a complementary filter (gyro and encoder heading) with filtered odometry, `filter(alpha)` and `fused_*` readings, a green filtered path, and filter series in Plots.
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
+  - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
 - The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 49/49 pass, `npm run check` passes.
-- Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
-- Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
+- Verification on 2026-10-29: `npm test` 54/54 pass, `npm run check` passes.
+- Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
+- Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
 ## Open items
 
+- **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
+- **Review:** the French text needs a native speaker at Saint Michel. The owner reviews the Turkish.
 - **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `AGENTS.md` now say 127.0.0.1.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
@@ -39,6 +42,8 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
 
 ## Decisions
 
+- Interface languages: English, Turkish, and French, for the Saint Michel robotics club (owner, 2026-10-29). Rover script keywords, sensor names, and CSV columns stay English. Translated examples and mission starters change comments only. Decimals use a point in every language, to match code and MATLAB. Simulator, parser, and judge messages carry keys, so results redraw after a language switch.
+- Hosting: Vercel (owner, 2026-10-29). The owner had not used GitHub Pages.
 - One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28).
 - Left/right fixed (owner approved, 2026-10-28). Before the fix, `wheels(l, r)` drove the physically mirrored wheels, so `wheels(2, 5)` turned right. Now the robot's left is +x, a faster right wheel turns left, and positive yaw is counterclockwise (ROS REP-103). Old saved drive runs replay with the corrected direction.
 - Physics depth: planar rigid-body dynamics with motors, tire slip, load transfer, and terrain following (owner's choice, 2026-10-28). Full 3D contact, bouncing, and flight are out of scope. A lifting contact stops the run with a message.
@@ -75,6 +80,22 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-10-29 — Claude Code — three interface languages and Vercel hosting
+
+- Changed:
+  - New `dist/i18n.mjs` and `dist/lang/en.mjs`, `tr.mjs`, `fr.mjs` (351 keys each, including the help dialogs).
+  - `dist/index.html`: `data-i18n` attributes and a language picker. `dist/style.css`: picker style and three selectors narrowed for wrapped text.
+  - `dist/app.js`: every visible string through `t()`. Language-dependent text is kept as functions, so a switch redraws it. Saved runs store a message key. An unedited example or starter follows the language.
+  - `dist/drive.mjs`, `dist/physics.mjs`, `dist/missions.mjs`: message keys and params next to the English text. `dist/examples.mjs` and `dist/missions.mjs`: Turkish and French comments and mission texts. `dist/plots.mjs`: two strings through `t()`.
+  - New `tests/i18n.test.mjs` (5 tests). `package.json`, README ("Languages", "Hosting"), `AGENTS.md`, `.gitignore` (`.vercel`), new `vercel.json`.
+- Verified:
+  - `npm test` 54/54, `npm run check` pass.
+  - Headless Chrome on 127.0.0.1:5174 and on the live site: no English text left on screen in Turkish or French (one false match, "Rover programı"). A Turkish mission run shows the outcome, judge, result card, plots, and CSV meta in Turkish. Switching to French redraws all of them and swaps the starter's comments. Parser errors redraw. All six dialogs translate. The language survives a reload. No horizontal overflow at 390 px. Zero console errors.
+  - Live site: `index.html`, `.mjs`, and `.css` return 200 with JavaScript and CSS MIME types. `tests/` and `HANDOFF.md` return 404.
+  - Not verified: a native French review, real phones, Safari, Firefox.
+- Status: deployed to Vercel production from the working tree first. Then committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29); the push deploys production again through the Git connection.
+- Next / open: native French review, the owner's Turkish review, and the Vercel item in Open items.
 
 ### 2026-10-29 — Claude Code — example scripts fixed and put under test
 
@@ -201,10 +222,3 @@ Entry template:
   - Correction to the 2026-10-28 entry: the server answering on 5173 was the `robotikLab` copy, not this repo.
 - Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
 - Next / open: the owner reviews the feature in a browser on 5174 and decides about the slider labels. The next task is closed-loop control (`drive(v, w)`, sensor conditions, `while`).
-
-### 2026-10-28 — Claude Code — handoff setup
-
-- Changed: added `HANDOFF.md`, a handoff section in `AGENTS.md`, a pointer line in `CLAUDE.md`, and one sentence in the README's "Continue in Codex or Claude Code" section.
-- Verified: `npm test` 7/7, `npm run check` pass (no application code changed). A server answered 200 on 127.0.0.1:5173 (PID 45760), but see the 2026-10-29 correction: it serves the `robotikLab` copy.
-- Status: committed (`053be47`), fast-forwarded into `main`, and pushed. The temporary `chore/codex-handoff` branch was deleted locally and on GitHub.
-- Next / open: development starts next.

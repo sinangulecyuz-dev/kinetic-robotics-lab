@@ -139,7 +139,8 @@ export class DriveSim{
   axle(){return {x:this.x+this.axleZ*Math.sin(this.heading),z:this.z+this.axleZ*Math.cos(this.heading)};}
   advance(seconds){this.budget+=seconds;while(this.budget>=DT/2&&this.status==='running'){this.step();this.budget-=DT;}}
   run(){while(this.status==='running')this.step();return this;}
-  finish(success,message){if(this.status!=='running')return;this.status='done';this.success=success;this.message=message;this.wheels.forEach(wh=>{wh.ref=0;wh.volts=0;});}
+  // message is English; key and params let the interface show it in the student's language.
+  finish(success,message,key,params={}){if(this.status!=='running')return;this.status='done';this.success=success;this.message=message;this.messageKey=key;this.messageParams=params;this.wheels.forEach(wh=>{wh.ref=0;wh.volts=0;});}
   setTargets(l,r){this.wheels[0].ref=l;this.wheels[1].ref=r;}
   // The commanded motion, before any limit: what Lab 1 calls the desired trajectory.
   command(v,w){this.desired.v=v;this.desired.w=w;}
@@ -152,19 +153,19 @@ export class DriveSim{
     const D=this.desired,mid=D.yaw+D.w*DT/2;D.x+=D.v*DT*Math.cos(mid);D.y+=D.v*DT*Math.sin(mid);D.yaw+=D.w*DT;
     if(this.waitSteps>0){this.waitSteps--;this.sinceAdvance=0;}
     const fx=this.x+this.foot.z*Math.sin(this.heading),fz=this.z+this.foot.z*Math.cos(this.heading),radius=this.foot.radius;
-    if(Math.abs(fx-OBSTACLE.x)<OBSTACLE.halfX+radius&&Math.abs(fz-OBSTACLE.z)<OBSTACLE.halfZ+radius)return this.finish(false,'Stopped: rover reached the obstacle.');
-    if(Math.abs(this.x)>ARENA||Math.abs(this.z)>ARENA)return this.finish(false,'Stopped at the edge of the test area.');
-    if(this.time>=MAX_TIME-1e-9)return this.finish(false,'Stopped: 30-second experiment limit.');
+    if(Math.abs(fx-OBSTACLE.x)<OBSTACLE.halfX+radius&&Math.abs(fz-OBSTACLE.z)<OBSTACLE.halfZ+radius)return this.finish(false,'Stopped: rover reached the obstacle.','sim.obstacle');
+    if(Math.abs(this.x)>ARENA||Math.abs(this.z)>ARENA)return this.finish(false,'Stopped at the edge of the test area.','sim.edge');
+    if(this.time>=MAX_TIME-1e-9)return this.finish(false,'Stopped: 30-second experiment limit.','sim.timeLimit');
     if(this.phase==='settle'){
       // After the last instruction the controller brakes to zero; the run ends once the rover is still.
       const [L,R]=this.wheels,quiet=Math.hypot(this.u,this.v)<.003&&Math.abs(this.w)<.01&&Math.abs(L.w)<.05&&Math.abs(R.w)<.05;
       this.quietSteps=quiet?this.quietSteps+1:0;
-      if(this.quietSteps>=.2/DT||++this.settleSteps>=SETTLE_TIME/DT)this.finish(true,'Program complete. Explore your results.');
+      if(this.quietSteps>=.2/DT||++this.settleSteps>=SETTLE_TIME/DT)this.finish(true,'Program complete. Explore your results.','sim.complete');
     }
   }
   interpret(){
     while(this.phase==='run'&&this.waitSteps===0){
-      if(++this.sinceAdvance>500||++this.instructions>10000)return this.finish(false,'Stopped: instruction limit reached. Add waits to your loops.');
+      if(++this.sinceAdvance>500||++this.instructions>10000)return this.finish(false,'Stopped: instruction limit reached. Add waits to your loops.','sim.instructions');
       const n=this.queue.shift();
       if(!n){this.phase='settle';this.setTargets(0,0);this.command(0,0);return;}
       this.line=n.line;
@@ -206,8 +207,9 @@ export class DriveSim{
     this.loads=this.casters.length===1?support.loads:[support.loads[0],support.loads[1],...this.casters.map(()=>support.loads[2]/this.casters.length)];
     this.margin=support.margin;this.point=support.point;
     const casterName=this.casters.length===1?'the caster lifted':'the casters lifted';
-    if(support.total<=0)this.finish(false,'Stopped: the rover left the ground. Jumps are not simulated.');
-    else if(Math.min(left,right,caster)<0)this.finish(false,`Stopped: ${caster<Math.min(left,right)?`${casterName}, so the rover began to tip forward`:left<0&&right<0?'both drive wheels lifted, so the rover began to tip backward':`the ${left<right?'left':'right'} wheel lifted, so the rover began to tip sideways`}. Dynamic tipping is not simulated.`);
+    if(support.total<=0)this.finish(false,'Stopped: the rover left the ground. Jumps are not simulated.','sim.airborne');
+    else if(Math.min(left,right,caster)<0){const key=caster<Math.min(left,right)?(this.casters.length===1?'sim.tipCaster':'sim.tipCasters'):left<0&&right<0?'sim.tipBack':left<right?'sim.tipLeft':'sim.tipRight';
+      this.finish(false,`Stopped: ${caster<Math.min(left,right)?`${casterName}, so the rover began to tip forward`:left<0&&right<0?'both drive wheels lifted, so the rover began to tip backward':`the ${left<right?'left':'right'} wheel lifted, so the rover began to tip sideways`}. Dynamic tipping is not simulated.`,key);}
   }
   // 10 kHz: tire forces from combined slip, motor torque, caster drag, then semi-implicit Euler.
   dynamics(){

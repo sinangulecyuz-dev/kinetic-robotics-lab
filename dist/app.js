@@ -1,8 +1,9 @@
 import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram} from './physics.mjs';
 import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,TERRAINS,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
-import {MISSIONS,missionById} from './missions.mjs';
-import {EXAMPLES} from './examples.mjs';
+import {MISSIONS,missionById,missionText} from './missions.mjs';
+import {EXAMPLES,example} from './examples.mjs';
+import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -31,8 +32,13 @@ const icons={
 function icon(name){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.box}</svg>`;}
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 
-let p={...DEFAULT},records=[],code=EXAMPLES.turn,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[];
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(saved.lesson===2)lesson=2;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+setLanguage(preferredLanguage(navigator.languages||[navigator.language]));
+let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[];
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if(saved.lesson===2)lesson=2;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+// Labels in the chosen language. An unedited example or mission starter follows that language.
+const robotLabel=id=>t('robot.'+id),terrainLabel=id=>t('terrain.'+id),terrainLower=id=>terrainLabel(id).toLocaleLowerCase(language()),mt=m=>missionText(m,language());
+function translateCode(src,to){for(const l of Object.keys(LANGUAGES)){for(const name of Object.keys(EXAMPLES))if(example(name,l)===src)return example(name,to);for(const m of MISSIONS)if(missionText(m,l).starter===src)return missionText(m,to).starter;}return src;}
+code=code===null?example('turn',language()):translateCode(code,language());
 let tab='build',mode='tilt',prediction=null,showCom=true,showSupport=true,showOdom=true,showLidar=true,showFused=true;
 let state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};
 // sim is the drive run in progress; idle is a parked rover that only places the model on the terrain.
@@ -43,7 +49,12 @@ const VIEW_YAW=Math.PI+.73;
 let cw=800,ch=536,zoom=1,yaw=VIEW_YAW,elevation=0.43,drag=null,lastFrame=0,needsRender=true;
 function view(){if(sim)return sim;const key=JSON.stringify(p)+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false});idleKey=key;}return idle;}
 const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
-function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,robot,lesson,mission,missionsDone,records}));$('save-status').textContent='Saved on this device';}catch{$('save-status').textContent='Saving unavailable';}}
+function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
+// Text that depends on the language is kept as a function, so a language change can redraw it.
+const shown=new Map();
+function redraw(id){const {text,html}=shown.get(id),s=text();if(html)$(id).innerHTML=s;else $(id).textContent=s;}
+function show(id,text,html=false){shown.set(id,{text,html});redraw(id);}
+const discover=(title,copy)=>{show('discovery-title',title);show('discovery-copy',copy);};
 function toast(s){$('toast').textContent=s;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500);}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function changeTab(next){tab=next;document.body.dataset.tab=next;for(const t of ['build','code','plots','results']){$(`${t}-tab`).classList.toggle('active',t===next);$(`${t}-tab`).setAttribute('aria-selected',t===next);}$('code-panel').hidden=next!=='code';$('plots-panel').hidden=next!=='plots';$('results-panel').hidden=next!=='results';if(next==='code'&&mode!=='drive')changeMode('drive');if(next==='results')renderResults();if(next==='plots')renderPlots();needsRender=true;}
@@ -51,103 +62,103 @@ function changeTab(next){tab=next;document.body.dataset.tab=next;for(const t of 
 function updateInputs(){
   for(const k of Object.keys(DEFAULT)){
     const el=$(k);el.value=p[k];const unit=k==='mass'?'kg':k==='target'?'°':'cm';
-    $(`${k}-output`).innerHTML=k==='offset'?(p[k]?`${Math.abs(p[k])} <small>cm ${p[k]>0?'left':'right'}</small>`:'0 <small>cm · centered</small>'):`${k==='mass'?p[k].toFixed(1):p[k]} <small>${unit}</small>`;
+    $(`${k}-output`).innerHTML=k==='offset'?(p[k]?`${Math.abs(p[k])} <small>${t(p[k]>0?'offset.left':'offset.right')}</small>`:`0 <small>${t('offset.center')}</small>`):`${k==='mass'?p[k].toFixed(1):p[k]} <small>${unit}</small>`;
     el.style.background=`linear-gradient(${el.dir==='rtl'?'to left':'to right'},var(--orange) ${(p[k]-el.min)/(el.max-el.min)*100}%,#e9ecef ${(p[k]-el.min)/(el.max-el.min)*100}%)`;
   }
   document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',Object.keys(p).every(k=>p[k]===PRESETS[b.dataset.preset][k])));
   needsRender=true;
 }
 for(const k of Object.keys(DEFAULT))$(k).addEventListener('input',e=>{if(['running','paused','done'].includes(state.status))reset();p[k]=Number(e.target.value);updateInputs();persist();updateTelemetry();});
-document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{reset();p={...PRESETS[b.dataset.preset]};updateInputs();persist();updateTelemetry();$('discovery-title').textContent=b.dataset.preset==='tall'?'Same idea, a much higher center of mass.':b.dataset.preset==='offset'?'A payload near the edge leaves less room for balance.':'A wider stance gives your robot more room to balance.';$('discovery-copy').textContent=b.dataset.preset==='tall'?'The mass is high above a narrow base. Will it reach the target ramp angle? Make a prediction and test it.':b.dataset.preset==='offset'?'The ramp lifts the rover’s left side, so gravity pulls the load toward its low right edge. Try moving the payload to the left, uphill.':'Try the top-heavy preset. Predict what will happen, then watch the center of mass as the ramp tilts.';});
-for(const [id,value] of [['predict-stable','stable'],['predict-tip','tip']])$(id).onclick=()=>{if(state.status==='running'||state.status==='paused'){toast('Reset the experiment before changing your prediction.');return;}prediction=prediction===value?null:value;updatePrediction();};
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{reset();p={...PRESETS[b.dataset.preset]};updateInputs();persist();updateTelemetry();const d=b.dataset.preset;discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));});
+for(const [id,value] of [['predict-stable','stable'],['predict-tip','tip']])$(id).onclick=()=>{if(state.status==='running'||state.status==='paused'){toast(t('toast.resetFirst'));return;}prediction=prediction===value?null:value;updatePrediction();};
 function updatePrediction(){ $('predict-stable').setAttribute('aria-pressed',prediction==='stable');$('predict-tip').setAttribute('aria-pressed',prediction==='tip');}
 $('show-com').onchange=e=>{showCom=e.target.checked;needsRender=true;};$('show-support').onchange=e=>{showSupport=e.target.checked;needsRender=true;};$('show-odom').onchange=e=>{showOdom=e.target.checked;needsRender=true;};$('show-lidar').onchange=e=>{showLidar=e.target.checked;needsRender=true;};$('show-fused').onchange=e=>{showFused=e.target.checked;needsRender=true;};
 $('experiment-mode').onchange=e=>changeMode(e.target.value);
-const driveNote=()=>{const t=TERRAINS[terrain];return tb3()?`TurtleBot3 Waffle Pi · Dynamixel servos on a ${TB3_FIT.battery} V battery · ${t.surface}, μ ${t.muPeak} · Calibrated to one robot's lab data`:`Planar dynamics · DC motors with PI speed control · ${t.surface}, μ ${t.muPeak} · Not validated on hardware`;};
+const driveNote=()=>t(tb3()?'note.tb3':'note.kinetic',{surface:t('surface.'+terrain),mu:TERRAINS[terrain].muPeak,battery:TB3_FIT.battery}),modelNote=()=>mode==='tilt'?t('note.tilt'):driveNote();
 // The TurtleBot3 has a fixed, datasheet geometry and only drives; the builder sliders and the ramp belong to the Kinetic rover.
 function setRobot(next){
-  if(!ROBOTS[next])return;if(state.status!=='idle')reset();robot=next;const t=tb3();
-  $('experiment-mode').querySelector('option[value=tilt]').disabled=t;if(t&&mode==='tilt')changeMode('drive');
-  for(const id of ['preset-row','structure-section','payload-section'])$(id).hidden=t;$('robot-note').hidden=!t;
-  $('robot-name').innerHTML=t?'TurtleBot3 Waffle Pi<small>ROS 2 · 2 DYNAMIXEL SERVOS</small>':'Differential drive<small>MOBILE ROBOT · 2 MOTORS</small>';
-  $('stage-title').textContent=ROBOTS[robot].label==='Kinetic rover'?'Differential-drive rover':ROBOTS[robot].label;
-  if(mode==='drive')$('model-note').textContent=driveNote();updateTelemetry();needsRender=true;
+  if(!ROBOTS[next])return;if(state.status!=='idle')reset();robot=next;const isTb3=tb3();
+  $('experiment-mode').querySelector('option[value=tilt]').disabled=isTb3;if(isTb3&&mode==='tilt')changeMode('drive');
+  for(const id of ['preset-row','structure-section','payload-section'])$(id).hidden=isTb3;$('robot-note').hidden=!isTb3;
+  show('robot-name',()=>t(tb3()?'robotName.tb3':'robotName.kinetic'),true);
+  show('stage-title',()=>tb3()?robotLabel('turtlebot3'):t('stage.kinetic'));
+  show('model-note',modelNote);updateTelemetry();needsRender=true;
 }
-function changeMode(next){reset();mode=next;$('experiment-mode').value=next;$('tilt-setting').hidden=next!=='tilt';$('drive-setting').hidden=next!=='drive';$('odom-row').hidden=$('lidar-row').hidden=$('fused-row').hidden=next!=='drive';$('model-note').textContent=next==='tilt'?'Quasi-static balance model · Ideal grip · No sliding or impact physics':driveNote();$('stage-subtitle').textContent=next==='tilt'?'Two powered wheels. One little caster. Endless ideas.':'Give each wheel a target speed. Watch it move, slip, and measure.';document.querySelector('.prediction-card').hidden=next==='drive';
-  const labels=next==='drive'?['SPEED','WHEEL SLIP','FRONT SENSOR']:['TOTAL MASS','COM HEIGHT','SURFACE TILT'];['metric-mass','metric-height','metric-tilt'].forEach((id,i)=>$(id).previousElementSibling.textContent=labels[i]);
+function changeMode(next){reset();mode=next;$('experiment-mode').value=next;$('tilt-setting').hidden=next!=='tilt';$('drive-setting').hidden=next!=='drive';$('odom-row').hidden=$('lidar-row').hidden=$('fused-row').hidden=next!=='drive';document.querySelector('.prediction-card').hidden=next==='drive';modeText();
   updateTelemetry();needsRender=true;}
+function modeText(){
+  show('model-note',modelNote);show('stage-subtitle',()=>t(mode==='tilt'?'stage.subtitle.tilt':'stage.subtitle.drive'));
+  const keys=mode==='drive'?['metric.speed','metric.slip','metric.front']:['metric.mass','metric.comHeight','metric.tilt'];['metric-mass','metric-height','metric-tilt'].forEach((id,i)=>$(id).previousElementSibling.textContent=t(keys[i]));
+}
 function setTerrain(next){
-  if(!TERRAINS[next])return;if(state.status!=='idle')reset();terrain=next;const t=TERRAINS[next];
+  if(!TERRAINS[next])return;if(state.status!=='idle')reset();terrain=next;
   document.querySelectorAll('[data-terrain]').forEach(b=>{b.classList.toggle('active',b.dataset.terrain===next);b.setAttribute('aria-pressed',b.dataset.terrain===next);});
-  $('terrain-note').textContent=`${t.surface}. Peak friction μ ${t.muPeak}, sliding μ ${t.muSlide}, rolling resistance ${t.crr}${t.bumps?'. Bumps up to about 2 cm':''}.`;
-  if(mode==='drive')$('model-note').textContent=driveNote();updateTelemetry();needsRender=true;
+  show('terrain-note',()=>{const T=TERRAINS[terrain];return t('terrain.note',{surface:t('surface.'+terrain),peak:T.muPeak,slide:T.muSlide,crr:T.crr,bumps:T.bumps?t('terrain.bumps'):''});});
+  show('model-note',modelNote);updateTelemetry();needsRender=true;
 }
 document.querySelectorAll('[data-terrain]').forEach(b=>b.onclick=()=>{setTerrain(b.dataset.terrain);persist();});
-const LESSONS={
-  1:{time:'· 5 MIN',title:'Carry the load',question:'Can your rover keep its balance on a tilted surface?',concept:'Center of mass & support polygon',discovery:['A wider stance gives your robot more room to balance.','Try the top-heavy preset. Predict what will happen, then watch the center of mass as the ramp tilts.']},
-  2:{time:'· 15 MIN',title:'Where am I?',question:'Can your rover tell where it is using only its own sensors?',concept:'Odometry, gyro & ground truth',discovery:['Your rover only knows what its sensors tell it.','Pick a mission in the builder. Each starter script falls a little short on purpose.']}
-};
 function setLesson(n,user=true){
-  lesson=n===2?2:1;const L=LESSONS[lesson];
+  lesson=n===2?2:1;
   document.querySelectorAll('[data-lesson]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.lesson===lesson));
-  $('lesson-time').textContent=L.time;$('lesson-title').textContent=L.title;$('lesson-question').textContent=L.question;$('lesson-concept-text').textContent=L.concept;
-  [$('discovery-title').textContent,$('discovery-copy').textContent]=L.discovery;$('mission-card').hidden=lesson!==2;renderMissions();
+  for(const [id,k] of [['lesson-time','time'],['lesson-title','title'],['lesson-question','question'],['lesson-concept-text','concept']])show(id,()=>t(`lesson.${lesson}.${k}`));
+  const d=lesson===2?'lesson2':'balanced';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));$('mission-card').hidden=lesson!==2;renderMissions();
   if(user){if(lesson===1){setRobot('kinetic');changeMode('tilt');changeTab('build');}else changeMode('drive');persist();}
 }
 document.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>setLesson(+b.dataset.lesson));
 // Status carries a label as well as a color, so it never depends on color alone.
 function renderMissions(){
-  $('mission-list').innerHTML=MISSIONS.map(m=>{const done=missionsDone.includes(m.id);return `<button class="mission" data-mission="${m.id}" aria-pressed="${mission===m.id}"><span>${esc(m.title)}<small>${esc(ROBOTS[m.robot].label)} · ${esc(TERRAINS[m.terrain].label)} ground</small></span><span class="mission-status${done?' done':''}">${done?'DONE ✓':'TO DO'}</span></button>`;}).join('');
+  $('mission-list').innerHTML=MISSIONS.map(m=>{const done=missionsDone.includes(m.id);return `<button class="mission" data-mission="${m.id}" aria-pressed="${mission===m.id}"><span>${esc(mt(m).title)}<small>${esc(t('missions.ground',{robot:robotLabel(m.robot),terrain:terrainLower(m.terrain)}))}</small></span><span class="mission-status${done?' done':''}">${t(done?'missions.done':'missions.todo')}</span></button>`;}).join('');
   document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>loadMission(b.dataset.mission));
-  const m=missionById(mission);$('mission-goal').textContent=m?m.goal:'Pick a mission. Each starter script falls a little short on purpose. The judge uses the true position, which your program never sees.';
+  show('mission-goal',()=>{const m=missionById(mission);return m?mt(m).goal:t('missions.pick');});
 }
 function loadMission(id){
   const m=missionById(id);if(!m)return;mission=id;setRobot(m.robot);setTerrain(m.terrain);changeMode('drive');
-  $('code-editor').value=m.starter;updateLines();renderMissions();persist();changeTab('code');
-  $('discovery-title').textContent=`Mission: ${m.title}`;$('discovery-copy').textContent=m.goal;
-  toast('Mission loaded into the editor. Run it, then improve it.');
+  $('code-editor').value=mt(m).starter;updateLines();renderMissions();persist();changeTab('code');
+  discover(()=>t('discovery.mission',{title:mt(m).title}),()=>mt(m).goal);
+  toast(t('toast.missionLoaded'));
 }
-function reset(){state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};sim=null;$('stage-outcome').hidden=true;$('code-error').hidden=true;$('code-progress').textContent='Edit the script, then run your experiment.';setRunButton();updateTelemetry();needsRender=true;}
-function setRunButton(){const running=state.status==='running',paused=state.status==='paused';$('run').innerHTML=icon(running?'pause':'play')+`<span id="run-text">${running?'Pause':paused?'Resume':'Run experiment'}</span>`;$('scene-status').innerHTML=`<i></i>${running?'Experiment in progress':paused?'Experiment paused':state.status==='done'?'Experiment complete':'Ready to experiment'}`;}
-$('reset').onclick=()=>{reset();toast('Experiment reset. Your design is ready.');};
+function reset(){state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};sim=null;$('stage-outcome').hidden=true;$('code-error').hidden=true;show('code-progress',()=>t('code.idle'));setRunButton();updateTelemetry();needsRender=true;}
+function setRunButton(){const running=state.status==='running',paused=state.status==='paused';$('run').innerHTML=icon(running?'pause':'play')+`<span id="run-text">${t(running?'run.pause':paused?'run.resume':'run.start')}</span>`;$('scene-status').innerHTML=`<i></i>${t(running?'status.running':paused?'status.paused':state.status==='done'?'status.done':'status.ready')}`;}
+$('reset').onclick=()=>{reset();toast(t('toast.reset'));};
 $('run').onclick=()=>{
   if(state.status==='running'){state.status='paused';setRunButton();return;}
   if(state.status==='paused'){state.status='running';setRunButton();return;}
   reset();
   if(mode==='drive'){
-    let program;try{program=parseProgram($('code-editor').value);}catch(e){changeTab('code');$('code-error').textContent=e.message;$('code-error').hidden=false;toast('Check the highlighted program message.');return;}
-    if(!tb3()&&!balance(p,0).stable){toast('Your rover is already outside its support polygon. Balance the payload before driving.');return;}
+    let program;try{program=parseProgram($('code-editor').value);}catch(e){changeTab('code');show('code-error',()=>e.key?t('parse.'+e.key,{line:e.line,...e.params}):e.message);$('code-error').hidden=false;toast(t('toast.checkProgram'));return;}
+    if(!tb3()&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
     sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0});
   }
   state.status='running';state.runDesign={...p};state.minMargin=balance(p,0).margin;state.runPrediction=prediction;setRunButton();needsRender=true;
 };
-function finish(success,message){
+// key and params name the outcome message, so it can be shown again in another language.
+function finish(success,key,params={}){
+  const message=()=>t(key,params);
   state.status='done';state.l=0;state.r=0;setRunButton();
-  $('stage-outcome').hidden=false;$('stage-outcome').classList.toggle('failed',!success);$('stage-outcome').textContent=message;
-  if(mode==='drive')$('code-progress').textContent=`${message} · ${sim.time.toFixed(1)} s`;
+  $('stage-outcome').hidden=false;$('stage-outcome').classList.toggle('failed',!success);show('stage-outcome',message);
+  if(mode==='drive'){const time=sim.time.toFixed(1);show('code-progress',()=>t('code.finished',{message:message(),time}));}
   // A mission is judged only on the robot and ground it was written for, using the simulator's ground truth.
   const m=mode==='drive'&&lesson===2?missionById(mission):null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain?m.judge(sim):null;
   if(judged?.pass&&!missionsDone.includes(m.id))missionsDone.push(m.id);
   const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
-  const record={id:Date.now(),mode,design:{...state.runDesign},success,message,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
+  const record={id:Date.now(),mode,design:{...state.runDesign},success,message:message(),messageKey:key,messageParams:params,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
   if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;}
   records.unshift(record);records=records.slice(0,30);persist();renderResults();if(tab==='plots')renderPlots();
-  $('discovery-title').textContent=mode==='tilt'?(success?'Your rover held its balance. What could you change next?':'The gravity line crossed the edge of the support polygon.'):'Your instructions became a path, and your sensors recorded it.';
-  $('discovery-copy').textContent=mode==='tilt'?(success?'Try increasing the payload height while keeping everything else the same. Can you find the tipping point?':'Try lowering the payload, widening the wheel spacing, or shifting the load uphill. Change one thing and test again.'):'Open Plots to compare the encoder odometry with the true path. Then try the same script on slippery ground.';
+  const d=mode==='tilt'?(success?'tiltPass':'tiltFail'):'drive';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));
   if(judged){
-    $('discovery-title').textContent=judged.pass?`Mission complete: ${m.title}.`:`Not yet: ${m.title}.`;
-    $('discovery-copy').textContent=judged.pass?`${judged.text} Try another mission next.`:`${judged.text} ${m.lesson}`;
-    toast(judged.pass?'Mission complete!':'Not yet. The hint is below the stage.');renderMissions();
-  }else if(m)$('discovery-copy').textContent=`This run was not judged. “${m.title}” needs the ${ROBOTS[m.robot].label} on ${TERRAINS[m.terrain].label.toLowerCase()} ground.`;
+    const result=()=>judged.key==='judge.early'?t('judge.early',{message:message()}):t(judged.key,judged.params);
+    discover(()=>t(judged.pass?'discovery.missionPass':'discovery.missionFail',{title:mt(m).title}),()=>judged.pass?t('discovery.missionPassCopy',{result:result()}):`${result()} ${mt(m).lesson}`);
+    toast(t(judged.pass?'toast.missionPass':'toast.missionFail'));renderMissions();
+  }else if(m)show('discovery-copy',()=>t('discovery.notJudged',{title:mt(m).title,robot:robotLabel(m.robot),terrain:terrainLower(m.terrain)}));
 }
 function tick(dt){
   if(state.status==='running'){
     state.time+=dt;
     if(mode==='tilt'){
       const threshold=criticalAngle(p);state.angle=Math.min(p.target,state.angle+dt*5);
-      if(state.angle>=threshold){state.angle=threshold;state.targetTip=1;state.minMargin=Math.min(state.minMargin,0);finish(false,`Static support lost at ${threshold.toFixed(1)}°`);}
-      else{state.minMargin=Math.min(state.minMargin,balance(p,state.angle).margin);if(state.angle>=p.target)finish(true,`Balanced at ${p.target}°. Nice work.`);}
-    }else{sim.advance(dt);if(sim.status==='done')finish(sim.success,sim.message);else if(tab==='plots'&&performance.now()-lastPlot>250)renderPlots();}
+      if(state.angle>=threshold){state.angle=threshold;state.targetTip=1;state.minMargin=Math.min(state.minMargin,0);finish(false,'tilt.lost',{angle:threshold.toFixed(1)});}
+      else{state.minMargin=Math.min(state.minMargin,balance(p,state.angle).margin);if(state.angle>=p.target)finish(true,'tilt.balanced',{angle:p.target});}
+    }else{sim.advance(dt);if(sim.status==='done')finish(sim.success,sim.messageKey,sim.messageParams);else if(tab==='plots'&&performance.now()-lastPlot>250)renderPlots();}
     updateTelemetry();needsRender=true;
   }
   if(Math.abs(state.tip-state.targetTip)>.001){state.tip+=(state.targetTip-state.tip)*Math.min(1,dt*4);needsRender=true;}
@@ -156,80 +167,83 @@ function setMargin(m){$('metric-margin').innerHTML=`${m>=0?'+':''}${(m*100).toFi
 function updateTelemetry(){
   if(mode==='drive'){
     const v=view();$('metric-mass').innerHTML=`${v.speed.toFixed(2)} <small>m/s</small>`;$('metric-height').innerHTML=`${v.maxSlip.toFixed(2)} <small>m/s</small>`;setMargin(v.margin);$('metric-tilt').innerHTML=`${v.range.toFixed(2)} <small>m</small>`;
-    if(sim&&state.status==='running')$('code-progress').textContent=`Executing line ${sim.line} · ${sim.time.toFixed(1)} s · Front distance ${sim.range.toFixed(2)} m`;
+    if(sim&&state.status==='running'){const line=sim.line,time=sim.time.toFixed(1),range=sim.range.toFixed(2);show('code-progress',()=>t('code.running',{line,time,range}));}
     return;
   }
   const b=balance(p,state.angle);$('metric-mass').innerHTML=`${b.com.mass.toFixed(1)} <small>kg</small>`;$('metric-height').innerHTML=`${(b.com.y*100).toFixed(1)} <small>cm</small>`;
   setMargin(b.margin);$('metric-tilt').innerHTML=`${state.angle.toFixed(1)}<small>°</small>`;
 }
+// Saved runs carry a message key; older runs only have their English message.
+const recordMessage=r=>typeof r.messageKey==='string'&&r.messageParams&&typeof r.messageParams==='object'?t(r.messageKey,r.messageParams):r.message;
 function renderResults(){
   $('result-count').textContent=records.length;
-  if(!records.length){$('results-list').innerHTML='<div class="empty-state">Your notebook starts with a question.<br>Make a prediction and run your first experiment.<br><button class="text-button" id="back-build">Back to the builder →</button></div>';$('back-build').onclick=()=>changeTab('build');return;}
-  $('results-list').innerHTML=records.map((r,i)=>`<article class="result-card"><div class="result-card-top"><h4>${r.mode==='tilt'?'Ramp balance test':'Rover program'} <span style="color:#a5afb9;font-size:9px"> / ${records.length-i}</span></h4><span class="result-badge ${r.success?'':'fail'}">${r.success?'COMPLETED':r.mode==='tilt'?'TIPPED':'STOPPED'}</span></div><p>${esc(r.message)} ${r.mode==='tilt'?(r.prediction?`Your prediction: <strong>${r.prediction==='stable'?'it would hold':'it would tip'}</strong>. ${((r.prediction==='stable')===r.success)?'Your prediction matched.':'A useful surprise—try changing one variable.'}`:'No prediction recorded. Make one before your next test.'):''}</p><div class="result-specs">${robotOf(r)==='turtlebot3'?'TurtleBot3 Waffle Pi':`Wheel spacing ${Number(r.design.width)} cm · Payload ${Number(r.design.mass).toFixed(1)} kg · Height ${Number(r.design.height)} cm · Offset ${Number(r.design.offset)} cm`}${r.mode==='drive'?` · ${TERRAINS[terrainOf(r)].label} terrain · ${Number(r.time).toFixed(1)} s${Number.isFinite(r.odomError)?` · Odometry error ${(r.odomError*100).toFixed(1)} cm`:''}${r.mission&&missionById(r.mission)?` · Mission “${esc(missionById(r.mission).title)}”: ${r.missionPass?'passed':'not yet'}`:''}`:` · Target ${Number(r.design.target)}°`}</div><div class="result-actions"><button class="text-button" data-restore="${i}">Restore this setup ↗</button>${r.mode==='drive'?`<button class="text-button" data-plot="${i}">Open plots ↗</button>`:''}</div></article>`).join('');
-  document.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{const r=records[+b.dataset.restore];reset();p={...DEFAULT,...r.design};setRobot(robotOf(r));changeMode(r.mode);if(r.mode==='drive')setTerrain(terrainOf(r));if(r.code){$('code-editor').value=r.code;updateLines();}updateInputs();updateTelemetry();persist();changeTab(r.mode==='drive'?'code':'build');toast('Experiment setup restored.');});
+  if(!records.length){$('results-list').innerHTML=`<div class="empty-state">${t('results.empty')}<br><button class="text-button" id="back-build">${t('results.backBuild')}</button></div>`;$('back-build').onclick=()=>changeTab('build');return;}
+  $('results-list').innerHTML=records.map((r,i)=>`<article class="result-card"><div class="result-card-top"><h4>${t(r.mode==='tilt'?'results.ramp':'results.program')} <span style="color:#a5afb9;font-size:9px"> / ${records.length-i}</span></h4><span class="result-badge ${r.success?'':'fail'}">${t(r.success?'results.completed':r.mode==='tilt'?'results.tipped':'results.stopped')}</span></div><p>${esc(recordMessage(r))} ${r.mode==='tilt'?(r.prediction?`${t('results.prediction',{prediction:t(r.prediction==='stable'?'results.predHold':'results.predTip')})} ${t(((r.prediction==='stable')===r.success)?'results.matched':'results.surprise')}`:t('results.noPrediction')):''}</p><div class="result-specs">${robotOf(r)==='turtlebot3'?robotLabel('turtlebot3'):t('results.kineticSpecs',{width:Number(r.design.width),mass:Number(r.design.mass).toFixed(1),height:Number(r.design.height),offset:Number(r.design.offset)})}${r.mode==='drive'?`${t('results.driveSpecs',{terrain:terrainLower(terrainOf(r)),time:Number(r.time).toFixed(1)})}${Number.isFinite(r.odomError)?t('results.odomError',{error:(r.odomError*100).toFixed(1)}):''}${r.mission&&missionById(r.mission)?t('results.mission',{title:esc(mt(missionById(r.mission)).title),status:t(r.missionPass?'results.passed':'results.notYet')}):''}`:t('results.target',{target:Number(r.design.target)})}</div><div class="result-actions"><button class="text-button" data-restore="${i}">${t('results.restore')}</button>${r.mode==='drive'?`<button class="text-button" data-plot="${i}">${t('results.openPlots')}</button>`:''}</div></article>`).join('');
+  document.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{const r=records[+b.dataset.restore];reset();p={...DEFAULT,...r.design};setRobot(robotOf(r));changeMode(r.mode);if(r.mode==='drive')setTerrain(terrainOf(r));if(r.code){$('code-editor').value=r.code;updateLines();}updateInputs();updateTelemetry();persist();changeTab(r.mode==='drive'?'code':'build');toast(t('toast.restored'));});
   document.querySelectorAll('[data-plot]').forEach(b=>b.onclick=()=>{plotRunId=records[+b.dataset.plot].id;changeTab('plots');});
 }
 // Plots come from the live run, or are regenerated from a saved run's design, terrain, script, and seed.
 function plotSource(){
-  if(sim&&['running','paused'].includes(state.status))return {sim,label:'Current run (recording)',name:'current'};
+  if(sim&&['running','paused'].includes(state.status))return {sim,label:t('plots.live'),name:'current'};
   const drives=records.filter(r=>r.mode==='drive');if(!drives.length)return null;
   const r=drives.find(x=>x.id===plotRunId)||drives[0],n=records.length-records.indexOf(r);plotRunId=r.id;
   if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
-  const entry=plotCache.get(r.id);return {sim:entry.sim,replayed:entry.replayed,record:r,label:`Run ${n}`,name:`run-${n}`};
+  const entry=plotCache.get(r.id);return {sim:entry.sim,replayed:entry.replayed,record:r,label:t('plots.runLabel',{n}),name:`run-${n}`};
 }
 function plotSpecs(s){
-  const L=s.log,t=L.t,[blue,orange,purple,green]=COLORS,deg=a=>a.map(v=>v*180/Math.PI),xlabel='Time (s)';
-  const lr=(title,ylabel,unit,digits,a,b)=>({title,xlabel,ylabel,unit,digits,series:[{label:'Left',x:t,y:a,color:blue},{label:'Right',x:t,y:b,color:orange}]});
-  const obstacle={label:'Obstacle',x0:OBSTACLE.z-OBSTACLE.halfZ-s.start.z,x1:OBSTACLE.z+OBSTACLE.halfZ-s.start.z,y0:OBSTACLE.x-OBSTACLE.halfX-s.start.x,y1:OBSTACLE.x+OBSTACLE.halfX-s.start.x};
+  const L=s.log,time=L.t,[blue,orange,purple,green]=COLORS,deg=a=>a.map(v=>v*180/Math.PI),xlabel=t('plot.time');
+  const lr=(title,ylabel,unit,digits,a,b)=>({title,xlabel,ylabel,unit,digits,series:[{label:t('plot.left'),x:time,y:a,color:blue},{label:t('plot.right'),x:time,y:b,color:orange}]});
+  const obstacle={label:t('plot.obstacle'),x0:OBSTACLE.z-OBSTACLE.halfZ-s.start.z,x1:OBSTACLE.z+OBSTACLE.halfZ-s.start.z,y0:OBSTACLE.x-OBSTACLE.halfX-s.start.x,y1:OBSTACLE.x+OBSTACLE.halfX-s.start.x};
   // Desired = the commanded motion integrated in time, as in Lab 1. It is a reference line, so it wears ink, not a series hue.
   const scan=s.scans.at(-1),hits=scan.ranges.map((r,i)=>[i,r]).filter(([,r])=>r>0),gaps=a=>a.map(v=>v>0?v:NaN);
   const ink='#262626',dotted=[2,3],gap=(ax,ay,bx,by)=>ax.map((v,i)=>Math.hypot(v-bx[i],ay[i]-by[i]));
   return [
-    {title:'Trajectory (top view)',kind:'xy',xlabel:'X, forward from start (m)',ylabel:'Y, to the left (m)',digits:3,series:[{label:'True path',x:L.trueX,y:L.trueY,t,color:orange},{label:'Encoder odometry',x:L.odomX,y:L.odomY,t,color:blue,dash:true},{label:'Filtered odometry',x:L.fusedX,y:L.fusedY,t,color:green},{label:'Desired (commanded)',x:L.desX,y:L.desY,t,color:ink,dash:dotted}],patches:[obstacle]},
-    {title:'Position error',xlabel,ylabel:'Distance (m)',unit:'m',digits:3,series:[{label:'Odometry vs desired (what Lab 1 measures)',x:t,y:gap(L.odomX,L.odomY,L.desX,L.desY),color:blue},{label:'True vs desired (robot off its command)',x:t,y:gap(L.trueX,L.trueY,L.desX,L.desY),color:orange},{label:'Odometry vs true (estimate error)',x:t,y:gap(L.odomX,L.odomY,L.trueX,L.trueY),color:purple},{label:'Filtered vs true',x:t,y:gap(L.fusedX,L.fusedY,L.trueX,L.trueY),color:green}]},
-    {title:'Heading',xlabel,ylabel:'Yaw (°)',unit:'°',digits:1,series:[{label:'True',x:t,y:deg(L.trueYaw),color:orange},{label:'Encoder odometry',x:t,y:deg(L.odomYaw),color:blue,dash:true},{label:'Gyro integration',x:t,y:deg(L.gyroYaw),color:purple},{label:'Complementary filter',x:t,y:deg(L.fusedYaw),color:green},{label:'Desired',x:t,y:deg(L.desYaw),color:ink,dash:dotted}]},
-    {title:'Wheel speed',xlabel,ylabel:'ω (rad/s)',unit:'rad/s',digits:2,series:[{label:'Left command',x:t,y:L.cmdL,color:blue,dash:true},{label:'Right command',x:t,y:L.cmdR,color:orange,dash:true},{label:'Left encoder',x:t,y:L.speedL,color:blue},{label:'Right encoder',x:t,y:L.speedR,color:orange}]},
-    lr('Wheel slip (ground truth)','Slip speed (m/s)','m/s',3,L.slipL,L.slipR),
-    lr('Encoder counts','Counts','',0,L.encL,L.encR),
-    lr('Motor current','Current (A)','A',2,L.currentL,L.currentR),
-    {title:'Gyroscope',xlabel,ylabel:'Angular rate (rad/s)',unit:'rad/s',digits:4,series:[{label:'x · roll rate',x:t,y:L.gx,color:blue},{label:'y · pitch rate',x:t,y:L.gy,color:orange},{label:'z · yaw rate',x:t,y:L.gz,color:purple}]},
-    {title:'Accelerometer x, y',xlabel,ylabel:'Acceleration (m/s²)',unit:'m/s²',digits:3,series:[{label:'x · forward',x:t,y:L.ax,color:blue},{label:'y · left',x:t,y:L.ay,color:orange}]},
-    {title:'Accelerometer z',xlabel,ylabel:'Acceleration (m/s²)',unit:'m/s²',digits:3,series:[{label:'z · up',x:t,y:L.az,color:purple}]},
-    {title:`LiDAR scan at t = ${scan.t.toFixed(1)} s`,kind:'polar',rmax:LIDAR.max,digits:3,caption:'0° = rover front, counterclockwise. Gaps = no return.',series:[{label:'Range',x:hits.map(h=>h[0]),y:hits.map(h=>h[1]),color:blue}]},
-    {title:'LiDAR ranges',xlabel,ylabel:'Range (m)',unit:'m',digits:3,series:[{label:'Front (0°)',x:t,y:gaps(L.lidarFront),color:blue},{label:'Left (90°)',x:t,y:gaps(L.lidarLeft),color:orange},{label:'Right (270°)',x:t,y:gaps(L.lidarRight),color:purple}]}
+    {title:t('plot.trajectory'),kind:'xy',xlabel:t('plot.xForward'),ylabel:t('plot.yLeft'),digits:3,series:[{label:t('plot.truePath'),x:L.trueX,y:L.trueY,t:time,color:orange},{label:t('plot.encoderOdometry'),x:L.odomX,y:L.odomY,t:time,color:blue,dash:true},{label:t('plot.filteredOdometry'),x:L.fusedX,y:L.fusedY,t:time,color:green},{label:t('plot.desiredCommanded'),x:L.desX,y:L.desY,t:time,color:ink,dash:dotted}],patches:[obstacle]},
+    {title:t('plot.positionError'),xlabel,ylabel:t('plot.distance'),unit:'m',digits:3,series:[{label:t('plot.errOdomDesired'),x:time,y:gap(L.odomX,L.odomY,L.desX,L.desY),color:blue},{label:t('plot.errTrueDesired'),x:time,y:gap(L.trueX,L.trueY,L.desX,L.desY),color:orange},{label:t('plot.errOdomTrue'),x:time,y:gap(L.odomX,L.odomY,L.trueX,L.trueY),color:purple},{label:t('plot.errFilteredTrue'),x:time,y:gap(L.fusedX,L.fusedY,L.trueX,L.trueY),color:green}]},
+    {title:t('plot.heading'),xlabel,ylabel:t('plot.yaw'),unit:'°',digits:1,series:[{label:t('plot.true'),x:time,y:deg(L.trueYaw),color:orange},{label:t('plot.encoderOdometry'),x:time,y:deg(L.odomYaw),color:blue,dash:true},{label:t('plot.gyroIntegration'),x:time,y:deg(L.gyroYaw),color:purple},{label:t('plot.complementary'),x:time,y:deg(L.fusedYaw),color:green},{label:t('plot.desired'),x:time,y:deg(L.desYaw),color:ink,dash:dotted}]},
+    {title:t('plot.wheelSpeed'),xlabel,ylabel:t('plot.omega'),unit:'rad/s',digits:2,series:[{label:t('plot.leftCommand'),x:time,y:L.cmdL,color:blue,dash:true},{label:t('plot.rightCommand'),x:time,y:L.cmdR,color:orange,dash:true},{label:t('plot.leftEncoder'),x:time,y:L.speedL,color:blue},{label:t('plot.rightEncoder'),x:time,y:L.speedR,color:orange}]},
+    lr(t('plot.slip'),t('plot.slipSpeed'),'m/s',3,L.slipL,L.slipR),
+    lr(t('plot.encoderCounts'),t('plot.counts'),'',0,L.encL,L.encR),
+    lr(t('plot.current'),t('plot.currentAxis'),'A',2,L.currentL,L.currentR),
+    {title:t('plot.gyro'),xlabel,ylabel:t('plot.angularRate'),unit:'rad/s',digits:4,series:[{label:t('plot.roll'),x:time,y:L.gx,color:blue},{label:t('plot.pitch'),x:time,y:L.gy,color:orange},{label:t('plot.yawRate'),x:time,y:L.gz,color:purple}]},
+    {title:t('plot.accelXY'),xlabel,ylabel:t('plot.accel'),unit:'m/s²',digits:3,series:[{label:t('plot.forward'),x:time,y:L.ax,color:blue},{label:t('plot.leftAxis'),x:time,y:L.ay,color:orange}]},
+    {title:t('plot.accelZ'),xlabel,ylabel:t('plot.accel'),unit:'m/s²',digits:3,series:[{label:t('plot.up'),x:time,y:L.az,color:purple}]},
+    {title:t('plot.lidarScan',{t:scan.t.toFixed(1)}),kind:'polar',rmax:LIDAR.max,digits:3,caption:t('plot.lidarCaption'),series:[{label:t('plot.range'),x:hits.map(h=>h[0]),y:hits.map(h=>h[1]),color:blue}]},
+    {title:t('plot.lidarRanges'),xlabel,ylabel:t('plot.rangeAxis'),unit:'m',digits:3,series:[{label:t('plot.front0'),x:time,y:gaps(L.lidarFront),color:blue},{label:t('plot.left90'),x:time,y:gaps(L.lidarLeft),color:orange},{label:t('plot.right270'),x:time,y:gaps(L.lidarRight),color:purple}]}
   ];
 }
 function renderPlots(){
   lastPlot=performance.now();const drives=records.filter(r=>r.mode==='drive'),src=plotSource(),live=src&&!src.record;
-  $('plot-run').innerHTML=(live?'<option value="live">Current run (recording)</option>':'')+drives.map(r=>`<option value="${r.id}">Run ${records.length-records.indexOf(r)} · ${TERRAINS[terrainOf(r)].label} · ${r.success?'completed':'stopped'}</option>`).join('');
+  $('plot-run').innerHTML=(live?`<option value="live">${t('plots.live')}</option>`:'')+drives.map(r=>`<option value="${r.id}">${t('plots.runOption',{n:records.length-records.indexOf(r),terrain:terrainLabel(terrainOf(r)),outcome:t(r.success?'plots.completed':'plots.stopped')})}</option>`).join('');
   $('plot-run').value=live?'live':String(plotRunId);$('plot-run').disabled=live||!drives.length;$('plot-csv').disabled=$('plot-lidar').disabled=!src?.sim;
   $('plots-empty').hidden=!!src?.sim;$('plot-grid').hidden=!src?.sim;$('plots-meta').hidden=!src?.sim;
-  if(!src?.sim){$('plots-empty').textContent=src?'This saved run could not be replayed. Restore it and run it again.':'No sensor data yet. Run a program from the Code tab and every sensor will be recorded here.';return;}
+  if(!src?.sim){$('plots-empty').textContent=t(src?'plots.emptyReplay':'plots.emptyNone');return;}
   const specs=plotSpecs(src.sim);while(figures.length<specs.length)figures.push(new Figure($('plot-grid')));
   if(src.sim!==plotted){plotted=src.sim;figures.forEach(f=>f.setCursor(null));}
   specs.forEach((spec,i)=>figures[i].set(spec));
   const s=src.sim,error=s.summary().odomError,spec=ROBOTS[s.robot];
-  $('plots-meta').innerHTML=`<strong>${esc(src.label)}</strong> · ${esc(spec.label)} · ${esc(TERRAINS[s.terrain].surface)} · Encoders ${spec.encoderCpr} counts/rev · IMU ${spec.imu.rate} Hz${s.robot==='turtlebot3'?' with noise and offsets measured on one TurtleBot3':' with MPU-6050-class noise and bias'} · Odometry error ${(error*100).toFixed(1)} cm${src.replayed?' · Replayed from the saved setup and seed':''}<br>In MATLAB: <code>T = readtable('kinetic-${src.name}.csv'); plot(T.t_s, T.gyro_z_rad_s)</code>`;
+  $('plots-meta').innerHTML=t('plots.meta',{label:esc(src.label),robot:esc(robotLabel(s.robot)),surface:esc(t('surface.'+s.terrain)),cpr:spec.encoderCpr,rate:spec.imu.rate,imu:t(s.robot==='turtlebot3'?'plots.imuTb3':'plots.imuKinetic'),error:(error*100).toFixed(1),replayed:src.replayed?t('plots.replayed'):'',name:src.name});
 }
-$('plot-lidar').onclick=()=>{const src=plotSource();if(!src?.sim)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toScanCsv(src.sim.scans)],{type:'text/csv'}));a.download=`kinetic-${src.name}-lidar.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast(`Saved kinetic-${src.name}-lidar.csv: one row per scan, 0 means no return.`);};
+$('plot-lidar').onclick=()=>{const src=plotSource();if(!src?.sim)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toScanCsv(src.sim.scans)],{type:'text/csv'}));a.download=`kinetic-${src.name}-lidar.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast(t('toast.lidarCsv',{file:`kinetic-${src.name}-lidar.csv`}));};
 $('plot-run').onchange=e=>{plotRunId=Number(e.target.value);renderPlots();};
-$('plot-csv').onclick=()=>{const src=plotSource();if(!src?.sim)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toCsv(src.sim.log)],{type:'text/csv'}));a.download=`kinetic-${src.name}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast(`Saved kinetic-${src.name}.csv. Every column name includes its unit.`);};
+$('plot-csv').onclick=()=>{const src=plotSource();if(!src?.sim)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toCsv(src.sim.log)],{type:'text/csv'}));a.download=`kinetic-${src.name}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast(t('toast.csv',{file:`kinetic-${src.name}.csv`}));};
 const modal=$('modal');
 function openModal(title,html){$('modal-eyebrow').textContent=title;$('modal-content').innerHTML=html;modal.showModal();}
-function guide(){openModal('WELCOME TO KINETIC','<h2>Your first robotics experiment.</h2><p>A robot’s structure changes how it behaves. This workbench makes that connection visible.</p><ol><li><strong>Build.</strong> Choose a preset or move the sliders to position your payload.</li><li><strong>Predict.</strong> Will your rover stay balanced at the target ramp angle?</li><li><strong>Test.</strong> Run the ramp test. Watch the orange gravity line move relative to the green support polygon.</li><li><strong>Improve.</strong> Change one variable and try again. Compare runs in Results.</li></ol><h3>Ready to make it move?</h3><p>Open <strong>Code</strong> to give the wheels instructions. Choose flat, rough, or slippery ground in the builder. After a run, open <strong>Plots</strong> to read the encoders, the IMU, and the motors.</p><p>Your design, code, and last 30 experiments are saved in this browser on this device.</p>');}
-function modelDetails(){openModal('UNDER THE HOOD','<h2>A simple model. An honest experiment.</h2><h3>Ramp experiment</h3><p>The chassis (1.8 kg), battery (0.5 kg), and payload contribute to a <strong>mass-weighted center of mass</strong>. The two drive-wheel contacts and rear caster form a triangular support polygon.</p><p>The ramp tilts about the forward axis and lifts the rover’s left side. We intersect a vertical gravity line through the center of mass with the ramp. A signed distance to the nearest polygon edge gives the <strong>balance margin</strong>. Zero means the static tipping boundary.</p><p>This is a <strong>quasi-static model with ideal grip</strong>. It assumes the wheels are held in place during a slow tilt. It does not model slipping, motor torque, deformation, impact, or dynamic balance. The falling motion illustrates loss of support; it is not a contact-physics calculation.</p><h3>Driving experiment</h3><p>The rover is a <strong>planar rigid body</strong>: it moves forward, sideways, and turns. Two <strong>12 V gear motors</strong> drive the 7.5 cm wheels. At the wheel, each motor gives 1.36 N·m at stall and 34.6 rad/s with no load. Each motor has a <strong>speed controller</strong> like real motor firmware: feedforward plus PI on encoder speed, updated 100 times per second.</p><p>Each tire pushes on the ground with a force that depends on how fast it slips. Grip peaks at 5 cm/s of slip, then falls to the sliding value. Peak and sliding friction are μ 0.90 and 0.75 on concrete, 0.65 and 0.55 on gravel, and 0.15 and 0.10 on ice. The model includes rolling resistance and caster drag. It also includes <strong>load transfer</strong>: speeding up moves weight onto the caster, and braking moves it onto the wheels. On rough ground the rover follows bumps of up to 2 cm, so slopes pull on it and the IMU tilts.</p><p><strong>Sensors.</strong> Each wheel has an encoder with 1920 counts per revolution. The IMU is MPU-6050 class, with noise, bias, and 16-bit steps. The front range sensor reaches 3 m, updates 20 times per second, and has about 1% noise. Odometry uses encoder counts only, so it drifts when a wheel slips.</p><p><strong>LiDAR.</strong> Both robots carry an LDS-01-class 2D LiDAR. It takes 360 beams at 1°, 5 scans per second, from 0.12 to 3.5 m, with ±1 cm accuracy below 0.5 m and ±3.5% beyond. Each 10 ms adds the next slice of beams from the pose at that moment, so a moving rover sees a slightly smeared scan, like a real spinning LiDAR. The scan plane stays horizontal and ignores the robot’s own body. Low walls at ±2.5 m surround the arena. The LiDAR and the front range sensor both see them and the box.</p><p><strong>Complementary filter.</strong> A fused heading combines the gyro (good for quick changes, but it drifts with bias) with the encoder heading (no drift while standing still, but wrong when wheels slip or casters drag). The time constant is alpha·T/(1 − alpha). Both errors build up slowly here, so the default alpha of 0.999 (about 10 s) works better than the textbook 0.98. The README has the comparison. Programs can change alpha with <code>filter(alpha)</code>.</p><p><strong>Limits.</strong> There is no suspension, bouncing, or jumping. If a wheel or the caster would lift, the run stops, because dynamic tipping is not simulated. The model assumes gentle slopes. A rover parked on a slope creeps a few millimeters per second, because the friction model depends on slip speed. All parameters are typical datasheet values. Nobody has measured them on a physical robot. This model is realistic, but it is not validated. Collision stopping still uses a conservative circular footprint.</p><h3>TurtleBot3 Waffle Pi</h3><p>This preset is built from the ROBOTIS datasheet: 3.3 cm wheels, 28.7 cm track, 1.8 kg, Dynamixel XM430-W210 servos, 4096-count encoders, two ball casters, and firmware limits of 0.26 m/s and 1.82 rad/s. Two values were then <strong>fitted</strong> to one robot’s ME425 lab measurements. A '+TB3_FIT.battery+' V battery reproduces the 333° circle at v = 0.20 m/s, where the outer wheel reaches the motor’s speed limit. Ball-caster friction of '+TB3_FIT.ballFriction+' reproduces about 9.4° of encoder-minus-IMU drift per turn in place.</p><p>Without further tuning, the model then <strong>predicts</strong> the other circles within the ±3° reading error and the 0.47–0.50 rad/s gyro reading of a 0.5 rad/s spin. It also predicts that odometry overstates straight-line distance by about 3%, which a tape measure could test. It <strong>does not reproduce</strong> the shorter forward legs of the straight-line test. That asymmetry has no cause in this model.</p><p>This is one robot, one floor, and one battery charge, with values read from plots. It is a calibration, not a general validation.</p>');}
-function commandReference(){openModal('ROVER SCRIPT REFERENCE','<h2>Small instructions. Real movement.</h2><p><code>wheels(left, right)</code> sets each wheel’s target speed in rad/s, from −10 to 10. Each motor’s speed controller pushes its wheel toward the target. This takes a moment, and on slippery ground a wheel can spin faster than the rover moves. Equal positive speeds drive forward. A faster right wheel turns left. A negative value reverses that wheel.</p><p><code>drive(v, w)</code> commands the whole rover the way <code>/cmd_vel</code> does in ROS: forward speed <code>v</code> in m/s (−0.75 to 0.75) and turn rate <code>w</code> in rad/s (−6 to 6), positive to the left. The rover sets the right wheel to (v + w·W/2)/R and the left wheel to (v − w·W/2)/R, where W is the wheel spacing. If a wheel would need more than 10 rad/s, both wheels slow down together, so the curve keeps its radius.</p><p><code>wait(seconds)</code> lets the simulation advance, from 0.05 to 10 seconds per wait. Wheel commands remain active while waiting.</p><p><code>stop()</code> sets both targets to zero, so the controller brakes. Reaching the end of the program also brakes the robot to a stop. Sudden full-speed reversals can tip a tall rover.</p><pre>drive(0, 1)\nwhile heading &lt; 90\n  wait(0.05)\nend\nstop()</pre><p><code>repeat N</code> repeats a block 1–20 times. <code>while sensor &lt; N</code> repeats a block for as long as the test is true. <code>if sensor &lt; N</code> runs a block once, and <code>else</code> is optional. Tests can use <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code> or <code>&gt;=</code>. Close each block with <code>end</code>. Use <code>#</code> for comments.</p><h3>Sensors your program can read</h3><ul><li><code>distance</code>: front range sensor, in meters. It updates 20 times per second, has about 1% noise, and reads 3 when nothing is ahead.</li><li><code>heading</code>: IMU heading in degrees, positive to the left. It integrates the gyro, so it drifts slowly.</li><li><code>odom_heading</code>: heading from the wheel encoders in degrees. It goes wrong when wheels slip.</li><li><code>gyro_z</code>: IMU turn rate in rad/s.</li><li><code>encoder_left</code>, <code>encoder_right</code>: encoder counts since the start, 1920 per wheel revolution.</li><li><code>odom_x</code>, <code>odom_y</code>: encoder odometry position in meters. x is forward from the start and y is to the left.</li><li><code>time</code>: seconds since the run started.</li><li><code>lidar_front</code>, <code>lidar_left</code>, <code>lidar_back</code>, <code>lidar_right</code>: 2D LiDAR range in meters at 0°, 90°, 180°, and 270°. It reads 0 when something is closer than 0.12 m, and it reads infinity when nothing is within 3.5 m.</li><li><code>lidar_min</code>, <code>lidar_min_angle</code>: the closest LiDAR return in meters, and its direction in degrees counterclockwise from the front.</li><li><code>fused_heading</code>, <code>fused_x</code>, <code>fused_y</code>: heading in degrees and position in meters from the complementary filter.</li></ul><h3>Complementary filter</h3><p><code>filter(alpha)</code> sets how much the fused heading trusts the gyro, from 0 to 1. Every 0.01 s, the fused heading becomes alpha × (fused heading + gyro turn) + (1 − alpha) × encoder heading. With 1 it trusts only the gyro, and with 0 only the encoders. The default is 0.999, which hands over from gyro to encoders over about 10 s. Filtered odometry adds up encoder distance along the fused heading.</p><p>The program sees the latest sensor sample, never the true position. Sensors update every 0.01 s, the range sensor every 0.05 s, and the LiDAR every 0.2 s, so a loop reacts a little late. Put a short <code>wait</code> in every loop. A loop without one stops with an instruction-limit message. Runs stop after 30 seconds.</p><h3>A bridge to your next tools</h3><p>This is a teaching language. Later, the same wheel-command, sensor-reading, loop, and timing concepts can be expressed in MATLAB or a ROS 2 controller. Live MATLAB and ROS 2 connections are not part of this first lab.</p>');}
-function learningPath(){openModal('YOUR LEARNING PATH','<h2>One discovery at a time.</h2><div class="roadmap-item"><span>01</span><div><strong>Structure & balance</strong><small>Center of mass · Support polygon · Ramp tests</small></div><b>IN THIS LAB</b></div><div class="roadmap-item"><span>02</span><div><strong>Make a rover move</strong><small>Wheel speeds · Terrain · Encoders, IMU & plots</small></div><b>IN THIS LAB</b></div><div class="roadmap-item"><span>03</span><div><strong>Movement in every direction</strong><small>Omniwheels · Holonomic movement</small></div><b class="later">PLANNED</b></div><div class="roadmap-item"><span>04</span><div><strong>Reach, pick & place</strong><small>Industrial arms · Joints · Torque</small></div><b class="later">PLANNED</b></div><div class="roadmap-item"><span>05</span><div><strong>A balancing act</strong><small>Humanoids · Standing · Weight shifts</small></div><b class="later">PLANNED</b></div>');}
+function guide(){openModal(t('modal.guide.eyebrow'),t('modal.guide.html'));}
+function modelDetails(){openModal(t('modal.model.eyebrow'),t('modal.model.html',{battery:TB3_FIT.battery,friction:TB3_FIT.ballFriction}));}
+function commandReference(){openModal(t('modal.reference.eyebrow'),t('modal.reference.html'));}
+function learningPath(){openModal(t('modal.path.eyebrow'),t('modal.path.html'));}
 ['guide','help'].forEach(id=>$(id).onclick=guide);$('lab-nav').onclick=()=>{changeTab('build');window.scrollTo({top:0,behavior:'smooth'});};$('lessons-nav').onclick=learningPath;
 ['notebook','notebook-nav'].forEach(id=>$(id).onclick=()=>{changeTab('results');$('results-panel').scrollIntoView({behavior:'smooth',block:'nearest'});});
-const lessonTwo=()=>openModal('EXPERIMENT 02 · WHERE AM I?','<h2>Can your rover tell where it is?</h2><p>A real robot cannot see its own position. It has to <strong>estimate</strong> it. Encoders count wheel turns, so <strong>odometry</strong> adds those turns up into a position and heading. The <strong>IMU</strong> measures how fast the body turns, and adding that up over time gives a heading that drifts slowly.</p><p>Both estimates go wrong in their own ways. Wheels slip and casters drag, and gyros have bias. In a lab you need a camera system or a tape measure to know the truth. This simulator always knows it, and the missions are judged on it. Your program never sees it.</p><ol><li><strong>Stop 20 cm from the box.</strong> The sensor and your loop react late, and braking takes distance.</li><li><strong>Turn exactly once around</strong> on the TurtleBot3. Should you trust the encoders or the IMU?</li><li><strong>Close a square on ice.</strong> Time is not distance, and wheel turns are not body turns.</li></ol><p>Each starter script falls short on purpose. Run it, open <strong>Plots</strong> to see why, change one thing, and try again.</p>');
-const lessonOne=()=>openModal('EXPERIMENT 01 · CARRY THE LOAD','<h2>Can you keep the load balanced?</h2><p>Start with the balanced rover and a 25° ramp. The green triangle joins the three places where the robot touches the surface. This is its <strong>support polygon</strong>.</p><p>The orange point is its <strong>center of mass</strong>. The dashed vertical line follows gravity to the surface. When that line reaches a polygon edge, static support is lost.</p><ol><li>Run the balanced preset.</li><li>Try the top-heavy preset at the same target angle.</li><li>Lower only the payload height and test again.</li><li>Compare your predictions and tipping angles in Results.</li></ol><p><strong>Think about it:</strong> Can changing payload height affect balance on a flat floor? What changes when the floor tilts?</p>');
+const lessonTwo=()=>openModal(t('modal.lesson2.eyebrow'),t('modal.lesson2.html'));
+const lessonOne=()=>openModal(t('modal.lesson1.eyebrow'),t('modal.lesson1.html'));
 $('lesson-details').onclick=()=>lesson===2?lessonTwo():lessonOne();
 $('model-details').onclick=modelDetails;$('code-reference').onclick=commandReference;
-$('margin-help').onclick=()=>openModal('READING YOUR ROBOT','<h2>What is balance margin?</h2><p>It is the shortest signed distance from the gravity-line intersection to an edge of the support polygon, measured along the ramp surface.</p><p><strong>Positive:</strong> inside the polygon.<br><strong>Zero:</strong> at the static tipping boundary.<br><strong>Negative:</strong> outside the polygon.</p><p>On the ramp, the margin describes the static model. While driving, it also includes acceleration. Braking moves the point forward and speeding up moves it back. If the point reaches an edge, a wheel or the caster lifts and the run stops.</p>');
-$('robot-picker').onclick=()=>{const option=(id,name,detail)=>`<button class="roadmap-item robot-option" data-robot="${id}"><span>${icon('robot')}</span><div><strong>${name}</strong><small>${detail}</small></div><b${robot===id?'':' class="later"'}>${robot===id?'SELECTED':'CHOOSE'}</b></button>`;
-  openModal('CHOOSE YOUR ROBOT','<h2>Start with the foundations.</h2>'+option('kinetic','Kinetic rover','Two driven wheels and one rear caster. Adjustable structure, ramp and driving experiments.')+option('turtlebot3','TurtleBot3 Waffle Pi','The ME425 lab robot. Calibrated to one robot’s lab measurements. Driving only.')+'<div class="roadmap-item"><div><strong>Omnidirectional mobile robot</strong><small>Compare sideways motion and wheel configurations</small></div><b class="later">PLANNED</b></div><div class="roadmap-item"><div><strong>Industrial arm</strong><small>Explore reach, joints, and payloads</small></div><b class="later">PLANNED</b></div><div class="roadmap-item"><div><strong>Humanoid</strong><small>Start with standing and weight shifts</small></div><b class="later">PLANNED</b></div><p>We’re building the lab one robot at a time. Both differential-drive robots are available in this version.</p>');
-  document.querySelectorAll('[data-robot]').forEach(b=>b.onclick=()=>{setRobot(b.dataset.robot);persist();modal.close();toast(`${ROBOTS[robot].label} selected.`);});};
+$('margin-help').onclick=()=>openModal(t('modal.margin.eyebrow'),t('modal.margin.html'));
+$('robot-picker').onclick=()=>{const option=(id,detail)=>`<button class="roadmap-item robot-option" data-robot="${id}"><span>${icon('robot')}</span><div><strong>${robotLabel(id)}</strong><small>${t(detail)}</small></div><b${robot===id?'':' class="later"'}>${t(robot===id?'robots.selected':'robots.choose')}</b></button>`;
+  const planned=(name,detail)=>`<div class="roadmap-item"><div><strong>${t(name)}</strong><small>${t(detail)}</small></div><b class="later">${t('robots.planned')}</b></div>`;
+  openModal(t('robots.eyebrow'),`<h2>${t('robots.title')}</h2>`+option('kinetic','robots.kineticDetail')+option('turtlebot3','robots.tb3Detail')+planned('robots.omni','robots.omniDetail')+planned('robots.arm','robots.armDetail')+planned('robots.humanoid','robots.humanoidDetail')+`<p>${t('robots.footer')}</p>`);
+  document.querySelectorAll('[data-robot]').forEach(b=>b.onclick=()=>{setRobot(b.dataset.robot);persist();modal.close();toast(t('toast.robotSelected',{robot:robotLabel(robot)}));});};
 $('modal-close').onclick=$('modal-done').onclick=()=>modal.close();modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)modal.close();}});
 document.addEventListener('keydown',e=>{if(e.key==='?'&&!['TEXTAREA','INPUT'].includes(document.activeElement.tagName)&&!modal.open)guide();});
 $('code-editor').value=code;
@@ -237,7 +251,7 @@ function updateLines(){$('line-numbers').textContent=$('code-editor').value.spli
 $('code-editor').addEventListener('input',()=>{if(state.status!=='idle')reset();updateLines();persist();});
 $('code-editor').addEventListener('scroll',()=>$('line-numbers').scrollTop=$('code-editor').scrollTop);
 $('code-editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const el=e.target,start=el.selectionStart;el.setRangeText('  ',start,el.selectionEnd,'end');el.dispatchEvent(new Event('input'));}});
-$('code-example').onchange=e=>{reset();$('code-editor').value=EXAMPLES[e.target.value];updateLines();persist();};
+$('code-example').onchange=e=>{reset();$('code-editor').value=example(e.target.value,language());updateLines();persist();};
 
 // Lightweight orthographic 3D renderer. Geometry and the model share SI coordinates.
 let focus={x:0,z:0},bodyFrame=null,fit={scale:1,y:.15};
@@ -300,7 +314,7 @@ function render(){
     poly([{x:-.82,y:-.009,z:-.65},{x:.82,y:-.009,z:-.65},{x:.82,y:-.009,z:.65},{x:-.82,y:-.009,z:.65}].map(ground),'#f5f6f1','#cbd3c9',1);
     for(let i=-7;i<=7;i++)line(ground({x:i*.1,y:-.008,z:-.65}),ground({x:i*.1,y:-.008,z:.65}),'#e6e9e1',.65);
     for(let i=-6;i<=6;i++)line(ground({x:-.82,y:-.008,z:i*.1}),ground({x:.82,y:-.008,z:i*.1}),'#e6e9e1',.65);
-    const A=project(ground({x:.7,y:0,z:-.55}));ctx.fillStyle='#a3ada1';ctx.font='8px monospace';ctx.fillText('TILT TABLE / '+state.angle.toFixed(1)+'°',Math.max(12,Math.min(cw-130,A.x-100)),Math.max(20,Math.min(ch-110,A.y)));
+    const A=project(ground({x:.7,y:0,z:-.55}));ctx.fillStyle='#a3ada1';ctx.font='8px monospace';ctx.fillText(t('canvas.tiltTable')+' / '+state.angle.toFixed(1)+'°',Math.max(12,Math.min(cw-130,A.x-100)),Math.max(20,Math.min(ch-110,A.y)));
   }
   // Soft footprint shadow, projected onto the supporting plane.
   const foot=tb3()&&mode==='drive'?{x:.17,z:.17,c:-.064}:{x:p.width/150,z:.28,c:0},shadow=Array.from({length:40},(_,i)=>{const a=i/40*Math.PI*2;return world({x:Math.cos(a)*foot.x,y:.001,z:foot.c+Math.sin(a)*foot.z},true);});poly(shadow,'#2f403317');
@@ -361,4 +375,16 @@ canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','Ar
 $('view-perspective').onclick=$('view-reset').onclick=()=>{yaw=VIEW_YAW;elevation=.43;zoom=1;needsRender=true;};$('view-top').onclick=()=>{yaw=Math.PI;elevation=1.5;zoom=1;needsRender=true;};$('zoom-in').onclick=()=>{zoom=Math.min(2,zoom+.15);needsRender=true;};$('zoom-out').onclick=()=>{zoom=Math.max(.45,zoom-.15);needsRender=true;};
 function frame(time){const dt=lastFrame?Math.min((time-lastFrame)/1000,.25):0;lastFrame=time;tick(dt);if(needsRender){render();needsRender=false;}requestAnimationFrame(frame);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.status==='running'){state.status='paused';setRunButton();}});
-setTerrain(terrain);setRobot(robot);setLesson(lesson,false);updateInputs();updateLines();updateTelemetry();renderResults();requestAnimationFrame(frame);
+// A language change redraws every visible text. An unedited example or mission starter follows the language.
+function applyLanguage(){
+  const l=language();document.documentElement.lang=l;document.title=t('doc.title');document.querySelector('meta[name=description]').content=t('doc.description');$('language').value=l;
+  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>el.innerHTML=t(el.dataset.i18nHtml));
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.dataset.i18nTitle));
+  for(const id of shown.keys())redraw(id);
+  $('toast').hidden=true;
+  modeText();setRunButton();updateInputs();renderMissions();renderResults();if(tab==='plots')renderPlots();needsRender=true;
+}
+$('language').onchange=e=>{setLanguage(e.target.value);const src=$('code-editor').value,next=translateCode(src,language());if(next!==src){$('code-editor').value=next;updateLines();}applyLanguage();persist();};
+setTerrain(terrain);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();requestAnimationFrame(frame);

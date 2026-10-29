@@ -11,3 +11,33 @@ export const EXAMPLES={
   lab1b:'# ME425 Lab 1, Part B: one circle at v = 0.10 m/s, w = 0.30 rad/s (T = 2π/w = 20.94 s).\n# On the TurtleBot3, change v to 0.2: the outer wheel hits the motor limit and the circle opens.\ndrive(0.1, 0.3)\nwait(10)\nwait(10)\nwait(0.94)\nstop()',
   lab1c:'# ME425 Lab 1, Part C: turn in place at 1 rad/s. Four turns fit the 30 s limit (25.13 s).\n# In Plots, compare the IMU heading with the encoder heading, and both with the truth.\ndrive(0, 1)\nwait(10)\nwait(10)\nwait(5.13)\nstop()'
 };
+// Comments in the student's language. The French comments still need a native speaker's review.
+const COMMENTS={
+  tr:{
+    turn:['İki teker hızı da rad/s cinsinden. Daha hızlı bir sağ teker sola döndürür.','Rover beklerken hareket eder.'],
+    square:['0.4 m’lik bir kare, her köşede sola dönerek. drive(v, w) her robotta ve her teker aralığında çalışır.','1 rad/s ile 90° dönüş ideal olarak π/2 = 1.57 s sürer; 1.6 s hızlanma ve yavaşlamayı telafi eder.','Yalnızca zamanlama sadece sert zeminde işe yarar. Buzda dene, sonra Deney 02’ye bak.'],
+    sensor:['distance öndeki ışın sensörüdür, metre cinsinden.','Onu her 0.1 saniyede bir oku.'],
+    gyro:['90° sola dön ve IMU yönelimine (derece) göre dur.','Sonra odom_heading’i dene ve ikisini kaygan zeminde karşılaştır.'],
+    odometry:['Tekerlek enkoderlerinin ölçtüğü 0.5 m’yi git.','Grafikler’i aç: gerçek yol aynı fikirde mi?'],
+    lidar:['LiDAR kutuyu 0.6 m önde görene kadar sür, jiroskopla çeyrek tur sola dön,','sonra LiDAR duvarı görene kadar devam et. Geçmek için tek bir boş ışın yetmez:','rover bir ışından çok daha geniştir. LiDAR saniyede 5 kez tarar.'],
+    fusion:['Tamamlayıcı filtre: filter(alpha) yönelim için jiroskopu enkoderlere karşı tartar.','filter(1) yalnızca jiroskopa, filter(0) yalnızca enkoderlere güvenir; varsayılan 0.999.','Buzda bir kare sür, sonra Grafikler’de filtrelenmiş odometriyi enkoder odometrisiyle karşılaştır.'],
+    lab1a:['ME425 Lab 1, Bölüm A: üç kez 3 s ileri, 1 s dur, 3 s geri, 1 s dur, 0.10 m/s ile.','TurtleBot3 ile dene. Grafikler’de odometriyi istenen yolla karşılaştır.'],
+    lab1b:['ME425 Lab 1, Bölüm B: v = 0.10 m/s, w = 0.30 rad/s ile bir çember (T = 2π/w = 20.94 s).','TurtleBot3’te v’yi 0.2 yap: dış teker motor sınırına dayanır ve çember açılır.'],
+    lab1c:['ME425 Lab 1, Bölüm C: 1 rad/s ile yerinde dön. Dört tur 30 s sınırına sığar (25.13 s).','Grafikler’de IMU yönelimini enkoder yönelimiyle, ikisini de gerçekle karşılaştır.']
+  },
+  fr:{
+    turn:['Les deux vitesses de roue sont en rad/s. Une roue droite plus rapide fait tourner à gauche.','Le rover bouge pendant qu’il attend.'],
+    square:['Un carré de 0.4 m, en tournant à gauche à chaque coin. drive(v, w) marche pour tout robot et tout écartement.','Un virage de 90° à 1 rad/s dure en théorie π/2 = 1.57 s ; 1.6 s compense l’accélération et le freinage.','Le minutage seul ne marche que sur sol ferme. Essaie sur la glace, puis vois l’Expérience 02.'],
+    sensor:['distance est un capteur à rayon vers l’avant, en mètres.','On le lit une fois toutes les 0.1 secondes.'],
+    gyro:['Tourne de 90° à gauche et arrête-toi sur le cap de l’IMU (en degrés).','Essaie ensuite odom_heading, et compare les deux sur sol glissant.'],
+    odometry:['Roule 0.5 m, mesurés par les encodeurs des roues.','Ouvre Courbes : le trajet réel est-il d’accord ?'],
+    lidar:['Avance jusqu’à ce que le LiDAR voie la boîte à 0.6 m, tourne d’un quart à gauche au gyroscope,','puis avance jusqu’à ce que le LiDAR voie le mur. Un seul faisceau libre ne suffit pas pour passer :','le rover est bien plus large qu’un rayon. Le LiDAR balaie 5 fois par seconde.'],
+    fusion:['Filtre complémentaire : filter(alpha) pèse le gyroscope contre les encodeurs pour le cap.','filter(1) ne croit que le gyroscope, filter(0) que les encodeurs ; 0.999 par défaut.','Fais un carré sur la glace, puis compare l’odométrie filtrée et celle des encodeurs dans Courbes.'],
+    lab1a:['ME425 Lab 1, partie A : trois fois 3 s en avant, 1 s d’arrêt, 3 s en arrière, 1 s d’arrêt, à 0.10 m/s.','Essaie-le sur le TurtleBot3. Dans Courbes, compare l’odométrie avec le trajet de consigne.'],
+    lab1b:['ME425 Lab 1, partie B : un cercle à v = 0.10 m/s, w = 0.30 rad/s (T = 2π/w = 20.94 s).','Sur le TurtleBot3, passe v à 0.2 : la roue extérieure atteint la limite du moteur et le cercle s’ouvre.'],
+    lab1c:['ME425 Lab 1, partie C : rotation sur place à 1 rad/s. Quatre tours tiennent dans la limite de 30 s (25.13 s).','Dans Courbes, compare le cap de l’IMU avec celui des encodeurs, et les deux avec la réalité.']
+  }
+};
+// Translated comments sit over the English example's own code lines, so every language runs the same program.
+export const withComments=(source,comments)=>comments.map(c=>'# '+c).join('\n')+'\n'+source.split('\n').filter(l=>!l.startsWith('#')).join('\n');
+export function example(name,lang='en'){const c=COMMENTS[lang]?.[name];return c?withComments(EXAMPLES[name],c):EXAMPLES[name];}
