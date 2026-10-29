@@ -21,6 +21,11 @@ export const TERRAINS={
 // 2D LiDAR, LDS-01 datasheet: 360 beams at 1°, 5 scans/s, 0.12–3.5 m, accuracy ±10 mm below 0.5 m and ±3.5% beyond (taken as 2σ).
 // Readings are in mm. A beam closer than min reads 0; a beam with nothing within max has no return.
 export const LIDAR={rate:5,beams:360,min:.12,max:3.5};
+// Complementary filter on heading, run at 100 Hz: gyro for quick changes, encoders over the long run.
+// Crossover time constant tau = alpha·T/(1 − alpha). Both sensors err slowly here (wheel slip and caster drag, gyro bias),
+// so a slow crossover works best: alpha = 0.999 (tau ≈ 10 s) beat the textbook 0.98 (tau ≈ 0.5 s) on every test in the README.
+// Programs can change it with filter(alpha).
+export const FUSION_ALPHA=.999;
 export const WALL=2.5;
 // TurtleBot3 parameters fitted to the lab data in tests/fixtures/turtlebot3-lab.json (see README).
 export const TB3_FIT={battery:10.93,ballFriction:.261};
@@ -47,7 +52,7 @@ export const ROBOTS={
   }
 };
 export const OBSTACLE={x:0,z:1.3,halfX:.28,halfZ:.16};
-export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin'];
+export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw'];
 const ARENA=2.3;
 
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
@@ -123,8 +128,8 @@ export class DriveSim{
     this.queue=[...program];this.waitSteps=0;this.instructions=0;this.sinceAdvance=0;this.line=program[0]?.line||1;this.phase='run';this.settleSteps=0;this.quietSteps=0;
     this.seed=seed;this.noise=noise;this.rand=random(seed);this.lidarRand=random(seed^0x9E3779B9);
     const imu=spec.imu,bias=(sd,offset)=>[0,1,2].map(i=>(noise?gauss(this.rand)*sd:0)+offset[i]);this.bias={gyro:bias(imu.gyroBias,[0,0,0]),accel:bias(imu.accelBias,imu.accelOffset)};
-    this.odom={x:0,y:0,yaw:0};this.desired={x:0,y:0,yaw:0,v:0,w:0};this.gyroYaw=0;this.gyroZ=0;this.imuPoints=[];this.imuFrames=[];this.heightPrev=null;
-    this.log=Object.fromEntries(CHANNELS.map(c=>[c,[]]));this.path=[];this.odomPath=[];
+    this.odom={x:0,y:0,yaw:0};this.desired={x:0,y:0,yaw:0,v:0,w:0};this.fusion={alpha:FUSION_ALPHA,x:0,y:0,yaw:0};this.gyroYaw=0;this.gyroZ=0;this.imuPoints=[];this.imuFrames=[];this.heightPrev=null;
+    this.log=Object.fromEntries(CHANNELS.map(c=>[c,[]]));this.path=[];this.odomPath=[];this.fusedPath=[];
     this.updateContacts();this.start=this.axle();this.range=this.measureRange();
     this.scanBuffer=[];this.scans=[];this.publishScan(Array.from({length:LIDAR.beams},(_,i)=>this.beam(i)));
   }
@@ -171,6 +176,7 @@ export class DriveSim{
         const half=this.width/2,l=(v-w*half)/this.R,r=(v+w*half)/this.R,k=Math.min(1,this.spec.maxWheel/Math.max(Math.abs(l),Math.abs(r),1e-9));
         this.setTargets(l*k,r*k);this.command(n.v,n.w);
       }
+      else if(n.type==='filter')this.fusion.alpha=n.alpha;
       else if(n.type==='wait')this.waitSteps=Math.max(1,Math.round(n.time/DT));
       else if(n.type==='repeat')this.queue.unshift(...Array.from({length:n.n},()=>n.body).flat());
       else if(n.type==='if')this.queue.unshift(...(this.test(n)?n.body:n.other));
@@ -180,7 +186,7 @@ export class DriveSim{
   // What a program sees: the latest sensor samples, never the simulator's ground truth.
   sensor(name){
     const deg=180/Math.PI;
-    return {distance:this.range,heading:this.gyroYaw*deg,odom_heading:this.odom.yaw*deg,gyro_z:this.gyroZ,encoder_left:this.wheels[0].count,encoder_right:this.wheels[1].count,odom_x:this.odom.x,odom_y:this.odom.y,time:this.time,lidar_front:this.lidar.front,lidar_left:this.lidar.left,lidar_back:this.lidar.back,lidar_right:this.lidar.right,lidar_min:this.lidar.min,lidar_min_angle:this.lidar.minAngle}[name];
+    return {distance:this.range,heading:this.gyroYaw*deg,odom_heading:this.odom.yaw*deg,gyro_z:this.gyroZ,encoder_left:this.wheels[0].count,encoder_right:this.wheels[1].count,odom_x:this.odom.x,odom_y:this.odom.y,time:this.time,lidar_front:this.lidar.front,lidar_left:this.lidar.left,lidar_back:this.lidar.back,lidar_right:this.lidar.right,lidar_min:this.lidar.min,lidar_min_angle:this.lidar.minAngle,fused_heading:this.fusion.yaw*deg,fused_x:this.fusion.x,fused_y:this.fusion.y}[name];
   }
   test(n){const v=this.sensor(n.sensor);return n.op==='<'?v<n.value:n.op==='>'?v>n.value:n.op==='<='?v<=n.value:v>=n.value;}
   // 1 kHz: support plane from the terrain under the wheels and casters, gravity components, and contact loads.
@@ -264,13 +270,15 @@ export class DriveSim{
     const read=(v,bias,sd,lsb)=>Math.round((v+bias+(this.noise?gauss(this.rand)*sd:0))/lsb)*lsb;
     accel=accel.map((v,i)=>read(v,this.bias.accel[i],imu.accelNoise[i],imu.accelLsb));gyro=gyro.map((v,i)=>read(v,this.bias.gyro[i],imu.gyroNoise[i],imu.gyroLsb));
     this.gyroYaw+=gyro[2]*T;this.gyroZ=gyro[2];
+    // Filtered odometry: encoder distance along the fused heading.
+    const fu=this.fusion,before=fu.yaw;fu.yaw=fu.alpha*(fu.yaw+gyro[2]*T)+(1-fu.alpha)*this.odom.yaw;const fm=(before+fu.yaw)/2;fu.x+=ds*Math.cos(fm);fu.y+=ds*Math.sin(fm);
     if(this.steps%RANGE_STEPS===0)this.range=this.measureRange();
     for(let k=0;k<LIDAR.beams*LIDAR.rate*T;k++){this.scanBuffer.push(this.beam(this.scanBuffer.length));if(this.scanBuffer.length===LIDAR.beams){this.publishScan(this.scanBuffer);this.scanBuffer=[];}}
     const axle=this.axle(),[L,R]=this.wheels,trueX=axle.z-this.start.z,trueY=axle.x-this.start.x;
-    const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w,this.desired.x,this.desired.y,this.desired.yaw,...['front','left','back','right','min'].map(k=>this.lidar[k]<Infinity&&this.lidar[k]>=LIDAR.min?this.lidar[k]:0)];
+    const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w,this.desired.x,this.desired.y,this.desired.yaw,...['front','left','back','right','min'].map(k=>this.lidar[k]<Infinity&&this.lidar[k]>=LIDAR.min?this.lidar[k]:0),this.fusion.x,this.fusion.y,this.fusion.yaw];
     CHANNELS.forEach((c,i)=>this.log[c].push(row[i]));
     const track=(list,x,z)=>{const last=list.at(-1);if(!last||Math.hypot(x-last.x,z-last.z)>.018)list.push({x,z});};
-    track(this.path,axle.x,axle.z);track(this.odomPath,this.start.x+this.odom.y,this.start.z+this.odom.x);
+    track(this.path,axle.x,axle.z);track(this.odomPath,this.start.x+this.odom.y,this.start.z+this.odom.x);track(this.fusedPath,this.start.x+this.fusion.y,this.start.z+this.fusion.x);
   }
   summary(){
     const n=this.log.t.length-1,L=this.log;if(n<0)return {odomError:0,headingError:0,distance:0};
@@ -279,7 +287,7 @@ export class DriveSim{
 }
 export function simulateRun(options){return new DriveSim(options).run();}
 // Column names carry units and mark simulator-only values as true_*. MATLAB: T = readtable('file.csv').
-const CSV_NAMES={t:'t_s',cmdL:'cmd_left_rad_s',cmdR:'cmd_right_rad_s',encL:'encoder_left_counts',encR:'encoder_right_counts',speedL:'speed_left_rad_s',speedR:'speed_right_rad_s',currentL:'current_left_A',currentR:'current_right_A',voltsL:'voltage_left_V',voltsR:'voltage_right_V',ax:'accel_x_m_s2',ay:'accel_y_m_s2',az:'accel_z_m_s2',gx:'gyro_x_rad_s',gy:'gyro_y_rad_s',gz:'gyro_z_rad_s',range:'range_m',odomX:'odom_x_m',odomY:'odom_y_m',odomYaw:'odom_yaw_rad',gyroYaw:'gyro_yaw_rad',trueX:'true_x_m',trueY:'true_y_m',trueYaw:'true_yaw_rad',trueSpeed:'true_speed_m_s',slipL:'true_slip_left_m_s',slipR:'true_slip_right_m_s',wheelL:'true_wheel_left_rad_s',wheelR:'true_wheel_right_rad_s',desX:'desired_x_m',desY:'desired_y_m',desYaw:'desired_yaw_rad',lidarFront:'lidar_front_m',lidarLeft:'lidar_left_m',lidarBack:'lidar_back_m',lidarRight:'lidar_right_m',lidarMin:'lidar_min_m'};
+const CSV_NAMES={t:'t_s',cmdL:'cmd_left_rad_s',cmdR:'cmd_right_rad_s',encL:'encoder_left_counts',encR:'encoder_right_counts',speedL:'speed_left_rad_s',speedR:'speed_right_rad_s',currentL:'current_left_A',currentR:'current_right_A',voltsL:'voltage_left_V',voltsR:'voltage_right_V',ax:'accel_x_m_s2',ay:'accel_y_m_s2',az:'accel_z_m_s2',gx:'gyro_x_rad_s',gy:'gyro_y_rad_s',gz:'gyro_z_rad_s',range:'range_m',odomX:'odom_x_m',odomY:'odom_y_m',odomYaw:'odom_yaw_rad',gyroYaw:'gyro_yaw_rad',trueX:'true_x_m',trueY:'true_y_m',trueYaw:'true_yaw_rad',trueSpeed:'true_speed_m_s',slipL:'true_slip_left_m_s',slipR:'true_slip_right_m_s',wheelL:'true_wheel_left_rad_s',wheelR:'true_wheel_right_rad_s',desX:'desired_x_m',desY:'desired_y_m',desYaw:'desired_yaw_rad',lidarFront:'lidar_front_m',lidarLeft:'lidar_left_m',lidarBack:'lidar_back_m',lidarRight:'lidar_right_m',lidarMin:'lidar_min_m',fusedX:'fused_x_m',fusedY:'fused_y_m',fusedYaw:'fused_yaw_rad'};
 export function toCsv(log){
   return [CHANNELS.map(c=>CSV_NAMES[c]).join(','),...log.t.map((_,i)=>CHANNELS.map(c=>{const v=log[c][i];return Number.isInteger(v)?v:+v.toFixed(6);}).join(','))].join('\n')+'\n';
 }

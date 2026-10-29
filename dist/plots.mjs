@@ -1,6 +1,7 @@
 // MATLAB-style line figures on canvas: white axes, box, grid, inward ticks, legend.
 // Colors are MATLAB colororder slots 1, 2 and 4; slot 3 (#EDB120) fails contrast on a white background.
-export const COLORS=['#0072BD','#D95319','#7E2F8E'];
+// Slot 5 (#77AC30) is a fourth hue for the complementary filter; it is below 3:1 contrast, so it always appears with a legend and in the CSV.
+export const COLORS=['#0072BD','#D95319','#7E2F8E','#77AC30'];
 const INK='#262626',GRID='#e1e1e1',FONT='Helvetica, Arial, sans-serif';
 
 function niceStep(span,count){const raw=span/count,mag=10**Math.floor(Math.log10(raw)),n=raw/mag;return (n<1.5?1:n<3?2:n<7?5:10)*mag;}

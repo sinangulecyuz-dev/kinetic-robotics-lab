@@ -18,9 +18,10 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: closed-loop control. Student programs can use `drive(v, w)` and test sensor readings in `if` and `while`.
   - New: a TurtleBot3 Waffle Pi preset (driving only), calibrated to the owner's lab data. Also new: "desired" logging, a Lab 1–style position-error figure, and Lab 1 A, B, and C examples.
   - New: a 2D LiDAR (LDS-01 class) on both robots, arena walls at ±2.5 m, LiDAR program readings, a scan overlay, a polar scan plot, a ranges plot, and LiDAR CSV export.
+  - New: a complementary filter (gyro and encoder heading) with filtered odometry, `filter(alpha)` and `fused_*` readings, a green filtered path, and filter series in Plots.
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
 - The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 43/43 pass, `npm run check` passes.
+- Verification on 2026-10-29: `npm test` 47/47 pass, `npm run check` passes.
 - Hosting: the only deployment is the private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site). It has not been updated from this repository, and the date it was last published is not recorded.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4). **Port 5173 on this machine is held by a server that serves a different copy of the lab:** `C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`, started 2026-10-28 21:24, PID 45760. Verified by diffing the served page. What you see on 5173 is not this repository. Run this repo with `PORT=5174 npm run dev` (in PowerShell, set `$env:PORT=5174` first) and open http://127.0.0.1:5174.
 
@@ -34,7 +35,7 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
   - The Lab 1 `.mat` files were not found on this machine. The owner will save CSV (`writetable`) in future labs.
   - The Kinetic rover itself (a made-up design) remains unvalidated.
-- Items 0–3 of the agreed plan are done. The owner asked for, in order: the slider and camera frame fix (done), a 2D LiDAR (done), then a complementary filter (encoder plus gyro). After that: raw-log comparison after the next lab.
+- Items 0–3 of the agreed plan are done. The owner asked for, in order: the slider and camera frame fix, a 2D LiDAR, and a complementary filter. All three are done. Next candidates: raw-log comparison after the next lab, or an absolute heading reference (LiDAR scan matching).
 
 ## Decisions
 
@@ -75,6 +76,23 @@ Entry template:
 - Next / open: what remains, decisions waiting for the owner
 ```
 
+### 2026-10-29 — Claude Code — complementary filter
+
+- Changed:
+  - `dist/drive.mjs`: `FUSION_ALPHA` = 0.999, a 100 Hz fused heading, filtered odometry and its path, and `fused*` channels (CSV `fused_*`).
+  - `dist/physics.mjs`: the `filter(alpha)` statement and `fused_heading`, `fused_x`, `fused_y` readings.
+  - `dist/plots.mjs`: a fourth color, MATLAB slot 5 green. The validator passes it, with a contrast warning that legends and CSV cover.
+  - `dist/app.js`, `dist/index.html`, `dist/style.css`: filtered series in the trajectory, heading, and error plots, a green path toggle, the "Complementary filter on ice" example, and reference and model text.
+  - Tests: new `tests/fusion.test.mjs` (4 tests).
+- Decision: the default α is 0.999, not 0.98, from a measured comparison (README table). Both sensors err slowly, so a fast crossover helps almost nothing.
+- Verified:
+  - `npm test` 47/47, `npm run check` pass.
+  - α = 1 equals gyro integration and α = 0 equals encoder odometry, to 1e-12.
+  - With a parked rover, the steady state matches bias × α·T/(1 − α).
+  - Headless Chrome: on ice the filtered path ends about 4.5 cm from the truth, against about 9.5 cm for encoder odometry. Zero console errors.
+- Status: three local commits after `d2d18c0` (frame, LiDAR, filter), not pushed. Waiting for the owner.
+- Next / open: push decision.
+
 ### 2026-10-29 — Claude Code — rover-frame camera and labels, then a 2D LiDAR
 
 - Changed (frame):
@@ -95,8 +113,8 @@ Entry template:
   - Beam noise while parked: 0.0173 m measured vs 0.0191 m expected.
   - Headless Chrome: the slider moves the payload to the screen side it names, the ramp tips to the low (right) side, `wheels(2, 5)` turns left in the top view, the LiDAR example completes on both robots and all terrains without collision, the polar plot reads correctly, and there are zero console errors.
 - Found while testing: an example that drove off once a single beam was clear hit the box, because the rover is wider than a ray. The example now turns 90° with the gyro instead, and its comment explains why.
-- Status: committed locally in two commits, not pushed.
-- Next / open: the complementary filter. Then ask the owner about pushing.
+- Status: committed locally, not pushed (see the next entry).
+- Next / open: none for this entry.
 
 ### 2026-10-29 — Claude Code — Experiment 02 lesson and missions (item 3)
 

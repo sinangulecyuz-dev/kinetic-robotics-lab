@@ -36,6 +36,8 @@ The TurtleBot3 preset (driving only) is datasheet-based, with exactly two parame
 
 The arena has low walls at ±2.5 m. The front range sensor and the LDS-01-class 2D LiDAR (`LIDAR`, `castRay`, `lidarMeasure`) both see the walls and the box. The LiDAR scans progressively, so motion smears the scan. Its plane is horizontal and ignores self-occlusion.
 
+The complementary filter (`FUSION_ALPHA` = 0.999, `filter(alpha)` in programs) fuses gyro and encoder heading. Its README table is measured, so rerun it if the filter or sensors change.
+
 The collision stop is a conservative footprint check, not a contact solver. Preserve visible explanations of these assumptions in the interface and the README.
 
 MATLAB and ROS 2 are planned integrations, not current capabilities. Do not claim live integration until it exists and has been tested. Keep humanoid walking out of the first milestone. Prefer validating the rover against a physical experiment before expanding robot families.

@@ -17,7 +17,7 @@ npm test
 npm run check
 ```
 
-The first command runs 43 model, dynamics, sensor, LiDAR, parser, TurtleBot3 calibration, and mission tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 47 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, and mission tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## Continue in Codex or Claude Code
 
@@ -47,7 +47,7 @@ Known limits: slopes are assumed small, the friction model lets a parked rover c
 
 Student programs can command each wheel with `wheels(left, right)`, in rad/s. They can also command the whole rover with `drive(v, w)`, in m/s and rad/s, like ROS `/cmd_vel`. That command maps to wheel targets (v ± w·W/2)/R. If a wheel would pass 10 rad/s, both wheels are scaled down together, so the curve keeps its radius.
 
-`if` and `while` test sensor readings with `<`, `>`, `<=`, or `>=`. The readings are `distance`, `heading` (gyro-integrated IMU yaw in degrees), `odom_heading`, `gyro_z`, `encoder_left`, `encoder_right`, `odom_x`, `odom_y`, `time`, and the LiDAR beams `lidar_front`, `lidar_left`, `lidar_back`, `lidar_right` (0 when closer than 0.12 m, infinity with no return), plus `lidar_min` and `lidar_min_angle`. A program always reads the latest sensor sample and never sees ground truth.
+`if` and `while` test sensor readings with `<`, `>`, `<=`, or `>=`. The readings are `distance`, `heading` (gyro-integrated IMU yaw in degrees), `odom_heading`, `gyro_z`, `encoder_left`, `encoder_right`, `odom_x`, `odom_y`, `time`, and the LiDAR beams `lidar_front`, `lidar_left`, `lidar_back`, `lidar_right` (0 when closer than 0.12 m, infinity with no return), plus `lidar_min` and `lidar_min_angle`, and the filtered estimates `fused_heading`, `fused_x`, `fused_y`. A program always reads the latest sensor sample and never sees ground truth.
 
 The 30-second run limit, parser depth limit, and instruction budget bound student programs. A `while` loop without a `wait` hits the instruction guard. User code is parsed into a small AST, never evaluated as JavaScript.
 
@@ -81,6 +81,21 @@ The fit also produces a testable prediction. Ball-caster drag makes the wheels c
 The 31.4 s run at w = 0.2 rad/s exceeds the 30 s limit and is not replayed. Lab 0's forward run was recorded on another day with an unknown battery charge and is not used.
 
 All of this comes from one robot, on one floor, at one battery charge, with values read from plots. It is a calibration, not a general validation. The Plots tab shows the desired (commanded) path and a Lab 1–style error figure, which separates two things the lab could not tell apart: the robot leaving its command (true vs desired) and the odometry misjudging the robot (odometry vs true).
+
+### Complementary filter
+
+Every 0.01 s the fused heading is updated as α·(fused heading + gyro turn) + (1 − α)·encoder heading: the gyro for quick changes, the encoders over the long run. The crossover time constant is τ = α·T/(1 − α). Filtered odometry adds up encoder distance along the fused heading. Programs set α with `filter(alpha)`: 1 trusts only the gyro, 0 only the encoders.
+
+The default is α = 0.999 (τ ≈ 10 s), not the textbook 0.98 (τ ≈ 0.5 s). Both sensors here err slowly: wheel slip and caster drag bend the encoder heading, and bias tilts the gyro. A fast crossover therefore hands control back to the encoders before their error shows. The comparison below is the mean of 4 seeds and is enforced loosely by `tests/fusion.test.mjs`:
+
+| Test | α = 0 (encoders) | 0.98 | 0.999 (default) | 1 (gyro) |
+|---|---|---|---|---|
+| TurtleBot3, 4 turns in place, heading error | 37.4° | 37.0° | 24.1° | 0.6° |
+| Kinetic, square on ice, position error | 9.4 cm | 8.6 cm | 4.6 cm | 4.1 cm |
+| Kinetic, square on concrete, position error | 1.2 cm | 1.2 cm | 1.3 cm | 1.6 cm |
+| Kinetic, parked 25 s, heading error | 0.00° | 0.07° | 1.3° | 3.6° |
+
+No single α wins everywhere. Neither sensor is an absolute reference, so a real robot would add one, such as a compass or LiDAR scan matching.
 
 ### Experiment 02: Where am I?
 
