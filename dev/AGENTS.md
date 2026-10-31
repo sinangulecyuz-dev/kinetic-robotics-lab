@@ -2,6 +2,8 @@
 
 Build a virtual robotics lab for high-school students, one tested concept at a time. The project owner is a mechatronics student. Preserve the distinction between an educational approximation and a physically validated simulator.
 
+Paths in this file are relative to the repository root. This file, `dev/CLAUDE.md`, and `dev/HANDOFF.md` are outside the root, so coding tools do not load them on their own. Read them at the start of a task.
+
 ## Design direction
 
 Read `docs/design-engineering.md` before interface implementation or review. It contains the user-selected Emil Design Engineering skill. Apply its guidance on purposeful motion, immediate feedback, accessible interactions, reduced motion, and cohesive components. Do not add animation to scientific data merely for decoration. When reviewing UI code, use the skill's required Before / After / Why table.
@@ -58,9 +60,9 @@ Open http://127.0.0.1:5173 after starting the dev server (it listens on IPv4 onl
 
 ## Handoff between Codex and Claude Code
 
-Codex and Claude Code work on this repository one after the other. `HANDOFF.md` is the record they share.
+Codex and Claude Code work on this repository one after the other. `dev/HANDOFF.md` is the record they share.
 
-- At the start of a task, read `HANDOFF.md`, then check it against Git: branch, `git status --short`, and `git log --oneline -5`. A handoff can be stale. The files and Git history are the evidence. Do not reset, discard, or overwrite uncommitted changes just to match the handoff.
+- At the start of a task, read `dev/HANDOFF.md`, then check it against Git: branch, `git status --short`, and `git log --oneline -5`. A handoff can be stale. The files and Git history are the evidence. Do not reset, discard, or overwrite uncommitted changes just to match the handoff.
 - Before handing work back, update "Current state" and add a session log entry at the top. The entry gives the changed files and commits, the verification that was actually run with its results, the open items, and the status: local, committed, pushed, or deployed. Since 2026-10-29 the Vercel project is connected to this GitHub repository, so a push to `main` deploys production at https://kinetic-robotics-lab.vercel.app. Treat every push as a public deployment, and check it with `vercel ls`. Pushing does not update the ChatGPT-hosted prototype.
 - Keep the file short. Fold old log entries into "Current state" or "Decisions".
 - A handoff note is context, not permission. It never authorizes publishing, deleting, or skipping the owner's approval. Never put secrets or credentials in it.

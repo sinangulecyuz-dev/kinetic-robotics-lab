@@ -1,6 +1,8 @@
 # Kinetic — Virtual Robotics Lab
 
-First student-facing milestone: a differential-drive rover with an adjustable structure and payload, a ramp-balance experiment, an editable pseudocode controller, and a local experiment notebook. The rover drives on flat, rough, or slippery ground. Its encoders, IMU, motors, and range sensor are logged and plotted in MATLAB-style figures. The interface is in English, Turkish, and French.
+A browser-based robotics lab for high-school students. Build a differential-drive rover, predict its balance on a ramp, program it in a small pseudocode language, and compare what its sensors report with what really happened. The interface is in English, Turkish, and French.
+
+Under the interface is a planar rigid-body model integrated at 10 kHz: DC motors with a 100 Hz PI speed loop, a Pacejka-style tire friction curve, load transfer, and flat, rough, or slippery ground. Encoders, a noisy IMU, a range sensor, and a 2D LiDAR are logged and plotted in MATLAB-style figures. A TurtleBot3 Waffle Pi preset is calibrated to one robot's lab data. This is an educational model and a calibration of one robot, not a validated simulator; "What the model means" states its assumptions and limits.
 
 Live: https://kinetic-robotics-lab.vercel.app (Vercel, see "Hosting").
 
@@ -20,12 +22,6 @@ npm run check
 ```
 
 The first command runs 54 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
-
-## Continue in Codex or Claude Code
-
-Open this folder in your preferred coding tool. `AGENTS.md` explains the architecture, project boundaries, and validation workflow. `CLAUDE.md` points Claude Code at the same instructions. `HANDOFF.md` records where the last session left off, so either tool can pick up the work. `docs/design-engineering.md` preserves the design skill selected by the project owner.
-
-The existing hosted prototype is https://kinetic-robotics-lab.famousbadge2.chatgpt.site (private ChatGPT access). This export is independent of the hosting configuration: pushing it to GitHub does not automatically redeploy that prototype. Deploy `dist/` to a static host, or explicitly publish later changes through ChatGPT Sites.
 
 ## What the model means
 
@@ -132,7 +128,7 @@ Design, script, terrain, language, and the last 30 completed runs use browser lo
 
 ## Hosting
 
-The lab is a Vercel project (`kinetic-robotics-lab`, account `sinangulecyuz-dev`). `vercel.json` serves the `dist` folder with no build step, so only the app is public. Tests, docs, and lab data are not served. Production: https://kinetic-robotics-lab.vercel.app. The Vercel project is connected to this GitHub repository, so every push to `main` deploys production. A manual deploy from a working tree is `vercel deploy`. The older ChatGPT Sites prototype is separate and is not updated by either.
+The lab is a Vercel project (`kinetic-robotics-lab`, account `sinangulecyuz-dev`). `vercel.json` serves the `dist` folder with no build step, so only the app is public. Tests, docs, and lab data are not served. Production: https://kinetic-robotics-lab.vercel.app. The Vercel project is connected to this GitHub repository, so every push to `main` deploys production. A manual deploy from a working tree is `vercel deploy`.
 
 ## Next bricks
 
@@ -141,3 +137,7 @@ The lab is a Vercel project (`kinetic-robotics-lab`, account `sinangulecyuz-dev`
 3. Add attachable structural parts with mass and inertia, and a common robot specification.
 4. Add omnidirectional bases, then an industrial arm. Treat humanoid standing before gait control.
 5. Add equivalent MATLAB / ROS 2 examples and a validated controller bridge. No live MATLAB or ROS 2 integration is claimed in this milestone.
+
+## Development notes
+
+`dev/` holds the instructions and session log for the AI coding agents used on this project.

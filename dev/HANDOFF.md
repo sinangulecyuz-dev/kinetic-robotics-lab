@@ -1,14 +1,15 @@
 # Kinetic — shared handoff
 
-Codex and Claude Code work on this repository one after the other. This file is the record they share: where the work stands, what was decided, and what the last session did. The protocol for reading and updating it is in `AGENTS.md` under "Handoff between Codex and Claude Code".
+Codex and Claude Code work on this repository one after the other. This file is the record they share: where the work stands, what was decided, and what the last session did. The protocol for reading and updating it is in `dev/AGENTS.md` under "Handoff between Codex and Claude Code".
 
 Status words used below: **local** (changed in the working tree, not committed), **committed**, **pushed** (on `origin/main`), **deployed** (live on Vercel production, https://kinetic-robotics-lab.vercel.app). Since 2026-10-29 the Vercel project is connected to the GitHub repository, so a push to `main` also deploys. The older ChatGPT Sites prototype is separate and never updated from here.
 
 ## Current state
 
-Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on it.
+Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on it.
 
-- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`. Everything listed below is committed, pushed to `main`, and deployed on Vercel. Check `git log` for the latest commit and `vercel ls` for the latest deployment.
+- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`, public. Everything under "What exists" is committed, pushed to `main`, and deployed on Vercel. The newest session log entry gives the status of the latest change. Check `git log` for the latest commit and `vercel ls` for the latest deployment.
+- Layout: `AGENTS.md`, `CLAUDE.md`, and this file are in `dev/`, so coding tools do not load them on their own.
 - What exists:
   - Milestone 1: rover builder, ramp-balance experiment, bounded pseudocode controller, local notebook (`kinetic-v1`).
   - New: a realistic driving model (`dist/drive.mjs`) on flat, rough, and slippery terrain.
@@ -21,16 +22,18 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
   - New: a complementary filter (gyro and encoder heading) with filtered odometry, `filter(alpha)` and `fused_*` readings, a green filtered path, and filter series in Plots.
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
-- The README ("What the model means") and `AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-10-29: `npm test` 54/54 pass, `npm run check` passes.
+- The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
+- Verification on 2026-11-01: `npm test` 54/54 pass, `npm run check` passes.
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
 ## Open items
 
+- **Instructions no longer load on their own (since the move to `dev/`):** Codex must be told to read `dev/AGENTS.md` at the start of each session. Claude Code is pointed there by a project memory on the owner's machine only.
+- **Private link still public:** the ChatGPT Sites URL remains in this file and in Git history, in a public repository. The owner asked to remove it from the README only.
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
 - **Review:** the French text needs a native speaker at Saint Michel. The owner reviews the Turkish.
-- **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `AGENTS.md` now say 127.0.0.1.
+- **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `dev/AGENTS.md` now say 127.0.0.1.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
 - **TurtleBot3 calibration, open points.** The full table is in the README, "TurtleBot3 Waffle Pi calibration".
@@ -42,6 +45,8 @@ Last verified 2026-10-29 by Claude Code. Verify again with Git before relying on
 
 ## Decisions
 
+- Agent files live in `dev/`, and the README opens with the project (owner, 2026-11-01). AI use is not hidden: Git history and co-author lines stay, and the README points to `dev/`.
+- The owner's credit wording stays "Conceived and directed", not "Designed and built", because AI agents wrote the code (owner, 2026-11-01). The phrase is not in this repository.
 - Interface languages: English, Turkish, and French, for the Saint Michel robotics club (owner, 2026-10-29). Rover script keywords, sensor names, and CSV columns stay English. Translated examples and mission starters change comments only. Decimals use a point in every language, to match code and MATLAB. Simulator, parser, and judge messages carry keys, so results redraw after a language switch.
 - Hosting: Vercel (owner, 2026-10-29). The owner had not used GitHub Pages.
 - One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28).
@@ -80,6 +85,20 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code — agent files moved to `dev/`, README opens with the project
+
+- Changed:
+  - `AGENTS.md`, `CLAUDE.md`, and `HANDOFF.md` moved to `dev/` with `git mv`, and their references to each other updated. Older session log entries keep the old names.
+  - `README.md`: removed "Continue in Codex or Claude Code" with the private ChatGPT Sites link, and the prototype sentence under "Hosting". Rewrote the opening around the project and its model. Added a one-line "Development notes" pointer to `dev/`.
+  - Outside the repository: a Claude Code project memory that points at `dev/`.
+- Verified:
+  - `npm test` 54/54, `npm run check` pass.
+  - `chatgpt.site` now appears only in `dev/HANDOFF.md`. The README has no bare references to the moved files.
+  - The opening's 10 kHz and 100 Hz PI figures match `DT` and `CONTROL_STEPS` in `dist/drive.mjs`.
+  - Not verified: a fresh Claude Code or Codex session on the new layout, and the README as rendered on GitHub.
+- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-11-01); the push deploys production through the Git connection.
+- Next / open: see Open items.
 
 ### 2026-10-29 — Claude Code — three interface languages and Vercel hosting
 
