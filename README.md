@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 79 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 83 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -158,6 +158,10 @@ The header has a language picker: English, Türkçe, Français. On a first visit
 - Simulator, parser, and judge messages carry a key and values, so a finished run, an error, or a saved result is shown again in the new language after a switch.
 - `tests/i18n.test.mjs` checks that all three dictionaries have the same keys and placeholders, that code inside the help text is unchanged, that translated examples and starters run the same code, and that every key the interface uses exists and every key is used.
 - The French text was written by Claude Code and still needs a review by a native speaker. The Turkish text needs a review by the owner.
+
+## Header sky
+
+The dark header shows the sun by day and the moon, with its phase, by night, placed by the visitor's local clock (`dist/sky.mjs`). It is decoration, not astronomy: it assumes solar noon at 12:00 and a mid-northern day length (12 ± 3.4 h over the year), and the moon crosses the sky centred on 12:00 + 24 h × phase. It is redrawn once a minute and never animated. `tests/sky.test.mjs` checks the phase against the new moon of 2024-01-11 and the full moon of 2024-01-25.
 
 ## Persistence
 

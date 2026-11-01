@@ -7,8 +7,8 @@
   "engines": {"node": ">=20"},
   "scripts": {
     "dev": "node scripts/serve.mjs",
-    "test": "node --test tests/physics.test.mjs tests/drive.test.mjs tests/turtlebot3.test.mjs tests/missions.test.mjs tests/lidar.test.mjs tests/fusion.test.mjs tests/examples.test.mjs tests/i18n.test.mjs tests/expressions.test.mjs tests/wind.test.mjs",
+    "test": "node --test tests/physics.test.mjs tests/drive.test.mjs tests/turtlebot3.test.mjs tests/missions.test.mjs tests/lidar.test.mjs tests/fusion.test.mjs tests/examples.test.mjs tests/i18n.test.mjs tests/expressions.test.mjs tests/wind.test.mjs tests/sky.test.mjs",
     "test:browser": "node --test tests/browser/smoke.test.mjs",
-    "check": "node --check dist/app.js && node --check dist/physics.mjs && node --check dist/drive.mjs && node --check dist/plots.mjs && node --check dist/missions.mjs && node --check dist/examples.mjs && node --check dist/i18n.mjs && node --check dist/lang/en.mjs && node --check dist/lang/tr.mjs && node --check dist/lang/fr.mjs && node --check scripts/serve.mjs && node --check tests/browser/smoke.test.mjs"
+    "check": "node --check dist/app.js && node --check dist/physics.mjs && node --check dist/drive.mjs && node --check dist/plots.mjs && node --check dist/missions.mjs && node --check dist/examples.mjs && node --check dist/i18n.mjs && node --check dist/sky.mjs && node --check dist/lang/en.mjs && node --check dist/lang/tr.mjs && node --check dist/lang/fr.mjs && node --check scripts/serve.mjs && node --check tests/browser/smoke.test.mjs"
   }
 }

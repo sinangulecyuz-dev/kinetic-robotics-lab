@@ -4,6 +4,7 @@ import {Figure,COLORS} from './plots.mjs';
 import {MISSIONS,missionById,missionsFor,missionText} from './missions.mjs';
 import {EXAMPLES,example} from './examples.mjs';
 import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
+import {skyAt,drawSky} from './sky.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -415,3 +416,6 @@ function applyLanguage(){
 }
 $('language').onchange=e=>{setLanguage(e.target.value);const src=$('code-editor').value,next=translateCode(src,language());if(next!==src){$('code-editor').value=next;updateLines();}applyLanguage();persist();};
 setEnvironment(environment);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();requestAnimationFrame(frame);
+// The header sky follows the local clock; it is redrawn once a minute and on resize, never animated.
+function paintSky(){const c=$('sky'),r=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);if(!r.width)return;c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);drawSky(x,r.width,r.height,skyAt(new Date()));}
+paintSky();setInterval(paintSky,60000);new ResizeObserver(paintSky).observe($('sky'));
