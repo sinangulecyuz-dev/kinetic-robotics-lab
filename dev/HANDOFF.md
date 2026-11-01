@@ -22,12 +22,12 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: a complementary filter (gyro and encoder heading) with filtered odometry, `filter(alpha)` and `fused_*` readings, a green filtered path, and filter series in Plots.
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
-  - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example (branch `claude/serene-mccarthy-1vb6oq`, not yet on `main`).
-  - New: "Build your own robot" shown as coming soon in the robot picker, not selectable (same branch).
-  - New: a decorative header sky, sun and moon by the local clock (`dist/sky.mjs`), at the owner's request (same branch).
-  - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables (same branch, not yet on `main`).
-  - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors (same branch, not yet on `main`).
-  - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m" (same branch, not yet on `main`).
+  - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example.
+  - New: "Build your own robot" shown as coming soon in the robot picker, not selectable.
+  - New: a decorative header sky, sun and moon by the local clock (`dist/sky.mjs`), at the owner's request.
+  - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables.
+  - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
+  - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
 - Verification on 2026-11-01: `npm test` 83/83 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
@@ -111,8 +111,8 @@ Entry template:
   - Looked at in headless Chromium: outdoor grass with the wind indicator, the environment panel, four header-sky times, the robot picker, and the four-lesson strip on a phone.
   - Not verified: real phones, Safari, Firefox; native French review of all new text.
 - Findings: `lidar_min` reads about 1.5 cm short (minimum of noisy beams); without static friction a parked rover creeps in wind. Both are documented, not changed.
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
-- Next / open: the owner merges into `main`. Experiment 04 has one mission; six other mission ideas were measured and dropped (README). "Build your own robot" is only announced.
+- Status: pushed to `main` (fast-forward to `7faff6a`, owner's go-ahead, 2026-11-01), which triggers the Vercel production deploy. Not verified from the cloud session: its network policy refuses `kinetic-robotics-lab.vercel.app`, and its GitHub tools do not show deployments. Check with `vercel ls` or by opening the site.
+- Next / open: Experiment 04 has one mission; six other mission ideas were measured and dropped (README). "Build your own robot" is only announced.
 
 ### 2026-11-01 — Claude Code (cloud) — Experiment 03 "Follow the wall"
 
