@@ -103,8 +103,8 @@ Entry template:
 - Owner's report from the live site: in Experiment 04, with an edited example in the editor, the verdict "3.6 cm off on average" did not say what was asked or what was wrong.
 - Changed: the verdict strip always shows the goal and offers the starter back; after a failed run it lists why (`diagnose` in `dist/missions.mjs`: blind script, missing sensor, encoder heading, no integral variable, and which way it missed) and opens graded hints (idea, tool, code shape with blanks; `HINTS`). Stop messages for the box, the edge, the time limit, and the instruction limit now name the line and the cause. The wind indicator has its own light label. Texts in English, Turkish, and French (French needs review).
 - Verified: `npm test` 85/85, `npm run check`, `npm run test:browser` 13/13 (new checks: goal shown, reasons listed, three hint levels, starter restored). Re-enacted the owner's case in Turkish in headless Chromium: the verdict names a blind script, no variable, and 3.2 cm too far from the wall.
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`; not yet on `main`.
-- Next / open: the owner decides when to put it live. French text needs review.
+- Status: pushed to `main` (fast-forward, owner's go-ahead "canlıya al", 2026-11-01), which triggers the Vercel production deploy; not verified from the cloud session (vercel.app is refused by its network policy).
+- Next / open: French text needs review.
 
 ### 2026-11-01 — Claude Code (cloud) — learning feedback, sky in the scene, clear walls
 
