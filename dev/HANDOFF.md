@@ -23,12 +23,13 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
   - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example (branch `claude/serene-mccarthy-1vb6oq`, not yet on `main`).
+  - New: "Build your own robot" shown as coming soon in the robot picker, not selectable (same branch).
   - New: a decorative header sky, sun and moon by the local clock (`dist/sky.mjs`), at the owner's request (same branch).
   - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables (same branch, not yet on `main`).
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors (same branch, not yet on `main`).
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m" (same branch, not yet on `main`).
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 66/66 pass, `npm run check` passes, `npm run test:browser` 11/11 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-01: `npm test` 83/83 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -95,6 +96,23 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — variables, wind and grass, Experiment 04, header sky, "coming soon" robot
+
+- Changed (commits `30cb041`, `52f3bf9`, `9ddda0c`, `a2cc125`, and the one with this entry):
+  - `dist/physics.mjs`, `dist/drive.mjs`: `let` variables; `ENVIRONMENTS`, the grass terrain, and the switchable wind (`AIR`, `WIND`, `DriveSim` option `wind`, CSV `wind_*`).
+  - `dist/missions.mjs`: Experiment 04 mission `wind`. `dist/sky.mjs`: new. `dist/app.js`, `dist/index.html`, `dist/style.css`, `dist/lang/*`: environment picker, wind switch and indicator, lesson 04, header sky, the coming-soon robot card. Terrain labels are now Concrete, Gravel, Grass, Ice.
+  - Tests: `tests/wind.test.mjs`, `tests/sky.test.mjs`, more in `tests/expressions.test.mjs` and `tests/missions.test.mjs`, three browser tests. README, `dev/AGENTS.md`.
+- Verified:
+  - `npm test` 83/83, `npm run check`, `npm run test:browser` 13/13. The 156-run fingerprint of the existing log channels is still bit-identical.
+  - Wind: the first push on a resting rover matches 0.5·ρ·Cd·A·U²/m to 1e-9; mirror symmetry; frame-split determinism; its own random stream.
+  - Experiment 04 with its own judge over 40 seeds: starter 0 pass (average miss 2.6–6.5 cm), reference PID 40 pass (at most 2.2 cm). Margins are thin; README says so.
+  - Deliberate breaks of `let`, the reserved names, unset reads, and the "judged only in its wind" check each failed the expected test and were reverted.
+  - Looked at in headless Chromium: outdoor grass with the wind indicator, the environment panel, four header-sky times, the robot picker, and the four-lesson strip on a phone.
+  - Not verified: real phones, Safari, Firefox; native French review of all new text.
+- Findings: `lidar_min` reads about 1.5 cm short (minimum of noisy beams); without static friction a parked rover creeps in wind. Both are documented, not changed.
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
+- Next / open: the owner merges into `main`. Experiment 04 has one mission; six other mission ideas were measured and dropped (README). "Build your own robot" is only announced.
 
 ### 2026-11-01 — Claude Code (cloud) — Experiment 03 "Follow the wall"
 
@@ -248,26 +266,3 @@ Entry template:
   - Headless Chrome on 5174: the stop starter shows "Not yet" with a 14.7 cm gap, the solution passes at 20.1 cm and the mission shows DONE. The turn starter on the TurtleBot3 fails at 352.3° with the encoder hint. Result cards show mission status, switching back to lesson 01 restores the ramp, the phone width has no overflow, and there are zero app console errors.
 - Status: committed together with this entry and pushed to `origin/main` (owner approved "everything", 2026-10-29).
 - Next / open: no next item chosen yet.
-
-### 2026-10-29 — Claude Code — TurtleBot3 preset and calibration (item 2)
-
-- Changed:
-  - `dist/drive.mjs`:
-    - `ROBOTS` specification for `kinetic` and `turtlebot3`, and `TB3_FIT`.
-    - `supportLoads` generalized to N casters.
-    - Firmware v/w limits without wheel rescaling for the TurtleBot3.
-    - Desired-trajectory channels `desX`, `desY`, `desYaw` (CSV columns `desired_*`).
-  - `dist/app.js`, `dist/index.html`, and `dist/style.css`:
-    - Robot picker that can select either robot; the TurtleBot3 hides the builder sliders and disables the ramp.
-    - Simplified Waffle Pi drawing.
-    - Desired series and a position-error figure in Plots.
-    - Lab 1 A, B, and C examples, and a TurtleBot3 section in "About the model".
-  - `dist/plots.mjs`: dotted line patterns.
-  - Tests: new `tests/fixtures/turtlebot3-lab.json` (numbers only) and `tests/turtlebot3.test.mjs` (8 tests). `package.json`, README, and `AGENTS.md` updated.
-- Verified:
-  - Kinetic rover unchanged. Before refactoring, 144 cases (8 programs × 3 designs × 3 terrains × noise on/off) were fingerprinted, and all 144 were bit-identical after the refactor. They were identical again after the desired channels were added, with those channels excluded from the hash.
-  - `npm test` 31/31, `npm run check` pass.
-  - Headless Chrome on 5174: the picker selects the TurtleBot3, the ramp is disabled and the sliders hidden, the v = 0.20 circle opens as in the lab figure, and 10 figures render. Switching back to Kinetic restores the builder, and a ramp run succeeds. Zero console errors.
-  - Not verified: real devices.
-- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
-- Next / open: item 3, the guided lesson.

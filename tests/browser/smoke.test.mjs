@@ -84,6 +84,11 @@ test('the page loads every module, paints the scene, and logs no errors',async()
       return seen.size;
     });
     assert.ok(colors>20,`scene shows only ${colors} sampled colors`);
+    // The robot picker announces building your own robot, but it cannot be chosen yet.
+    await page.click('#robot-picker');
+    assert.ok((await page.textContent('#modal-content')).includes(en['robots.custom']));
+    assert.equal(await page.locator('#modal-content [data-robot]').count(),2);
+    await page.keyboard.press('Escape');
   });
 });
 
