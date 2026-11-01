@@ -117,6 +117,19 @@ export const MISSIONS=[
     }
   }
 ];
+// What each judge measures, over the whole run, for a plot with the target band: kind names the quantity, lo and hi the band.
+// Ground truth from the 100 Hz log: the axle position, turned back into the body origin that rangeTo expects.
+const origin=(sim,i)=>{const L=sim.log,h=L.trueYaw[i];return {x:sim.start.x+L.trueY[i]-Math.sin(h)*sim.axleZ,z:sim.start.z+L.trueX[i]-Math.cos(h)*sim.axleZ,heading:h};};
+const series=(sim,f)=>sim.log.t.map((_,i)=>f(i));
+const TRACES={
+  stop:sim=>({kind:'gap',lo:.17,hi:.23,y:series(sim,i=>rangeTo(origin(sim,i),OBSTACLE,sim.spec.rangeAhead))}),
+  park:sim=>({kind:'gap',lo:.48,hi:.52,y:series(sim,i=>rangeTo(origin(sim,i),OBSTACLE,sim.spec.rangeAhead))}),
+  turn:sim=>({kind:'heading',lo:357,hi:363,y:series(sim,i=>sim.log.trueYaw[i]*180/Math.PI)}),
+  square:sim=>({kind:'home',lo:0,hi:.1,y:series(sim,i=>Math.hypot(sim.log.trueX[i],sim.log.trueY[i]))}),
+  wall:sim=>({kind:'wall',lo:.4,hi:.6,y:series(sim,i=>WALL-(sim.start.x+sim.log.trueY[i]))}),
+  wind:sim=>({kind:'wall',lo:.476,hi:.524,y:series(sim,i=>WALL-(sim.start.x+sim.log.trueY[i]))})
+};
+export const missionTrace=(m,sim)=>({...TRACES[m.id](sim),t:sim.log.t});
 export const missionById=id=>MISSIONS.find(m=>m.id===id);
 export const missionsFor=experiment=>MISSIONS.filter(m=>m.experiment===experiment);
 // A mission's title, goal, lesson, and starter in one language. The starter keeps the English code lines under translated comments.

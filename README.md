@@ -160,6 +160,14 @@ The header has a language picker: English, Türkçe, Français. On a first visit
 - `tests/i18n.test.mjs` checks that all three dictionaries have the same keys and placeholders, that code inside the help text is unchanged, that translated examples and starters run the same code, and that every key the interface uses exists and every key is used.
 - The French text was written by Claude Code and still needs a review by a native speaker. The Turkish text needs a review by the owner.
 
+## Learning feedback
+
+- **What the robot reads.** While driving, a card on the stage lists the sensors and variables the program uses, each with the robot's reading beside the simulator's truth where one exists (true heading, true position, noise-free ray distances, true turn rate). It makes the gap between measurement and reality visible: `lidar_min` reads about 1.5 cm short, and a LiDAR beam lags while the rover turns because the scan is progressive.
+- **Running line.** The line number of the instruction the rover is running is highlighted; a line the parser refuses is marked red.
+- **Mission verdict under Run.** With a mission selected, the strip under the Run button asks for a prediction first (will the script pass or fall short?), then shows the judge's result, whether the prediction was right, the hint on request, and a link to the mission plot.
+- **Mission plot.** The first figure in Plots for a mission run is the quantity its judge measures over the whole run, with the target band (`missionTrace` in `dist/missions.mjs`); its last value equals the judge's.
+- **Insert buttons.** Above the editor, buttons insert `drive`, `wait`, `stop`, `if`, `while`, `repeat`, and `let` on a new line with the current indent, and a list inserts any sensor name at the cursor.
+
 ## Outdoor sky
 
 Outdoors, the far ground of the stage melts into a sky with the sun by day and the moon, with its phase, by night, placed by the visitor's local clock (`dist/sky.mjs`). It is drawn after the ground and before every object, so it covers no robot, wall, path, or LiDAR dot, and the stage title turns light under a dark sky. It is decoration, not astronomy: it assumes solar noon at 12:00 and a mid-northern day length (12 ± 3.4 h over the year), and the moon crosses the sky centred on 12:00 + 24 h × phase. The stage redraws it once a minute; it is never animated. `tests/sky.test.mjs` checks the phase against the new moon of 2024-01-11 and the full moon of 2024-01-25.

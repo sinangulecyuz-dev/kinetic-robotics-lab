@@ -132,6 +132,17 @@ test('a program the parser rejects shows a line-numbered error and does not star
     await page.clock.runFor(300);
     assert.ok(await page.isVisible('#code-error'));
     assert.equal((await page.textContent('#code-error')).trim(),fill(en['parse.unknown'],{line:2}));
+    assert.equal((await page.textContent('#line-numbers .error')).trim(),'2','the refused line is marked');
+    // Insert buttons put a block on its own line, and a sensor name at the cursor.
+    await page.fill('#code-editor','');
+    await page.click('[data-snippet="while"]');
+    assert.equal(await page.inputValue('#code-editor'),'while time < 5\n  wait(0.05)\nend');
+    await page.selectOption('#snippet-sensor','heading');
+    assert.ok((await page.inputValue('#code-editor')).endsWith('endheading'));
+    // From the end of a line that has code, a block starts on a new line with the same indent.
+    await page.fill('#code-editor','repeat 2\n  stop()');
+    await page.click('[data-snippet="drive"]');
+    assert.equal(await page.inputValue('#code-editor'),'repeat 2\n  stop()\n  drive(0.2, 0)');
     assert.ok(await page.isHidden('#stage-outcome'));
     assert.equal((await page.textContent('#run-text')).trim(),en['run.start']);
   });
@@ -144,6 +155,9 @@ test('math on sensors: the P example runs, an unknown name is refused, and a div
     assert.match(await page.inputValue('#code-editor'),/drive\(0, 0\.05\*\(90 - heading\)\)/);
     await page.click('#run');
     assert.equal(await runToEnd(page),en['sim.complete']);
+    // What the robot reads: the P example reads heading, shown beside the true heading.
+    assert.ok(await page.isVisible('#watch'));
+    assert.match(await page.textContent('#watch-body'),/^heading-?\d+\.\d+-?\d+\.\d+$/);
     await page.fill('#code-editor','let n = 0\nwhile n < 3\n  let n = n + 1\n  drive(0.1*n, 0)\n  wait(0.2)\nend\nstop()');
     await page.click('#run');
     assert.equal(await runToEnd(page),en['sim.complete']);
@@ -185,8 +199,18 @@ test('Experiment 03: a mission starts the rover near a wall, and the judge reads
     await page.clock.runFor(300);
     // From this start the wall ahead is past the front sensor's 3 m range; from the center the box would read 0.84 m.
     assert.match(await page.textContent('#metric-tilt'),/^\s*3\.00/);
+    // Predict first, then read the verdict under the Run button.
+    assert.ok((await page.textContent('#mission-verdict')).includes(en['verdict.predict']));
+    await page.click('[data-guess="pass"]');
     await page.click('#run');
     await runToEnd(page);
+    assert.equal((await page.textContent('#mission-verdict .verdict-result strong')).trim(),en['verdict.fail']);
+    assert.equal((await page.textContent('#mission-verdict .verdict-guess')).trim(),fill(en['verdict.wrong'],{guess:en['verdict.guess.pass']}));
+    await page.click('[data-verdict="hint"]');
+    assert.equal((await page.textContent('#mission-verdict .verdict-hint')).trim(),park.lesson);
+    await page.click('[data-verdict="plot"]');
+    assert.equal(await page.getAttribute('#plots-tab','aria-selected'),'true');
+    await page.click('#build-tab');
     assert.equal((await page.textContent('#discovery-title')).trim(),fill(en['discovery.missionFail'],{title:park.title}));
     const copy=(await page.textContent('#discovery-copy')).trim();
     assert.ok(copy.startsWith(before)&&copy.includes(after),copy);

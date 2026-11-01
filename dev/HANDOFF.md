@@ -23,6 +23,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
   - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example.
+  - New: learning feedback (what the robot reads, running line, mission verdict with prediction under Run, mission plot with target band, insert buttons), the sky moved into outdoor scenes, clear walls, and a LiDAR layer that follows the lesson (branch `claude/serene-mccarthy-1vb6oq`, not yet on `main`).
   - New: "Build your own robot" shown as coming soon in the robot picker, not selectable.
   - New: a decorative header sky, sun and moon by the local clock (`dist/sky.mjs`), at the owner's request.
   - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables.
@@ -96,6 +97,14 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — learning feedback, sky in the scene, clear walls
+
+- Owner's review of the live site: the header sky was not visible (scrolled away, and at 23:03 neither sun nor moon was up), and LiDAR dots along the walls looked like a map boundary. The owner chose: move the sky into the scene, make walls clear with the LiDAR layer by lesson, and build the pedagogical improvements.
+- Changed: `dist/sky.mjs` (scene band), `dist/missions.mjs` (`missionTrace`), `dist/app.js`, `dist/index.html`, `dist/style.css`, `dist/lang/*` (watch, verdict, mission plot, insert texts), tests, README "Learning feedback" and "Outdoor sky", `dev/AGENTS.md`.
+- Verified: `npm test` 83/83, `npm run check`, `npm run test:browser` 13/13. Each mission's plot ends at the judge's own value (14.7 cm, 352.3°, 46.7 cm, 41.1 cm on seed 1). Deliberate breaks of the refused-line mark, the watch card, the prediction check, and the insert indentation each failed a browser test and were reverted. Looked at in headless Chromium: day, night, and zoomed-out outdoor skies, Experiment 03 walls, the watch card on desktop and phone, the verdict strip in Turkish, the mission plot, the insert bar in French.
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`; not yet on `main`, so not deployed.
+- Next / open: the owner decides when to merge into `main`. French text needs review. Terminology (experiment, mission, lesson, discovery) is still four words.
 
 ### 2026-11-01 — Claude Code (cloud) — variables, wind and grass, Experiment 04, header sky, "coming soon" robot
 
@@ -253,16 +262,3 @@ Entry template:
 - Found while testing: an example that drove off once a single beam was clear hit the box, because the rover is wider than a ray. The example now turns 90° with the gyro instead, and its comment explains why.
 - Status: committed locally, not pushed (see the next entry).
 - Next / open: none for this entry.
-
-### 2026-10-29 — Claude Code — Experiment 02 lesson and missions (item 3)
-
-- Changed:
-  - New `dist/missions.mjs` with three missions: stop 20 cm from the box (Kinetic, flat), turn exactly once around (TurtleBot3, flat), and close a square on ice (Kinetic, slippery). Each has a starter that falls short on purpose, a judge on ground truth, and a hint shown after a failed attempt.
-  - `dist/app.js`, `dist/index.html`, and `dist/style.css`: lesson switch, mission card in the builder, judging when a run finishes, mission result on result cards, lesson 02 details, and persisted progress (`lesson`, `mission`, `missionsDone`).
-  - Tests: new `tests/missions.test.mjs` (5 tests) holding the reference solutions, which are never shown in the interface. `package.json`, README, and `AGENTS.md` updated.
-- Verified:
-  - `npm test` 36/36, `npm run check` pass.
-  - Over 6 seeds, every starter fails and every reference solution passes.
-  - Headless Chrome on 5174: the stop starter shows "Not yet" with a 14.7 cm gap, the solution passes at 20.1 cm and the mission shows DONE. The turn starter on the TurtleBot3 fails at 352.3° with the encoder hint. Result cards show mission status, switching back to lesson 01 restores the ramp, the phone width has no overflow, and there are zero app console errors.
-- Status: committed together with this entry and pushed to `origin/main` (owner approved "everything", 2026-10-29).
-- Next / open: no next item chosen yet.
