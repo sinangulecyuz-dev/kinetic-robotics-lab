@@ -1,5 +1,5 @@
 import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram} from './physics.mjs';
-import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,TERRAINS,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
+import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,TERRAINS,ENVIRONMENTS,WIND,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
 import {MISSIONS,missionById,missionsFor,missionText} from './missions.mjs';
 import {EXAMPLES,example} from './examples.mjs';
@@ -33,8 +33,8 @@ function icon(name){return `<svg viewBox="0 0 24 24" fill="none" stroke="current
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 
 setLanguage(preferredLanguage(navigator.languages||[navigator.language]));
-let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[];
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[],environment='indoor',windOn=true;
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 // Labels in the chosen language. An unedited example or mission starter follows that language.
 const robotLabel=id=>t('robot.'+id),terrainLabel=id=>t('terrain.'+id),terrainLower=id=>terrainLabel(id).toLocaleLowerCase(language()),mt=m=>missionText(m,language());
 function translateCode(src,to){for(const l of Object.keys(LANGUAGES)){for(const name of Object.keys(EXAMPLES))if(example(name,l)===src)return example(name,to);for(const m of MISSIONS)if(missionText(m,l).starter===src)return missionText(m,to).starter;}return src;}
@@ -49,9 +49,11 @@ const VIEW_YAW=Math.PI+.73;
 let cw=800,ch=536,zoom=1,yaw=VIEW_YAW,elevation=0.43,drag=null,lastFrame=0,needsRender=true;
 // A mission of the current experiment can place the rover near a wall; otherwise it starts at the center.
 function startPose(){const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.start?m.start:null;}
+// Wind blows only outdoors with the switch on: a mission's own wind, or a random one chosen from each run's seed.
+function windOption(){if(environment!=='outdoor'||!windOn)return null;const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.wind?m.wind:true;}
 function view(){if(sim)return sim;const start=startPose(),key=JSON.stringify([p,start])+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false,start});idleKey=key;}return idle;}
 const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
-function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
+function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,environment,windOn,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
 // Text that depends on the language is kept as a function, so a language change can redraw it.
 const shown=new Map();
 function redraw(id){const {text,html}=shown.get(id),s=text();if(html)$(id).innerHTML=s;else $(id).textContent=s;}
@@ -95,10 +97,20 @@ function modeText(){
 function setTerrain(next){
   if(!TERRAINS[next])return;if(state.status!=='idle')reset();terrain=next;
   document.querySelectorAll('[data-terrain]').forEach(b=>{b.classList.toggle('active',b.dataset.terrain===next);b.setAttribute('aria-pressed',b.dataset.terrain===next);});
-  show('terrain-note',()=>{const T=TERRAINS[terrain];return t('terrain.note',{surface:t('surface.'+terrain),peak:T.muPeak,slide:T.muSlide,crr:T.crr,bumps:T.bumps?t('terrain.bumps'):''});});
+  show('terrain-note',()=>{const T=TERRAINS[terrain],w=windOption();return t('terrain.note',{surface:t('surface.'+terrain),peak:T.muPeak,slide:T.muSlide,crr:T.crr,bumps:T.bumps?t('terrain.bumps',{cm:Math.round(2*T.bumps)}):''})+(w===true?' '+t('wind.noteRandom',{min:WIND.minMean,max:WIND.maxMean}):w?' '+t('wind.noteMission',{speed:w.speed}):'');});
   show('model-note',modelNote);updateTelemetry();needsRender=true;
 }
 document.querySelectorAll('[data-terrain]').forEach(b=>b.onclick=()=>{setTerrain(b.dataset.terrain);persist();});
+// Indoor offers concrete and ice; outdoor offers grass, gravel, and ice, and a wind switch.
+function setEnvironment(next){
+  if(!ENVIRONMENTS[next])return;if(state.status!=='idle')reset();environment=next;
+  document.querySelectorAll('[data-environment]').forEach(b=>{b.classList.toggle('active',b.dataset.environment===next);b.setAttribute('aria-pressed',b.dataset.environment===next);});
+  document.querySelectorAll('[data-terrain]').forEach(b=>b.hidden=!ENVIRONMENTS[next].includes(b.dataset.terrain));
+  $('wind-row').hidden=next!=='outdoor';$('wind-on').checked=windOn;
+  setTerrain(ENVIRONMENTS[next].includes(terrain)?terrain:ENVIRONMENTS[next][0]);
+}
+document.querySelectorAll('[data-environment]').forEach(b=>b.onclick=()=>{setEnvironment(b.dataset.environment);persist();});
+$('wind-on').onchange=e=>{if(state.status!=='idle')reset();windOn=e.target.checked;setTerrain(terrain);persist();};
 function setLesson(n,user=true){
   lesson=[2,3].includes(n)?n:1;if(missionById(mission)?.experiment!==lesson)mission=null;
   document.querySelectorAll('[data-lesson]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.lesson===lesson));
@@ -117,7 +129,7 @@ function renderMissions(){
   show('mission-goal',()=>{const m=missionById(mission);return m?mt(m).goal:t('missions.pick');});
 }
 function loadMission(id){
-  const m=missionById(id);if(!m)return;mission=id;setRobot(m.robot);setTerrain(m.terrain);changeMode('drive');
+  const m=missionById(id);if(!m)return;mission=id;setRobot(m.robot);if(m.wind)windOn=true;setEnvironment(m.wind?'outdoor':ENVIRONMENTS.indoor.includes(m.terrain)?'indoor':'outdoor');setTerrain(m.terrain);changeMode('drive');
   $('code-editor').value=mt(m).starter;updateLines();renderMissions();persist();changeTab('code');needsRender=true;
   discover(()=>t('discovery.mission',{title:mt(m).title}),()=>mt(m).goal);
   toast(t('toast.missionLoaded'));
@@ -132,7 +144,7 @@ $('run').onclick=()=>{
   if(mode==='drive'){
     let program;try{program=parseProgram($('code-editor').value);}catch(e){changeTab('code');show('code-error',()=>e.key?t('parse.'+e.key,{line:e.line,...e.params}):e.message);$('code-error').hidden=false;toast(t('toast.checkProgram'));return;}
     if(!tb3()&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
-    sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0,start:startPose()});
+    sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0,start:startPose(),wind:windOption()});
   }
   state.status='running';state.runDesign={...p};state.minMargin=balance(p,0).margin;state.runPrediction=prediction;setRunButton();needsRender=true;
 };
@@ -143,9 +155,9 @@ function finish(success,key,params={}){
   $('stage-outcome').hidden=false;$('stage-outcome').classList.toggle('failed',!success);show('stage-outcome',message);
   if(mode==='drive'){const time=sim.time.toFixed(1);show('code-progress',()=>t('code.finished',{message:message(),time}));}
   // A mission is judged only on the robot and ground it was written for, using the simulator's ground truth.
-  const picked=mode==='drive'&&lesson>1?missionById(mission):null,m=picked?.experiment===lesson?picked:null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain?m.judge(sim):null;
+  const picked=mode==='drive'&&lesson>1?missionById(mission):null,m=picked?.experiment===lesson?picked:null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain&&JSON.stringify(sim.windOption)===JSON.stringify(m.wind??null)?m.judge(sim):null;
   if(judged?.pass&&!missionsDone.includes(m.id))missionsDone.push(m.id);
-  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,start:sim.origin,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
+  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,start:sim.origin,wind:sim.windOption,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
   const record={id:Date.now(),mode,design:{...state.runDesign},success,message:message(),messageKey:key,messageParams:params,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
   if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;}
   records.unshift(record);records=records.slice(0,30);persist();renderResults();if(tab==='plots')renderPlots();
@@ -192,7 +204,7 @@ function plotSource(){
   if(sim&&['running','paused'].includes(state.status))return {sim,label:t('plots.live'),name:'current'};
   const drives=records.filter(r=>r.mode==='drive');if(!drives.length)return null;
   const r=drives.find(x=>x.id===plotRunId)||drives[0],n=records.length-records.indexOf(r);plotRunId=r.id;
-  if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0,start:r.start}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
+  if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0,start:r.start,wind:r.wind}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
   const entry=plotCache.get(r.id);return {sim:entry.sim,replayed:entry.replayed,record:r,label:t('plots.runLabel',{n}),name:`run-${n}`};
 }
 function plotSpecs(s){
@@ -307,11 +319,11 @@ function render(){
   const v=mode==='drive'?view():null,o=v?.origin||{x:0,z:0},k=o.x||o.z?1:.65;focus=v?{x:o.x+(v.x-o.x)*k,z:o.z+(v.z-o.z)*k}:{x:0,z:0};bodyFrame=v?.frame||null;
   ctx.clearRect(0,0,cw,ch);const bg=ctx.createLinearGradient(0,0,0,ch);bg.addColorStop(0,'#f4f5f2');bg.addColorStop(1,'#edf0ed');ctx.fillStyle=bg;ctx.fillRect(0,0,cw,ch);
   const ground=v=>world(v,false),surface=mode==='drive'?terrain:'flat',lift=(x,z,dy=.004)=>({x,y:terrainHeight(surface,x,z)+dy,z});
-  if(surface==='rough'){
-    // True bump heights (about 2 cm) are too small to see at this scale, so slope shading shows them.
-    const s=.15,h=(x,z)=>terrainHeight('rough',x,z);
-    for(let i=-16;i<16;i++)for(let j=-16;j<16;j++){const x0=i*s,z0=j*s,x1=x0+s,z1=z0+s,a=h(x0,z0),b=h(x1,z0),c=h(x1,z1),d=h(x0,z1),gx=(b+c-a-d)/(2*s),gz=(c+d-a-b)/(2*s),k=Math.max(-1,Math.min(1,(gx*.6+gz*.4)*5));
-      const col=`rgb(${Math.round(222+k*20)},${Math.round(218+k*20)},${Math.round(206+k*20)})`;poly([{x:x0,y:a,z:z0},{x:x1,y:b,z:z0},{x:x1,y:c,z:z1},{x:x0,y:d,z:z1}],col,col,.6);}
+  if(TERRAINS[surface].bumps){
+    // True bump heights (about 2 cm on gravel, 1 cm on grass) are too small to see at this scale, so slope shading shows them.
+    const s=.15,h=(x,z)=>terrainHeight(surface,x,z),gain=5/TERRAINS[surface].bumps,[r0,g0,b0]=surface==='grass'?[199,217,178]:[222,218,206];
+    for(let i=-16;i<16;i++)for(let j=-16;j<16;j++){const x0=i*s,z0=j*s,x1=x0+s,z1=z0+s,a=h(x0,z0),b=h(x1,z0),c=h(x1,z1),d=h(x0,z1),gx=(b+c-a-d)/(2*s),gz=(c+d-a-b)/(2*s),k=Math.max(-1,Math.min(1,(gx*.6+gz*.4)*gain));
+      const col=`rgb(${Math.round(r0+k*20)},${Math.round(g0+k*20)},${Math.round(b0+k*20)})`;poly([{x:x0,y:a,z:z0},{x:x1,y:b,z:z0},{x:x1,y:c,z:z1},{x:x0,y:d,z:z1}],col,col,.6);}
   }else{
     const icy=surface==='slippery'&&mode==='drive';
     if(icy){poly([{x:-2.8,y:-.012,z:-2.8},{x:2.8,y:-.012,z:-2.8},{x:2.8,y:-.012,z:2.8},{x:-2.8,y:-.012,z:2.8}],'#e5eff4');for(const k of [-1.7,-.5,.8,1.9])line({x:k-.5,y:-.011,z:-2.5},{x:k+.5,y:-.011,z:2.5},'#f6fafc',4);}
@@ -369,6 +381,13 @@ function render(){
     const label=$('label-com');label.style.opacity=1;label.style.left=Math.max(13,Math.min(cw-135,q.x+18))+'px';label.style.top=Math.max(99,Math.min(ch-135,q.y-16))+'px';
   }else $('label-com').style.opacity=0;
   if(showSupport){const q=project(world({x:width/2+.03,y:0,z:-.13},mode==='drive'));const label=$('label-support');label.style.opacity=1;label.style.left=Math.max(15,Math.min(cw-137,q.x+20))+'px';label.style.top=Math.max(140,Math.min(ch-135,q.y+19))+'px';}else $('label-support').style.opacity=0;
+  // Wind: a fixed indicator under the stage title, its arrow turned to where the air moves as the camera sees it.
+  if(mode==='drive'&&v.windOption&&v.windSpeed>.05){
+    const d=v.windToward,a=project({x:v.x,y:0,z:v.z}),b=project({x:v.x+Math.sin(d)*.1,y:0,z:v.z+Math.cos(d)*.1}),n=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/n,uy=(b.y-a.y)/n;
+    const cx=40,cy=112,r=11;ctx.strokeStyle='#56708a';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(cx-ux*r,cy-uy*r);ctx.lineTo(cx+ux*r,cy+uy*r);
+    ctx.moveTo(cx+ux*r,cy+uy*r);ctx.lineTo(cx+ux*r-ux*5+uy*4,cy+uy*r-uy*5-ux*4);ctx.moveTo(cx+ux*r,cy+uy*r);ctx.lineTo(cx+ux*r-ux*5-uy*4,cy+uy*r-uy*5+ux*4);ctx.stroke();
+    ctx.fillStyle='#56708a';ctx.font='11px system-ui,sans-serif';ctx.fillText(t('wind.label',{speed:v.windSpeed.toFixed(1)}),cx+18,cy+4);
+  }
   // Orientation marker.
   const origin={x:cw-48,y:ch-115};for(const [label,dx,dy,color] of [['X',18,6,'#cc8771'],['Y',0,-22,'#91a18d'],['Z',-17,9,'#799ea5']]){ctx.beginPath();ctx.moveTo(origin.x,origin.y);ctx.lineTo(origin.x+dx,origin.y+dy);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=color;ctx.font='7px sans-serif';ctx.fillText(label,origin.x+dx-2,origin.y+dy+(dy<0?-4:10));}
 }
@@ -394,4 +413,4 @@ function applyLanguage(){
   modeText();setRunButton();updateInputs();renderMissions();renderResults();if(tab==='plots')renderPlots();needsRender=true;
 }
 $('language').onchange=e=>{setLanguage(e.target.value);const src=$('code-editor').value,next=translateCode(src,language());if(next!==src){$('code-editor').value=next;updateLines();}applyLanguage();persist();};
-setTerrain(terrain);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();requestAnimationFrame(frame);
+setEnvironment(environment);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();requestAnimationFrame(frame);

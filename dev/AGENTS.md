@@ -26,7 +26,7 @@ Frame convention: forward is +z, up is +y, and the robot's left is +x. Positive 
 
 The ramp uses quasi-static support geometry, held wheels, and ideal grip. It does not simulate slipping, contact impacts, or dynamic balance. Falling animation illustrates support loss.
 
-The drive experiment is a planar rigid-body model (forward, sideways, yaw) on three terrains: flat concrete, rough gravel with deterministic bumps of about 2 cm, and an ice-like surface.
+The drive experiment is a planar rigid-body model (forward, sideways, yaw) on four terrains: flat concrete, rough gravel with deterministic bumps of about 2 cm, short grass (half those bumps), and an ice-like surface. `ENVIRONMENTS` groups them indoors (concrete, ice) and outdoors (grass, gravel, ice). Outdoors, a switchable wind (`DriveSim` option `wind`: null, true for random from the seed, or {speed, toward, gust}) pushes the body by drag on each axis; it uses its own random stream, and wind off must stay bit-identical to before.
 - Motors: two 12 V gear motors with back-EMF (1.36 N·m stall, 34.6 rad/s free at the wheel) and a 100 Hz feedforward-plus-PI speed loop on encoder speed.
 - Tires: a velocity-based Pacejka-style friction curve on combined slip, plus rolling resistance and caster drag.
 - Load transfer: three-point static support, with a 20 ms lag that stands in for compliance.

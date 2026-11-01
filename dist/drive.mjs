@@ -13,11 +13,20 @@ export const ENCODER_CPR=1920;
 export const IMU={rate:100,gyroNoise:[8.7e-4,8.7e-4,8.7e-4],gyroBias:3.5e-3,accelNoise:[.03,.03,.03],accelBias:.04,accelOffset:[0,0,0],gyroLsb:250/32768*Math.PI/180,accelLsb:2*GRAVITY/32768,mount:{x:0,y:.17,z:0}};
 export const RANGE={max:3,noise:.003,relative:.01};
 export const AXLE_Z=.08,CASTER={x:0,z:-.22,radius:.031,trail:.03},PEAK_SLIP=.05;
+// bumps scales the terrain height pattern: 1 is gravel's bumps of about 2 cm, 0.5 a gentle grass undulation.
+// Grass values are typical for short dry lawn under small wheels: lower grip than concrete, much more rolling resistance.
 export const TERRAINS={
-  flat:{label:'Flat',surface:'Smooth concrete',muPeak:.9,muSlide:.75,crr:.015,casterCrr:.03,bumps:false},
-  rough:{label:'Rough',surface:'Gravel with bumps',muPeak:.65,muSlide:.55,crr:.05,casterCrr:.09,bumps:true},
-  slippery:{label:'Slippery',surface:'Ice-like surface',muPeak:.15,muSlide:.1,crr:.01,casterCrr:.015,bumps:false}
+  flat:{label:'Flat',surface:'Smooth concrete',muPeak:.9,muSlide:.75,crr:.015,casterCrr:.03,bumps:0},
+  rough:{label:'Rough',surface:'Gravel with bumps',muPeak:.65,muSlide:.55,crr:.05,casterCrr:.09,bumps:1},
+  slippery:{label:'Slippery',surface:'Ice-like surface',muPeak:.15,muSlide:.1,crr:.01,casterCrr:.015,bumps:0},
+  grass:{label:'Grass',surface:'Short grass',muPeak:.55,muSlide:.45,crr:.08,casterCrr:.15,bumps:.5}
 };
+// Which terrains each environment offers. Wind exists only outdoors.
+export const ENVIRONMENTS={indoor:['flat','slippery'],outdoor:['grass','rough','slippery']};
+// Wind: a seeded, gusty breeze that pushes the body by aerodynamic drag, 0.5·ρ·Cd·A·v², on each body axis, with v the air speed
+// relative to the body. Gusts and direction wobble are first-order random processes (time constant tau) updated at 100 Hz.
+// A random wind has a mean of 2–9 m/s from any direction. Cd 1.1 is typical of a box; areas come from each robot's specification.
+export const AIR={density:1.2,cd:1.1},WIND={minMean:2,maxMean:9,gust:.25,tau:2,wobble:.2};
 // 2D LiDAR, LDS-01 datasheet: 360 beams at 1°, 5 scans/s, 0.12–3.5 m, accuracy ±10 mm below 0.5 m and ±3.5% beyond (taken as 2σ).
 // Readings are in mm. A beam closer than min reads 0; a beam with nothing within max has no return.
 export const LIDAR={rate:5,beams:360,min:.12,max:3.5};
@@ -35,6 +44,8 @@ export const ROBOTS={
     label:'Kinetic rover',wheelRadius:WHEEL_RADIUS,axleZ:AXLE_Z,motor:MOTOR,control:CONTROL,encoderCpr:ENCODER_CPR,imu:IMU,
     maxWheel:10,limits:null,rangeAhead:.3,lidarMount:{x:0,y:.205,z:.05},casters:[{...CASTER,swivel:true}],casterCrr:t=>t.casterCrr,
     body:p=>({com:centerOfMass(p),iz:yawInertia(p),track:p.width/100}),
+    // Area facing the wind: a 0.5 m long, 0.14 m tall chassis with its wheels, plus the 0.12 m payload box. Pressure acts at the body origin.
+    windArea:p=>({front:(p.width/100+.06)*.14+(p.mass>0?.0144:0),side:.5*.14+(p.mass>0?.0144:0),z:0}),
     footprint:track=>({z:0,radius:Math.hypot(track/2+.03,.25)})
   },
   // Dynamixel XM430-W210 (3.0 N·m stall at 2.3 A and 77 rpm no-load at 12 V) referred to the wheel, 4096-count encoder,
@@ -48,11 +59,13 @@ export const ROBOTS={
     // Ball casters drag like sliding friction in their sockets, but never more than the ground can hold.
     casterCrr:t=>Math.min(TB3_FIT.ballFriction,t.muSlide),
     body:()=>({com:{mass:1.8,x:0,y:.065,z:-.064},iz:1.8*(.281*.281+.306*.306)/12,track:.287}),
+    // Waffle Pi box: 281 mm wide, 306 mm long, 141 mm tall.
+    windArea:()=>({front:.281*.141,side:.306*.141,z:-.064}),
     footprint:()=>({z:-.064,radius:Math.hypot(.153,.141)})
   }
 };
 export const OBSTACLE={x:0,z:1.3,halfX:.28,halfZ:.16};
-export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw'];
+export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw','windSpeed','windToward'];
 const ARENA=2.3;
 // A start position stays at least 0.3 m inside the edge stop.
 export const START_LIMIT=2;
@@ -65,8 +78,8 @@ function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.c
 
 // Deterministic bumps up to about ±2 cm, so every run on the rough floor meets the same terrain.
 export function terrainHeight(terrain,x,z){
-  if(!TERRAINS[terrain]?.bumps)return 0;const k=2*Math.PI;
-  return .009*Math.sin(k*x/.9+.7)*Math.sin(k*z/1.1+1.9)+.006*Math.sin(k*(.8*x+.6*z)/.45+2.3)+.0025*Math.sin(k*(-.5*x+.87*z)/.3+.4)+.0015*Math.sin(k*x/.23+1.1)*Math.cos(k*z/.27+.3);
+  const b=TERRAINS[terrain]?.bumps;if(!b)return 0;const k=2*Math.PI;
+  return b*(.009*Math.sin(k*x/.9+.7)*Math.sin(k*z/1.1+1.9)+.006*Math.sin(k*(.8*x+.6*z)/.45+2.3)+.0025*Math.sin(k*(-.5*x+.87*z)/.3+.4)+.0015*Math.sin(k*x/.23+1.1)*Math.cos(k*z/.27+.3));
 }
 // Friction coefficient versus slip speed: a Pacejka-style curve that peaks at PEAK_SLIP and settles at the sliding value.
 export function frictionCurve(t){
@@ -116,7 +129,9 @@ export function lidarMeasure(d,draw=()=>0,lidar=LIDAR){
 
 export class DriveSim{
   // start places the rover's origin at {x, z} in the arena, still facing +z, so odometry and desired paths keep their frame.
-  constructor({design,terrain='flat',robot='kinetic',program=[],seed=1,noise=true,start}){
+  // wind is null (none), true (random from the seed), or {speed, toward, gust}: mean m/s, direction it blows toward in degrees
+  // counterclockwise from +z (like heading), and gust strength as a fraction of the mean.
+  constructor({design,terrain='flat',robot='kinetic',program=[],seed=1,noise=true,start,wind=null}){
     this.design={...design};this.terrain=TERRAINS[terrain]?terrain:'flat';this.surface=TERRAINS[this.terrain];this.curve=frictionCurve(this.surface);
     this.robot=ROBOTS[robot]?robot:'kinetic';const spec=this.spec=ROBOTS[this.robot],body=spec.body(design);
     this.com=body.com;this.mass=this.com.mass;this.iz=body.iz;this.width=body.track;this.R=spec.wheelRadius;this.axleZ=spec.axleZ;this.motor=spec.motor;
@@ -131,6 +146,12 @@ export class DriveSim{
     this.steps=0;this.budget=0;this.status='running';this.success=false;this.message='';
     this.queue=[...program];this.vars=new Map();this.waitSteps=0;this.instructions=0;this.sinceAdvance=0;this.line=program[0]?.line||1;this.phase='run';this.settleSteps=0;this.quietSteps=0;
     this.seed=seed;this.noise=noise;this.rand=random(seed);this.lidarRand=random(seed^0x9E3779B9);
+    this.windOption=wind||null;this.windSpeed=0;this.windToward=0;this.windForce={f:0,l:0};
+    if(this.windOption){
+      const r=this.windRand=random(seed^0x5BD1E995),fixed=typeof wind==='object';
+      this.wind={mean:fixed?Math.max(0,+wind.speed||0):WIND.minMean+(WIND.maxMean-WIND.minMean)*r(),toward:(fixed?+wind.toward||0:360*r())*Math.PI/180,gust:fixed?Math.max(0,wind.gust??WIND.gust):WIND.gust,g:0,d:0};
+      this.windArea=spec.windArea(design);this.updateWind(0);
+    }
     const imu=spec.imu,bias=(sd,offset)=>[0,1,2].map(i=>(noise?gauss(this.rand)*sd:0)+offset[i]);this.bias={gyro:bias(imu.gyroBias,[0,0,0]),accel:bias(imu.accelBias,imu.accelOffset)};
     this.odom={x:0,y:0,yaw:0};this.desired={x:0,y:0,yaw:0,v:0,w:0};this.fusion={alpha:FUSION_ALPHA,x:0,y:0,yaw:0};this.gyroYaw=0;this.gyroZ=0;this.imuPoints=[];this.imuFrames=[];this.heightPrev=null;
     this.log=Object.fromEntries(CHANNELS.map(c=>[c,[]]));this.path=[];this.odomPath=[];this.fusedPath=[];
@@ -152,7 +173,7 @@ export class DriveSim{
     if(this.status!=='running')return;
     this.interpret();if(this.status!=='running')return;
     if(this.steps%CONTACT_STEPS===0){this.updateContacts();if(this.status!=='running')return;}
-    if(this.steps%CONTROL_STEPS===0)this.sample();
+    if(this.steps%CONTROL_STEPS===0){if(this.windOption)this.updateWind(CONTROL_STEPS*DT);this.sample();}
     this.dynamics();this.steps++;
     const D=this.desired,mid=D.yaw+D.w*DT/2;D.x+=D.v*DT*Math.cos(mid);D.y+=D.v*DT*Math.sin(mid);D.yaw+=D.w*DT;
     if(this.waitSteps>0){this.waitSteps--;this.sinceAdvance=0;}
@@ -206,6 +227,12 @@ export class DriveSim{
         this.vars.set(n.name,v);
       }
   }
+  // Gusts: g scales the mean speed and d turns the direction; both relax toward 0 with time constant tau, driven by seeded noise.
+  updateWind(dt){
+    const W=this.wind,r=this.windRand,a=dt/WIND.tau,k=Math.sqrt(2*a);
+    if(dt>0){W.g+=-W.g*a+W.gust*k*gauss(r);W.d+=-W.d*a+WIND.wobble*(W.gust/WIND.gust)*k*gauss(r);}
+    this.windSpeed=Math.max(0,W.mean*(1+W.g));this.windToward=W.toward+W.d;
+  }
   // What a program sees: the latest sensor samples, never the simulator's ground truth.
   sensor(name){
     const deg=180/Math.PI;
@@ -257,6 +284,12 @@ export class DriveSim{
       if(c.swivel&&cs>1e-3){const d=Math.atan2(cl,cf)-this.caster.swivel;this.caster.swivel+=Math.atan2(Math.sin(d),Math.cos(d))*Math.min(1,cs*DT/c.trail);}
       this.caster.spin+=(cf*Math.cos(this.caster.swivel)+cl*Math.sin(this.caster.swivel))/c.radius*DT;
     });
+    if(this.windOption){
+      // Air velocity relative to the body, in body axes (forward, left), then drag on each axis at the centre of pressure.
+      const sh=Math.sin(this.heading),ch=Math.cos(this.heading),wx=this.windSpeed*Math.sin(this.windToward),wz=this.windSpeed*Math.cos(this.windToward);
+      const rf=wx*sh+wz*ch-u,rl=wx*ch-wz*sh-v,q=.5*AIR.density*AIR.cd,A=this.windArea,ff=q*A.front*rf*Math.abs(rf),fl=q*A.side*rl*Math.abs(rl);
+      Ff+=ff;Fl+=fl;Mz+=(A.z-com.z)*fl+com.x*ff;this.windForce={f:ff,l:fl};
+    }
     this.acc.f=Ff/m;this.acc.l=Fl/m;
     this.u+=(Ff/m+w*v)*DT;this.v+=(Fl/m-w*u)*DT;this.w+=Mz/this.iz*DT;
     const forward=this.u+this.w*com.x,lateral=this.v-this.w*com.z,sh=Math.sin(this.heading),ch=Math.cos(this.heading);
@@ -303,7 +336,7 @@ export class DriveSim{
     if(this.steps%RANGE_STEPS===0)this.range=this.measureRange();
     for(let k=0;k<LIDAR.beams*LIDAR.rate*T;k++){this.scanBuffer.push(this.beam(this.scanBuffer.length));if(this.scanBuffer.length===LIDAR.beams){this.publishScan(this.scanBuffer);this.scanBuffer=[];}}
     const axle=this.axle(),[L,R]=this.wheels,trueX=axle.z-this.start.z,trueY=axle.x-this.start.x;
-    const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w,this.desired.x,this.desired.y,this.desired.yaw,...['front','left','back','right','min'].map(k=>this.lidar[k]<Infinity&&this.lidar[k]>=LIDAR.min?this.lidar[k]:0),this.fusion.x,this.fusion.y,this.fusion.yaw];
+    const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w,this.desired.x,this.desired.y,this.desired.yaw,...['front','left','back','right','min'].map(k=>this.lidar[k]<Infinity&&this.lidar[k]>=LIDAR.min?this.lidar[k]:0),this.fusion.x,this.fusion.y,this.fusion.yaw,this.windSpeed,this.windToward];
     CHANNELS.forEach((c,i)=>this.log[c].push(row[i]));
     const track=(list,x,z)=>{const last=list.at(-1);if(!last||Math.hypot(x-last.x,z-last.z)>.018)list.push({x,z});};
     track(this.path,axle.x,axle.z);track(this.odomPath,this.start.x+this.odom.y,this.start.z+this.odom.x);track(this.fusedPath,this.start.x+this.fusion.y,this.start.z+this.fusion.x);
@@ -315,7 +348,7 @@ export class DriveSim{
 }
 export function simulateRun(options){return new DriveSim(options).run();}
 // Column names carry units and mark simulator-only values as true_*. MATLAB: T = readtable('file.csv').
-const CSV_NAMES={t:'t_s',cmdL:'cmd_left_rad_s',cmdR:'cmd_right_rad_s',encL:'encoder_left_counts',encR:'encoder_right_counts',speedL:'speed_left_rad_s',speedR:'speed_right_rad_s',currentL:'current_left_A',currentR:'current_right_A',voltsL:'voltage_left_V',voltsR:'voltage_right_V',ax:'accel_x_m_s2',ay:'accel_y_m_s2',az:'accel_z_m_s2',gx:'gyro_x_rad_s',gy:'gyro_y_rad_s',gz:'gyro_z_rad_s',range:'range_m',odomX:'odom_x_m',odomY:'odom_y_m',odomYaw:'odom_yaw_rad',gyroYaw:'gyro_yaw_rad',trueX:'true_x_m',trueY:'true_y_m',trueYaw:'true_yaw_rad',trueSpeed:'true_speed_m_s',slipL:'true_slip_left_m_s',slipR:'true_slip_right_m_s',wheelL:'true_wheel_left_rad_s',wheelR:'true_wheel_right_rad_s',desX:'desired_x_m',desY:'desired_y_m',desYaw:'desired_yaw_rad',lidarFront:'lidar_front_m',lidarLeft:'lidar_left_m',lidarBack:'lidar_back_m',lidarRight:'lidar_right_m',lidarMin:'lidar_min_m',fusedX:'fused_x_m',fusedY:'fused_y_m',fusedYaw:'fused_yaw_rad'};
+const CSV_NAMES={t:'t_s',cmdL:'cmd_left_rad_s',cmdR:'cmd_right_rad_s',encL:'encoder_left_counts',encR:'encoder_right_counts',speedL:'speed_left_rad_s',speedR:'speed_right_rad_s',currentL:'current_left_A',currentR:'current_right_A',voltsL:'voltage_left_V',voltsR:'voltage_right_V',ax:'accel_x_m_s2',ay:'accel_y_m_s2',az:'accel_z_m_s2',gx:'gyro_x_rad_s',gy:'gyro_y_rad_s',gz:'gyro_z_rad_s',range:'range_m',odomX:'odom_x_m',odomY:'odom_y_m',odomYaw:'odom_yaw_rad',gyroYaw:'gyro_yaw_rad',trueX:'true_x_m',trueY:'true_y_m',trueYaw:'true_yaw_rad',trueSpeed:'true_speed_m_s',slipL:'true_slip_left_m_s',slipR:'true_slip_right_m_s',wheelL:'true_wheel_left_rad_s',wheelR:'true_wheel_right_rad_s',desX:'desired_x_m',desY:'desired_y_m',desYaw:'desired_yaw_rad',lidarFront:'lidar_front_m',lidarLeft:'lidar_left_m',lidarBack:'lidar_back_m',lidarRight:'lidar_right_m',lidarMin:'lidar_min_m',fusedX:'fused_x_m',fusedY:'fused_y_m',fusedYaw:'fused_yaw_rad',windSpeed:'wind_speed_m_s',windToward:'wind_toward_rad'};
 export function toCsv(log){
   return [CHANNELS.map(c=>CSV_NAMES[c]).join(','),...log.t.map((_,i)=>CHANNELS.map(c=>{const v=log[c][i];return Number.isInteger(v)?v:+v.toFixed(6);}).join(','))].join('\n')+'\n';
 }

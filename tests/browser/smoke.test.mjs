@@ -201,6 +201,29 @@ test('Experiment 03: a mission starts the rover near a wall, and the judge reads
   });
 });
 
+test('outdoors: grass and gravel appear, a run carries wind, and the switch turns it off',async()=>{
+  await withLab('outdoor',{},async page=>{
+    await page.selectOption('#experiment-mode','drive');
+    assert.ok(await page.isHidden('[data-terrain="grass"]'));
+    await page.click('[data-environment="outdoor"]');
+    assert.ok(await page.isVisible('[data-terrain="grass"]')&&await page.isVisible('[data-terrain="rough"]')&&await page.isHidden('[data-terrain="flat"]'));
+    assert.equal(await page.getAttribute('[data-terrain="grass"]','aria-pressed'),'true');
+    assert.ok((await page.textContent('#terrain-note')).includes(en['wind.noteRandom'].split(':')[0]));
+    await page.click('#run');
+    await runToEnd(page);
+    const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('kinetic-v1')));
+    assert.equal(saved.records[0].wind,true);assert.equal(saved.environment,'outdoor');
+    await page.click('#wind-on');
+    assert.ok(!(await page.textContent('#terrain-note')).includes(en['wind.noteRandom'].split(':')[0]));
+    await page.click('#run');
+    await runToEnd(page);
+    assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('kinetic-v1')))).records[0].wind,null);
+    await page.click('[data-environment="indoor"]');
+    assert.equal(await page.getAttribute('[data-terrain="flat"]','aria-pressed'),'true');
+    assert.ok(await page.isHidden('#wind-row'));
+  });
+});
+
 test('Turkish and French redraw the interface and the choice survives a reload',async()=>{
   await withLab('language',{},async page=>{
     for(const [code,dict] of [['tr',tr],['fr',fr]]){
