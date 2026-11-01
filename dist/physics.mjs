@@ -48,11 +48,61 @@ export function stepDrive(pose,left,right,width,dt) {
 // lidar_min is the closest return in m and lidar_min_angle its direction in degrees, counterclockwise from the front.
 // fused_heading (degrees), fused_x and fused_y (m) come from the complementary filter set by filter(alpha).
 export const SENSORS=['distance','heading','odom_heading','gyro_z','encoder_left','encoder_right','odom_x','odom_y','time','lidar_front','lidar_left','lidar_back','lidar_right','lidar_min','lidar_min_angle','fused_heading','fused_x','fused_y'];
+// Math inside wheels() and drive(): numbers, sensor names, + - * /, parentheses, abs(x), min(a, b), max(a, b).
+// A tokenizer and a recursive-descent parser build a small tree, and evaluate() walks it: no eval, no JavaScript.
+// A tree is a number, {sensor}, {op:'neg',a}, {op:'+'|'-'|'*'|'/',a,b}, or {fn,args}.
+export const MATH_FUNCTIONS=new Map([['abs',1],['min',2],['max',2]]);
+export const MATH_LIMITS={symbols:40,depth:5};
+// Division by zero has no value (NaN), even where IEEE would give infinity, so a student sees it instead of a silent saturation.
+export function evaluate(e,read){
+  if(typeof e==='number')return e;
+  if(e.sensor)return read(e.sensor);
+  if(e.fn){const x=e.args.map(a=>evaluate(a,read));return e.fn==='abs'?Math.abs(x[0]):e.fn==='min'?Math.min(x[0],x[1]):Math.max(x[0],x[1]);}
+  const a=evaluate(e.a,read);if(e.op==='neg')return -a;
+  const b=evaluate(e.b,read);
+  return e.op==='+'?a+b:e.op==='-'?a-b:e.op==='*'?a*b:b===0?NaN:a/b;
+}
+// Parser errors carry a key and params as well as English text, so the interface can explain them in the student's language.
+const fail=(line,msg,key,params={})=>{const e=new Error(`Line ${line}: ${msg}`);e.line=line;e.key=key;e.params=params;throw e;};
+const usesSensor=e=>typeof e!=='number'&&(!!e.sensor||(e.args||[e.a,e.b]).some(x=>x!==undefined&&usesSensor(x)));
+// Parses the comma-separated values between the parentheses of one instruction.
+// A value without sensors is computed here, so range errors still appear before the run.
+export function parseValues(text,line=1){
+  const tokens=[],re=/\s*(?:(\d+(?:\.\d+)?)|([a-z_]+)|([-+*/(),]))/y;
+  for(re.lastIndex=0;re.lastIndex<text.length&&text.slice(re.lastIndex).trim();){
+    const m=re.exec(text);if(!m)fail(line,'Check the math. Use numbers, sensor names, + - * /, parentheses, abs(x), min(a, b), and max(a, b).','exprSyntax');
+    if(tokens.push(m[1]!==undefined?{num:+m[1]}:m[2]!==undefined?{name:m[2]}:{sym:m[3]})>MATH_LIMITS.symbols)fail(line,'Keep the math in one instruction under 40 symbols.','exprLong');
+  }
+  let i=0,depth=0;
+  const syntax=()=>fail(line,'Check the math. Use numbers, sensor names, + - * /, parentheses, abs(x), min(a, b), and max(a, b).','exprSyntax');
+  const is=sym=>tokens[i]?.sym===sym,expect=sym=>{if(!is(sym))syntax();i++;};
+  const open=()=>{if(++depth>MATH_LIMITS.depth)fail(line,'Use at most five nested parentheses.','exprDepth');};
+  const sum=()=>{let a=product();while(is('+')||is('-')){const op=tokens[i++].sym;a={op,a,b:product()};}return a;};
+  const product=()=>{let a=unary();while(is('*')||is('/')){const op=tokens[i++].sym;a={op,a,b:unary()};}return a;};
+  const unary=()=>{if(is('-')){i++;return {op:'neg',a:unary()};}return primary();};
+  const primary=()=>{
+    const t=tokens[i++];if(!t)syntax();
+    if(t.num!==undefined)return t.num;
+    if(t.sym==='('){open();const e=sum();expect(')');depth--;return e;}
+    if(t.name===undefined)syntax();
+    const name=t.name,call=is('(');
+    if(call?!MATH_FUNCTIONS.has(name):!SENSORS.includes(name))fail(line,`${name} is not a sensor or a math function. Sensors: ${SENSORS.join(', ')}.`,'exprName',{name,list:SENSORS.join(', ')});
+    if(!call)return {sensor:name};
+    i++;open();const args=[sum()];while(is(',')){i++;args.push(sum());}expect(')');depth--;
+    if(args.length!==MATH_FUNCTIONS.get(name))fail(line,'abs(x) takes one value; min(a, b) and max(a, b) take two.','exprArity');
+    return {fn:name,args};
+  };
+  const values=[sum()];while(is(',')){i++;values.push(sum());}
+  if(i<tokens.length)syntax();
+  return values.map(e=>{
+    if(usesSensor(e))return e;
+    const v=evaluate(e,()=>NaN);if(!Number.isFinite(v))fail(line,'This math has no value, for example a division by zero.','exprValue');
+    return v;
+  });
+}
 // Bounded parser: no eval, arbitrary JavaScript, imports, or network access.
 export function parseProgram(source) {
   const lines=source.split('\n');let count=0,index=0;
-  // Errors carry a key and params as well as English text, so the interface can explain them in the student's language.
-  const fail=(line,msg,key,params={})=>{const e=new Error(`Line ${line}: ${msg}`);e.line=line;e.key=key;e.params=params;throw e;};
   const parseBlock=(depth=0)=>{
     if(depth>5)fail(index+1,'Use at most five nested blocks.','nesting');
     const nodes=[];
@@ -62,12 +112,17 @@ export function parseProgram(source) {
       if(++count>300)fail(lineNo,'Keep your program under 300 instructions.','tooLong');
       if(s==='end'||s==='else')return {nodes,closing:s,line:lineNo};
       let m;
-      if((m=s.match(/^wheels\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/))){
-        const l=+m[1],r=+m[2];if(Math.abs(l)>10||Math.abs(r)>10)fail(lineNo,'Wheel speeds must be between -10 and 10 rad/s.','wheelRange');
-        nodes.push({type:'wheels',l,r,line:lineNo});
-      }else if((m=s.match(/^drive\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/))){
-        const v=+m[1],w=+m[2];if(Math.abs(v)>.75)fail(lineNo,'Forward speed v must be between -0.75 and 0.75 m/s.','driveV');if(Math.abs(w)>6)fail(lineNo,'Turn rate w must be between -6 and 6 rad/s.','driveW');
-        nodes.push({type:'drive',v,w,line:lineNo});
+      if((m=s.match(/^(wheels|drive)\((.*)\)$/))){
+        // A value is a number, or a tree computed from sensors at run time and clipped to the same limits there.
+        const name=m[1],values=parseValues(m[2],lineNo),over=(x,limit)=>typeof x==='number'&&Math.abs(x)>limit;
+        if(values.length!==2)fail(lineNo,`${name} needs two values, like ${name}(a, b).`,'args',{name});
+        if(name==='wheels'){
+          const [l,r]=values;if(over(l,10)||over(r,10))fail(lineNo,'Wheel speeds must be between -10 and 10 rad/s.','wheelRange');
+          nodes.push({type:'wheels',l,r,line:lineNo});
+        }else{
+          const [v,w]=values;if(over(v,.75))fail(lineNo,'Forward speed v must be between -0.75 and 0.75 m/s.','driveV');if(over(w,6))fail(lineNo,'Turn rate w must be between -6 and 6 rad/s.','driveW');
+          nodes.push({type:'drive',v,w,line:lineNo});
+        }
       }else if((m=s.match(/^filter\(\s*(\d+(?:\.\d+)?)\s*\)$/))){
         const alpha=+m[1];if(alpha>1)fail(lineNo,'The filter weight alpha must be between 0 and 1.','filterRange');
         nodes.push({type:'filter',alpha,line:lineNo});

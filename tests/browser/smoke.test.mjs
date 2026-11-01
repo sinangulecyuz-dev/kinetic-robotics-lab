@@ -15,6 +15,7 @@ import tr from '../../dist/lang/tr.mjs';
 import fr from '../../dist/lang/fr.mjs';
 import {toCsv} from '../../dist/drive.mjs';
 import {missionById,missionText} from '../../dist/missions.mjs';
+import {SENSORS} from '../../dist/physics.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const shots=path.join(root,'test-results');
@@ -128,6 +129,24 @@ test('a program the parser rejects shows a line-numbered error and does not star
     assert.equal((await page.textContent('#code-error')).trim(),fill(en['parse.unknown'],{line:2}));
     assert.ok(await page.isHidden('#stage-outcome'));
     assert.equal((await page.textContent('#run-text')).trim(),en['run.start']);
+  });
+});
+
+test('math on sensors: the P example runs, an unknown name is refused, and a division by zero stops on its line',async()=>{
+  await withLab('math',{},async page=>{
+    await page.click('#code-tab');
+    await page.selectOption('#code-example','pturn');
+    assert.match(await page.inputValue('#code-editor'),/drive\(0, 0\.05\*\(90 - heading\)\)/);
+    await page.click('#run');
+    assert.equal(await runToEnd(page),en['sim.complete']);
+    await page.fill('#code-editor','drive(0.2, 2*speed)');
+    await page.click('#run');
+    await page.clock.runFor(300);
+    assert.equal((await page.textContent('#code-error')).trim(),fill(en['parse.exprName'],{line:1,name:'speed',list:SENSORS.join(', ')}));
+    await page.fill('#code-editor','drive(0.2, 0)\nwait(0.5)\ndrive(0.2, 1/(time - time))');
+    await page.click('#run');
+    assert.equal(await runToEnd(page),fill(en['sim.noValue'],{line:3}));
+    assert.ok((await page.getAttribute('#stage-outcome','class')).includes('failed'));
   });
 });
 

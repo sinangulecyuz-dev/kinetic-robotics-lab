@@ -22,8 +22,9 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: a complementary filter (gyro and encoder heading) with filtered odometry, `filter(alpha)` and `fused_*` readings, a green filtered path, and filter series in Plots.
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
+  - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example (branch `claude/serene-mccarthy-1vb6oq`, not yet on `main`).
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 54/54 pass, `npm run check` passes, `npm run test:browser` 9/9 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-01: `npm test` 62/62 pass, `npm run check` passes, `npm run test:browser` 10/10 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -58,6 +59,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - `while sensor op N … end`, and `if` with any sensor. Operators are `< > <= >=`.
   - Sensors: `distance` (m), `heading` (gyro-integrated IMU yaw in degrees, positive left), `odom_heading` (degrees), `gyro_z` (rad/s), `encoder_left` and `encoder_right` (counts), `odom_x` and `odom_y` (m), `time` (s).
   - A loop without `wait` hits the existing guard.
+  - Math in `wheels` and `drive` values (2026-11-01, owner's go-ahead for "bounded expressions, no variables"): numbers, sensors, `+ - * /`, parentheses, `abs`, `min`, `max`; 40 symbols and five nested parentheses per instruction. Math without sensors is computed by the parser and keeps the range errors. Math with sensors is clipped to the same limits at run time. Division by zero has no value: a parse error for constant math, `sim.noValue` during a run. `if`/`while` stay "one sensor against one number". No variables, so P and PD control are possible, PID is not (the integral needs memory); decide this before Experiment 04.
 - TurtleBot3 model choices (2026-10-29):
   - Only two parameters are fitted: battery 10.93 V and ball-caster friction 0.261.
   - A command-latency parameter was tried and dropped. The circle data fit best with zero latency (rms 1.9° over five circles).
@@ -85,6 +87,25 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — math in rover scripts (P control)
+
+- Changed:
+  - `dist/physics.mjs`: `parseValues` (tokenizer and recursive-descent parser, no `eval`), `evaluate`, `MATH_FUNCTIONS`, `MATH_LIMITS`. `wheels` and `drive` take math. The parser's `fail` moved to module scope.
+  - `dist/drive.mjs`: `value()` evaluates math on the latest sensor samples and clips it; NaN stops the run with `sim.noValue` and the line.
+  - `dist/lang/{en,tr,fr}.mjs`: 7 parser messages, `sim.noValue`, `example.pturn`, and a "Math from sensors" section in the rover script reference. French needs the native speaker's review.
+  - `dist/examples.mjs`, `dist/index.html`: the "P control · smooth 90° turn" example. `dist/style.css`: inline code in dialogs no longer breaks across lines.
+  - New `tests/expressions.test.mjs` (8 tests), added to `npm test`. One browser test added. `npm run check` also checks the browser test's syntax. README and `dev/AGENTS.md` updated.
+- Verified:
+  - `npm test` 62/62, `npm run check`, `npm run test:browser` 10/10 pass.
+  - 156 runs (every example and mission starter × 2 robots × 3 terrains × noise on/off) hashed before and after: all bit-identical, so number-only programs, missions, and saved runs behave as before.
+  - Expressions: 3000 generated expressions give exactly JavaScript's value; 20 000 random strings only ever raise line-numbered parser messages; hostile names (`constructor`, `__proto__`, `alert`) are refused.
+  - P turn against an independent sampled-data model: k = 0.02 ends at 82.5° against 82.1° predicted; k = 0.3 overshoots (108° simulated, 98° in the model, which leaves out motor lag).
+  - The tests can fail: six deliberate breaks (reversed subtraction, right-associative `*` and `/`, function lookup through the prototype, no clipping, no NaN stop, no depth limit), each reverted, failed the expected tests. Only the JavaScript comparison caught the associativity break.
+  - Looked at in headless Chromium: the reference section in Turkish and French, the example in French (its long comment line was split after this check), and the three dialogs on a phone emulation with no sideways overflow.
+  - Not verified: real phones, Safari, Firefox; a native French review.
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
+- Next / open: the owner merges into `main` if wanted. The P example also shows a pattern for the "turn once around" mission, though not its reference solution. Next planned step: Experiment 03, wall following with P control.
 
 ### 2026-11-01 — Claude Code (cloud) — instructions load on their own, browser smoke test
 
@@ -239,21 +260,3 @@ Entry template:
 - Known limit: on ice, a slow 90° turn shows only about 2° between the gyro and the encoders, because in-place scrubbing is under-modelled (see the TurtleBot gap in Open items). The tests therefore make no "gyro beats encoders on ice" claim yet.
 - Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
 - Next / open: item 2 (TurtleBot3 preset and calibration).
-
-### 2026-10-29 — Claude Code — wheels turn, terrain, sensors, MATLAB-style plots
-
-- Changed:
-  - New `dist/drive.mjs`: terrain, friction curve, motors with PI loop, planar dynamics, load transfer, encoders, IMU, range sensor, odometry, program runner, log, and CSV.
-  - New `dist/plots.mjs`: figures with crosshair, tooltip, keyboard reading, and min/max decimation.
-  - `dist/physics.mjs`: the `wheelVelocity` sign is fixed.
-  - `dist/app.js`: wired to the new sim, with terrain selector, Plots tab, rotating wheels and caster, shaded rough terrain, icy floor, odometry trail, drive telemetry (speed, slip, dynamic margin, range), and model text updated in the modals.
-  - `dist/index.html` and `dist/style.css`: Plots tab and panel, terrain buttons, odometry toggle.
-  - Tests: new `tests/drive.test.mjs` (13 tests), and the spin expectation in `tests/physics.test.mjs` changed to -1.5.
-  - `package.json`: scripts cover the new files. `README.md` and `AGENTS.md` updated.
-- Verified:
-  - `npm test` 20/20, `npm run check` pass.
-  - The tests check independent expectations: lever-arm loads and load transfer; friction peak and asymptote; stall torque and free speed; a parked rover reading 9.81 m/s²; steady-state speed R·ω; turn yaw rate against R(ωr−ωl)/W, with the gyro reading it; centripetal a_y = ω·v and a_x = ω²·0.08 from rigid-body kinematics; encoder tick counting; ice acceleration ≤ μ·g; odometry drifting more than 3× on ice; roll and pitch rates only on rough ground; a tall rover lifting the caster under hard braking; seed determinism across frame splits; CSV shape.
-  - In the browser: headless Chrome 155 over CDP against this repo on 127.0.0.1:5174. Every tab worked. A square run on rough ground and a hard start plus spin on ice both completed. Hovering a figure showed the tooltip. After a reload, saved runs replayed with identical odometry errors (4.7 cm and 8.4 cm). At 390 px phone width there was no horizontal overflow. Zero console errors or exceptions.
-  - Correction to the 2026-10-28 entry: the server answering on 5173 was the `robotikLab` copy, not this repo.
-- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
-- Next / open: the owner reviews the feature in a browser on 5174 and decides about the slider labels. The next task is closed-loop control (`drive(v, w)`, sensor conditions, `while`).

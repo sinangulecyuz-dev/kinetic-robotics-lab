@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 54 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 62 model, dynamics, sensor, LiDAR, filter, parser, rover-script math, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -30,7 +30,7 @@ npm i --no-save playwright && npx playwright install chromium
 npm run test:browser
 ```
 
-It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, a mission judge, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
+It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, rover-script math, a mission judge, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
 
 The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
@@ -55,6 +55,10 @@ Runs are deterministic for a seed. Saved runs store their seed, so plots can be 
 Known limits: slopes are assumed small, the friction model lets a parked rover creep a few mm/s on a slope, and every parameter is a typical datasheet value that has not been measured on a physical robot. A conservative circular footprint still stops the rover before a collision.
 
 Student programs can command each wheel with `wheels(left, right)`, in rad/s. They can also command the whole rover with `drive(v, w)`, in m/s and rad/s, like ROS `/cmd_vel`. That command maps to wheel targets (v ± w·W/2)/R. If a wheel would pass 10 rad/s, both wheels are scaled down together, so the curve keeps its radius.
+
+The values in `wheels` and `drive` can be math on sensor readings: numbers, sensor names, `+ - * /`, parentheses, `abs(x)`, `min(a, b)`, and `max(a, b)`, for example `drive(0, 0.05*(90 - heading))`. A tokenizer and a recursive-descent parser build a small tree, and the simulator evaluates it from the latest sensor samples each time it reaches that line. There is no `eval`. Math without sensors is computed before the run and keeps the range checks above. Math with sensors is clipped to the same limits during the run, as a motor driver saturates. A division by zero has no value and stops the run on its line; a LiDAR beam with no return (infinity) saturates. Each instruction allows 40 symbols of math and five nested parentheses. `if` and `while` still compare one sensor with one number. There are no variables, so a program can be a P controller, or PD with `gyro_z` as the rate term, but not PID: the integral term needs memory.
+
+The "P control · smooth 90° turn" example holds each command for 0.1 s. A sampled-data model of that loop, h ← h + 0.1·(180/π)·k·(90 − h) with the turn rate capped where a wheel reaches 10 rad/s, predicts 82.1° after 2 s for a gain k = 0.02, and a peak of 98° for k = 0.3. On the default Kinetic rover without noise, the simulator gives 82.5° and a peak of 108°. The model leaves out motor lag, the likely reason for the larger simulated overshoot. `tests/expressions.test.mjs` checks the first within 1.5° and that both overshoot.
 
 `if` and `while` test sensor readings with `<`, `>`, `<=`, or `>=`. The readings are `distance`, `heading` (gyro-integrated IMU yaw in degrees), `odom_heading`, `gyro_z`, `encoder_left`, `encoder_right`, `odom_x`, `odom_y`, `time`, and the LiDAR beams `lidar_front`, `lidar_left`, `lidar_back`, `lidar_right` (0 when closer than 0.12 m, infinity with no return), plus `lidar_min` and `lidar_min_angle`, and the filtered estimates `fused_heading`, `fused_x`, `fused_y`. A program always reads the latest sensor sample and never sees ground truth.
 

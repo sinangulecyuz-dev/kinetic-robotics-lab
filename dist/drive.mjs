@@ -1,7 +1,7 @@
 // Planar rover dynamics on selectable terrain, with simulated sensors. SI units throughout.
 // The Kinetic rover uses typical datasheet values, not measurements of a physical robot.
 // The TurtleBot3 preset uses datasheet values plus two parameters fitted to one robot's lab measurements.
-import {centerOfMass,WHEEL_RADIUS} from './physics.mjs';
+import {centerOfMass,WHEEL_RADIUS,evaluate} from './physics.mjs';
 
 export const DT=1e-4,CONTACT_STEPS=10,CONTROL_STEPS=100,RANGE_STEPS=500,MAX_TIME=30,SETTLE_TIME=2,GRAVITY=9.81;
 // 12 V gear motor referred to the wheel: 1.36 N·m stall torque, 34.6 rad/s free speed, gearbox included.
@@ -169,13 +169,19 @@ export class DriveSim{
       const n=this.queue.shift();
       if(!n){this.phase='settle';this.setTargets(0,0);this.command(0,0);return;}
       this.line=n.line;
-      if(n.type==='wheels'){this.setTargets(n.l,n.r);this.command(this.R*(n.l+n.r)/2,this.R*(n.r-n.l)/this.width);}
-      else if(n.type==='drive'){
-        // Unicycle command to wheel targets (v ± w·W/2)/R. Firmware limits clip v and w first, where the robot has them.
-        // If a wheel would pass maxWheel, both slow together so the curve keeps its radius.
-        const lim=this.spec.limits,v=lim?Math.max(-lim.v,Math.min(lim.v,n.v)):n.v,w=lim?Math.max(-lim.w,Math.min(lim.w,n.w)):n.w;
-        const half=this.width/2,l=(v-w*half)/this.R,r=(v+w*half)/this.R,k=Math.min(1,this.spec.maxWheel/Math.max(Math.abs(l),Math.abs(r),1e-9));
-        this.setTargets(l*k,r*k);this.command(n.v,n.w);
+      if(n.type==='wheels'||n.type==='drive'){
+        // Values computed from sensors are clipped to the parser's limits, as a motor driver saturates.
+        // Math with no value (a division by zero) stops the run on its line.
+        const [a,b]=n.type==='wheels'?[this.value(n.l,10),this.value(n.r,10)]:[this.value(n.v,.75),this.value(n.w,6)];
+        if(Number.isNaN(a)||Number.isNaN(b))return this.finish(false,`Stopped at line ${n.line}: the math has no value here, for example a division by zero.`,'sim.noValue',{line:n.line});
+        if(n.type==='wheels'){this.setTargets(a,b);this.command(this.R*(a+b)/2,this.R*(b-a)/this.width);}
+        else{
+          // Unicycle command to wheel targets (v ± w·W/2)/R. Firmware limits clip v and w first, where the robot has them.
+          // If a wheel would pass maxWheel, both slow together so the curve keeps its radius.
+          const lim=this.spec.limits,v=lim?Math.max(-lim.v,Math.min(lim.v,a)):a,w=lim?Math.max(-lim.w,Math.min(lim.w,b)):b;
+          const half=this.width/2,l=(v-w*half)/this.R,r=(v+w*half)/this.R,k=Math.min(1,this.spec.maxWheel/Math.max(Math.abs(l),Math.abs(r),1e-9));
+          this.setTargets(l*k,r*k);this.command(a,b);
+        }
       }
       else if(n.type==='filter')this.fusion.alpha=n.alpha;
       else if(n.type==='wait')this.waitSteps=Math.max(1,Math.round(n.time/DT));
@@ -189,6 +195,8 @@ export class DriveSim{
     const deg=180/Math.PI;
     return {distance:this.range,heading:this.gyroYaw*deg,odom_heading:this.odom.yaw*deg,gyro_z:this.gyroZ,encoder_left:this.wheels[0].count,encoder_right:this.wheels[1].count,odom_x:this.odom.x,odom_y:this.odom.y,time:this.time,lidar_front:this.lidar.front,lidar_left:this.lidar.left,lidar_back:this.lidar.back,lidar_right:this.lidar.right,lidar_min:this.lidar.min,lidar_min_angle:this.lidar.minAngle,fused_heading:this.fusion.yaw*deg,fused_x:this.fusion.x,fused_y:this.fusion.y}[name];
   }
+  // A wheels() or drive() value: a number from the parser, or math on the latest sensor samples, clipped to ±limit. NaN passes through.
+  value(x,limit){const v=typeof x==='number'?x:evaluate(x,name=>this.sensor(name));return Math.max(-limit,Math.min(limit,v));}
   test(n){const v=this.sensor(n.sensor);return n.op==='<'?v<n.value:n.op==='>'?v>n.value:n.op==='<='?v<=n.value:v>=n.value;}
   // 1 kHz: support plane from the terrain under the wheels and casters, gravity components, and contact loads.
   updateContacts(){

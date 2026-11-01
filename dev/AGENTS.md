@@ -10,7 +10,7 @@ Read `docs/design-engineering.md` before interface implementation or review. It 
 
 ## Architecture
 
-- `dist/physics.mjs`: pure functions, SI units, balance geometry, ideal differential-drive kinematics, and a bounded pseudocode parser. The grammar is `wheels`, `drive(v, w)`, `wait`, `stop`, `repeat`, and `if`/`while` on the readings listed in `SENSORS`. Programs read sensor samples only, never ground truth.
+- `dist/physics.mjs`: pure functions, SI units, balance geometry, ideal differential-drive kinematics, and a bounded pseudocode parser. The grammar is `wheels`, `drive(v, w)`, `wait`, `stop`, `repeat`, and `if`/`while` on the readings listed in `SENSORS`. The values in `wheels` and `drive` can be math (`parseValues`, `evaluate`): numbers, sensors, `+ - * /`, parentheses, `abs`, `min`, `max`, at most 40 symbols and five nested parentheses. `tests/expressions.test.mjs` compares it with JavaScript, fuzzes it, and checks a P-controlled turn against a sampled-data model. Programs read sensor samples only, never ground truth.
 - `dist/drive.mjs`: the driving model, which is pure and DOM-free. `ROBOTS` holds each robot's specification (geometry, mass, motor, controller, encoder, IMU, casters, limits): `kinetic` and `turtlebot3`. It covers terrain, tire friction, DC motors with a PI speed loop, planar rigid-body dynamics, load transfer, sensors (encoders, IMU, range), odometry, the program runner, the 100 Hz log, and CSV export. Runs are deterministic for a given seed and do not depend on how frames split the time.
 - `dist/plots.mjs`: MATLAB-style canvas figures with crosshair, tooltip, and keyboard reading.
 - `dist/examples.mjs`: the Code tab example scripts. `tests/examples.test.mjs` runs every one on both robots and three wheel spacings, so keep them robot-independent or check them there.
@@ -57,7 +57,7 @@ npm run check
 npm run test:browser
 ```
 
-`npm run test:browser` drives the page in headless Chromium (`tests/browser/smoke.test.mjs`): load without console errors, the ramp, a drive run with plots and CSV, a parser error, a mission judge, the three languages and reload, the `?` guide, and two phone emulations without sideways scrolling. It needs Playwright with Chromium (`npm i --no-save playwright && npx playwright install chromium`), so it is kept out of `npm test`. A failing test leaves a screenshot in `test-results/`. It does not cover Firefox, Safari, or real phones.
+`npm run test:browser` drives the page in headless Chromium (`tests/browser/smoke.test.mjs`): load without console errors, the ramp, a drive run with plots and CSV, a parser error, rover-script math, a mission judge, the three languages and reload, the `?` guide, and two phone emulations without sideways scrolling. It needs Playwright with Chromium (`npm i --no-save playwright && npx playwright install chromium`), so it is kept out of `npm test`. A failing test leaves a screenshot in `test-results/`. It does not cover Firefox, Safari, or real phones.
 
 Open http://127.0.0.1:5173 after starting the dev server (it listens on IPv4 only). If port 5173 is busy, another copy of this lab may be serving it. Run `PORT=5174 npm run dev`, or set `$env:PORT=5174` in PowerShell first. If changing models, check an independently derived physical or geometric expectation. If changing the interface, run `npm run test:browser` and inspect the live page when browser tooling is available. Preserve keyboard operation and responsive layouts.
 
