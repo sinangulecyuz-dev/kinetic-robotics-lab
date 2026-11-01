@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT,parseProgram} from '../dist/physics.mjs';
 import {simulateRun,DriveSim,ROBOTS,TERRAINS,WALL,RANGE} from '../dist/drive.mjs';
-import {MISSIONS,missionById,missionsFor} from '../dist/missions.mjs';
+import {MISSIONS,missionById,missionsFor,missionText,diagnose} from '../dist/missions.mjs';
 // Reference solutions live only here, so the lab never shows students the answer.
 const SOLUTIONS={
   stop:'drive(0.3, 0)\nwhile distance > 0.35\n  wait(0.05)\nend\ndrive(0.08, 0)\nwhile distance > 0.21\n  wait(0.05)\nend\nstop()',
@@ -86,4 +86,28 @@ test('lidar_min reads short, because it is the smallest of many noisy beams; lid
   const mean=a=>{const v=a.filter(x=>x>0);return v.reduce((s,x)=>s+x,0)/v.length;};
   assert.ok(mean(L.lidarMin)>.475&&mean(L.lidarMin)<.495,`lidar_min ${mean(L.lidarMin)}`);
   assert.ok(Math.abs(mean(L.lidarLeft)-.5)<.005,`lidar_left ${mean(L.lidarLeft)}`);
+});
+
+// The sensors and variables a script uses, the way the lab's "what the robot reads" card finds them.
+const names=src=>{const sensors=new Set(),variables=new Set();const walk=e=>{if(!e||typeof e!=='object')return;if(Array.isArray(e))return e.forEach(walk);if(e.sensor)sensors.add(e.sensor);if(e.variable)variables.add(e.variable);if(e.type==='let')variables.add(e.name);for(const k of ['a','b','args','l','r','v','w','value','body','other'])walk(e[k]);};walk(parseProgram(src));return {sensors:[...sensors],variables:[...variables]};};
+const why=(m,code,seed=1)=>diagnose(m,simulateRun({design:DEFAULT,robot:m.robot,terrain:m.terrain,program:parseProgram(code),seed,start:m.start,wind:m.wind??null}),names(code)).map(d=>d.key);
+
+test('feedback says why a run fell short: a blind script, a missing sensor or sum, and which way it missed',()=>{
+  const blind='wheels(4, 4)\nwait(1)\nwheels(5.1, 5)\nwait(10)\nstop()';
+  for(const m of MISSIONS)assert.ok(why(m,blind).includes('diag.blind'),m.id);
+  assert.ok(why(missionById('wall'),'while time < 5\n  drive(0.1, 0.01*heading)\n  wait(0.05)\nend').includes('diag.needSensor'));
+  assert.deepEqual(why(missionById('stop'),missionById('stop').starter),['diag.over'],'the stop starter brakes too late');
+  assert.deepEqual(why(missionById('park'),missionById('park').starter),['diag.over'],'the park starter brakes too late');
+  assert.deepEqual(why(missionById('turn'),missionById('turn').starter),['diag.encoders','diag.turnShort']);
+  assert.deepEqual(why(missionById('wind'),missionById('wind').starter),['diag.noSum','diag.far'],'the wind pushes the starter away from the wall');
+  assert.deepEqual(why(missionById('wind'),SOLUTIONS.wind),[],'the reference solution leaves nothing to explain');
+});
+
+test('every mission has graded hints in every language, and the code hint leaves blanks',()=>{
+  for(const m of MISSIONS)for(const lang of ['en','tr','fr']){
+    const x=missionText(m,lang);
+    assert.ok(x.lesson&&x.tool&&x.skeleton,`${m.id} ${lang}`);
+    assert.ok(x.skeleton.includes('___'),`${m.id} ${lang}: the code hint must leave blanks`);
+    if(lang!=='en')assert.notEqual(x.tool,missionText(m,'en').tool,`${m.id} ${lang} is translated`);
+  }
 });

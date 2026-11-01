@@ -207,7 +207,7 @@ test('Experiment 03: a mission starts the rover near a wall, and the judge reads
     assert.equal((await page.textContent('#mission-verdict .verdict-result strong')).trim(),en['verdict.fail']);
     assert.equal((await page.textContent('#mission-verdict .verdict-guess')).trim(),fill(en['verdict.wrong'],{guess:en['verdict.guess.pass']}));
     await page.click('[data-verdict="hint"]');
-    assert.equal((await page.textContent('#mission-verdict .verdict-hint')).trim(),park.lesson);
+    assert.equal((await page.textContent('#mission-verdict .verdict-hint')).trim(),`${en['verdict.hintIdea']} ${park.lesson}`);
     await page.click('[data-verdict="plot"]');
     assert.equal(await page.getAttribute('#plots-tab','aria-selected'),'true');
     await page.click('#build-tab');
@@ -243,9 +243,23 @@ test('Experiment 04: the mission sets outdoor ice and its wind, and is judged on
     assert.equal(await page.getAttribute('[data-environment="outdoor"]','aria-pressed'),'true');
     assert.equal(await page.getAttribute('[data-terrain="slippery"]','aria-pressed'),'true');
     assert.ok(await page.isChecked('#wind-on'));
+    // The brief shows the goal; after a run, the verdict says why, and hints open one level at a time.
+    assert.ok((await page.textContent('#mission-verdict .verdict-goal')).includes(wind.goal));
     await page.click('#run');
     await runToEnd(page);
     assert.equal((await page.textContent('#discovery-title')).trim(),fill(en['discovery.missionFail'],{title:wind.title}));
+    const reasons=await page.locator('#mission-verdict .verdict-why li').allTextContents();
+    assert.equal(reasons[0],en['diag.noSum']);assert.ok(reasons[1].startsWith(en['diag.far'].split('{cm}')[0]));
+    for(let i=1;i<=3;i++){await page.click('[data-verdict="hint"]');assert.equal(await page.locator('#mission-verdict .verdict-hint').count(),i);}
+    assert.equal((await page.textContent('#mission-verdict .verdict-hint pre')).trim(),wind.skeleton);
+    assert.equal(await page.locator('[data-verdict="hint"]').count(),0,'no more hints after the third');
+    // Loading an example replaces the starter; the brief offers it back.
+    await page.click('#code-tab');
+    await page.selectOption('#code-example','turn');
+    await page.click('[data-verdict="starter"]');
+    assert.equal(await page.inputValue('#code-editor'),wind.starter);
+    assert.equal(await page.locator('[data-verdict="starter"]').count(),0);
+    await page.click('#build-tab');
     assert.ok((await page.textContent('#discovery-copy')).trim().startsWith(prefix));
     // Without its wind the run is not judged: the card shows the ordinary driving note instead.
     await page.click('#wind-on');

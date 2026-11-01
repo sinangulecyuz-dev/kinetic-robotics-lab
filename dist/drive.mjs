@@ -178,9 +178,9 @@ export class DriveSim{
     const D=this.desired,mid=D.yaw+D.w*DT/2;D.x+=D.v*DT*Math.cos(mid);D.y+=D.v*DT*Math.sin(mid);D.yaw+=D.w*DT;
     if(this.waitSteps>0){this.waitSteps--;this.sinceAdvance=0;}
     const fx=this.x+this.foot.z*Math.sin(this.heading),fz=this.z+this.foot.z*Math.cos(this.heading),radius=this.foot.radius;
-    if(Math.abs(fx-OBSTACLE.x)<OBSTACLE.halfX+radius&&Math.abs(fz-OBSTACLE.z)<OBSTACLE.halfZ+radius)return this.finish(false,'Stopped: rover reached the obstacle.','sim.obstacle');
-    if(Math.abs(this.x)>ARENA||Math.abs(this.z)>ARENA)return this.finish(false,'Stopped at the edge of the test area.','sim.edge');
-    if(this.time>=MAX_TIME-1e-9)return this.finish(false,'Stopped: 30-second experiment limit.','sim.timeLimit');
+    if(Math.abs(fx-OBSTACLE.x)<OBSTACLE.halfX+radius&&Math.abs(fz-OBSTACLE.z)<OBSTACLE.halfZ+radius)return this.finish(false,`Stopped at line ${this.line}: the rover touched the box. Slow down earlier, or turn away sooner.`,'sim.obstacle',{line:this.line});
+    if(Math.abs(this.x)>ARENA||Math.abs(this.z)>ARENA)return this.finish(false,`Stopped at line ${this.line}: the rover's center came within 20 cm of a wall, the edge of the test area. It drove too far or turned toward the wall.`,'sim.edge',{line:this.line});
+    if(this.time>=MAX_TIME-1e-9)return this.finish(false,`Stopped at line ${this.line}: the 30-second limit. A loop whose condition never becomes false keeps running.`,'sim.timeLimit',{line:this.line});
     if(this.phase==='settle'){
       // After the last instruction the controller brakes to zero; the run ends once the rover is still.
       const [L,R]=this.wheels,quiet=Math.hypot(this.u,this.v)<.003&&Math.abs(this.w)<.01&&Math.abs(L.w)<.05&&Math.abs(R.w)<.05;
@@ -190,7 +190,7 @@ export class DriveSim{
   }
   interpret(){
     while(this.phase==='run'&&this.waitSteps===0){
-      if(++this.sinceAdvance>500||++this.instructions>10000)return this.finish(false,'Stopped: instruction limit reached. Add waits to your loops.','sim.instructions');
+      if(++this.sinceAdvance>500||++this.instructions>10000)return this.finish(false,`Stopped at line ${this.line}: instruction limit reached. A loop ran with no wait in it; put wait(0.05) inside every loop.`,'sim.instructions',{line:this.line});
       const n=this.queue.shift();
       if(!n){this.phase='settle';this.setTargets(0,0);this.command(0,0);return;}
       this.line=n.line;

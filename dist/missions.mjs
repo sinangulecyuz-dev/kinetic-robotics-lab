@@ -130,10 +130,67 @@ const TRACES={
   wind:sim=>({kind:'wall',lo:.476,hi:.524,y:series(sim,i=>WALL-(sim.start.x+sim.log.trueY[i]))})
 };
 export const missionTrace=(m,sim)=>({...TRACES[m.id](sim),t:sim.log.t});
+
+// Graduated hints after the concept in each mission's lesson: which tool to use, then the shape of the code with blanks.
+// The blanks (___) are what the student decides; a hint never gives the values that pass.
+const HINTS={
+  stop:{
+    en:['Measure with distance. Brake in two steps: drive fast until distance is about 0.35 m, then switch to a slow speed for the last part.','drive(fast, 0)\nwhile distance > ___\n  wait(0.05)\nend\ndrive(slow, 0)\nwhile distance > ___\n  wait(0.05)\nend\nstop()'],
+    tr:['Ölçümü distance ile yap. İki adımda fren yap: distance yaklaşık 0.35 m olana kadar hızlı git, sonra son kısım için yavaş bir hıza geç.','drive(hızlı, 0)\nwhile distance > ___\n  wait(0.05)\nend\ndrive(yavaş, 0)\nwhile distance > ___\n  wait(0.05)\nend\nstop()'],
+    fr:['Mesure avec distance. Freine en deux temps : roule vite jusqu’à ce que distance vaille environ 0.35 m, puis passe à une vitesse lente pour la fin.','drive(vite, 0)\nwhile distance > ___\n  wait(0.05)\nend\ndrive(lent, 0)\nwhile distance > ___\n  wait(0.05)\nend\nstop()']},
+  turn:{
+    en:['Use heading (the IMU) instead of odom_heading (the encoders), and turn slower near the end so the rover does not overshoot.','drive(0, 1)\nwhile heading < ___\n  wait(0.05)\nend\ndrive(0, slow)\nwhile heading < ___\n  wait(0.05)\nend\nstop()'],
+    tr:['odom_heading (enkoderler) yerine heading (IMU) kullan ve sona doğru yavaşla ki rover hedefi aşmasın.','drive(0, 1)\nwhile heading < ___\n  wait(0.05)\nend\ndrive(0, yavaş)\nwhile heading < ___\n  wait(0.05)\nend\nstop()'],
+    fr:['Utilise heading (l’IMU) au lieu de odom_heading (les encodeurs), et tourne plus lentement vers la fin pour ne pas dépasser.','drive(0, 1)\nwhile heading < ___\n  wait(0.05)\nend\ndrive(0, lent)\nwhile heading < ___\n  wait(0.05)\nend\nstop()']},
+  square:{
+    en:['Measure each side with odom_x or odom_y, and each corner with heading. Drive slowly, about 0.15 m/s, so the wheels do not slip.','Side: drive(0.15, 0), then while odom_x < ___ … end (or odom_y, or > 0 on the way back).\nCorner: drive(0, slow), then while heading < ___ … end.\nFour sides; each corner adds about 90° to heading.'],
+    tr:['Her kenarı odom_x ya da odom_y ile, her köşeyi heading ile ölç. Tekerler kaymasın diye yavaş, yaklaşık 0.15 m/s ile sür.','Kenar: drive(0.15, 0), sonra while odom_x < ___ … end (ya da odom_y, ya da dönüşte > 0).\nKöşe: drive(0, yavaş), sonra while heading < ___ … end.\nDört kenar; her köşe heading’e yaklaşık 90° ekler.'],
+    fr:['Mesure chaque côté avec odom_x ou odom_y, et chaque coin avec heading. Roule lentement, environ 0.15 m/s, pour que les roues ne glissent pas.','Côté : drive(0.15, 0), puis while odom_x < ___ … end (ou odom_y, ou > 0 au retour).\nCoin : drive(0, lent), puis while heading < ___ … end.\nQuatre côtés ; chaque coin ajoute environ 90° à heading.']},
+  park:{
+    en:['Make the speed a gain times the distance left: drive(k*(distance - 0.5), 0), inside a loop that runs for a fixed time.','while time < ___\n  drive(___*(distance - 0.5), 0)\n  wait(0.05)\nend\nstop()'],
+    tr:['Hızı, bir kazanç çarpı kalan mesafe yap: drive(k*(distance - 0.5), 0); bunu sabit süre dönen bir döngünün içine koy.','while time < ___\n  drive(___*(distance - 0.5), 0)\n  wait(0.05)\nend\nstop()'],
+    fr:['Rends la vitesse égale à un gain fois la distance restante : drive(k*(distance - 0.5), 0), dans une boucle qui tourne un temps fixe.','while time < ___\n  drive(___*(distance - 0.5), 0)\n  wait(0.05)\nend\nstop()']},
+  wall:{
+    en:['Steer with two terms: one for the distance error, lidar_min - 0.5, and one for the angle to the wall, lidar_min_angle - 90, which is 0 when you drive parallel.','while odom_x < 3.8\n  drive(0.2, ___*(lidar_min - 0.5) + ___*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()'],
+    tr:['İki terimle dön: biri mesafe hatası için, lidar_min - 0.5; diğeri duvara göre açı için, lidar_min_angle - 90; paralel giderken bu 0’dır.','while odom_x < 3.8\n  drive(0.2, ___*(lidar_min - 0.5) + ___*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()'],
+    fr:['Dirige avec deux termes : l’un pour l’erreur de distance, lidar_min - 0.5, l’autre pour l’angle au mur, lidar_min_angle - 90, qui vaut 0 quand tu roules parallèle.','while odom_x < 3.8\n  drive(0.2, ___*(lidar_min - 0.5) + ___*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()']},
+  wind:{
+    en:['Keep the starter’s P and D. Before the loop, set a variable to 0. In the loop, add the distance error to it, and steer with a small multiple of it too.','let sum = 0\nwhile odom_x < 3.8\n  let e = lidar_min - 0.5\n  let sum = sum + ___\n  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + ___*sum)\n  wait(0.05)\nend\nstop()'],
+    tr:['Başlangıç betiğindeki P ve D’yi koru. Döngüden önce bir değişkeni 0 yap. Döngüde mesafe hatasını ona ekle ve onun küçük bir katıyla da dön.','let sum = 0\nwhile odom_x < 3.8\n  let e = lidar_min - 0.5\n  let sum = sum + ___\n  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + ___*sum)\n  wait(0.05)\nend\nstop()'],
+    fr:['Garde le P et le D du script de départ. Avant la boucle, mets une variable à 0. Dans la boucle, ajoute-lui l’erreur de distance, et dirige aussi avec un petit multiple d’elle.','let sum = 0\nwhile odom_x < 3.8\n  let e = lidar_min - 0.5\n  let sum = sum + ___\n  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + ___*sum)\n  wait(0.05)\nend\nstop()']}
+};
+// The sensors each mission is about. A script that reads none of them cannot succeed except by luck.
+const NEEDS={stop:['distance','lidar_front','lidar_min'],turn:['heading','fused_heading','gyro_z','odom_heading'],square:['odom_x','odom_y','fused_x','fused_y'],park:['distance','lidar_front','lidar_min'],wall:['lidar_min','lidar_left'],wind:['lidar_min','lidar_left']};
+// Signed distance error to the wall at 0.5 m over a stretch of the true path: positive means too far from the wall.
+function wallStats(sim,from,to){
+  const L=sim.log;let sum=0,n=0,max=0;
+  for(let i=0;i<L.t.length;i++){const z=sim.start.z+L.trueX[i];if(z>=from&&z<=to){const e=WALL-(sim.start.x+L.trueY[i])-.5;sum+=e;n++;max=Math.max(max,Math.abs(e));}}
+  return {mean:n?sum/n:0,max};
+}
+// Why a run fell short, as message keys with params: what the script reads, then which way the result missed.
+// names lists the sensors and variables the script uses.
+export function diagnose(m,sim,names){
+  const out=[],used=new Set(names.sensors),cm=v=>(Math.abs(v)*100).toFixed(1);
+  if(!names.sensors.length)out.push({key:'diag.blind'});
+  else if(!NEEDS[m.id].some(s=>used.has(s)))out.push({key:'diag.needSensor',params:{sensors:NEEDS[m.id].slice(0,2).join(', ')}});
+  if(m.id==='turn'&&used.has('odom_heading')&&!used.has('heading'))out.push({key:'diag.encoders'});
+  if(m.id==='wind'&&!names.variables.length)out.push({key:'diag.noSum'});
+  if(!sim.success)return out;
+  if(m.id==='stop'||m.id==='park'){const target=m.id==='stop'?.2:.5,tol=m.id==='stop'?.03:.02,gap=rangeTo(sim,OBSTACLE,sim.spec.rangeAhead)-target;
+    if(gap>tol)out.push({key:'diag.short',params:{cm:cm(gap)}});else if(gap<-tol)out.push({key:'diag.over',params:{cm:cm(gap)}});}
+  if(m.id==='turn'){const d=sim.heading*180/Math.PI-360;if(d<-3)out.push({key:'diag.turnShort',params:{deg:Math.abs(d).toFixed(1)}});else if(d>3)out.push({key:'diag.turnOver',params:{deg:d.toFixed(1)}});}
+  if(m.id==='wall'||m.id==='wind'){
+    const w=m.id==='wall'?wallStats(sim,0,1.8):wallStats(sim,-1.2,1.8),meanTol=m.id==='wall'?.05:.024;
+    if(Math.abs(w.mean)>meanTol)out.push({key:w.mean>0?'diag.far':'diag.near',params:{cm:cm(w.mean)}});
+    else if(w.max>.1)out.push({key:'diag.wobble',params:{cm:cm(w.max)}});
+  }
+  return out;
+}
 export const missionById=id=>MISSIONS.find(m=>m.id===id);
 export const missionsFor=experiment=>MISSIONS.filter(m=>m.experiment===experiment);
 // A mission's title, goal, lesson, and starter in one language. The starter keeps the English code lines under translated comments.
 export function missionText(m,lang='en'){
   const x=lang==='en'?null:m[lang];
-  return x?{title:x.title,goal:x.goal,lesson:x.lesson,starter:withComments(m.starter,x.comments)}:{title:m.title,goal:m.goal,lesson:m.lesson,starter:m.starter};
+  const [tool,skeleton]=HINTS[m.id]?.[lang]??HINTS[m.id]?.en??['',''];
+  return x?{title:x.title,goal:x.goal,lesson:x.lesson,tool,skeleton,starter:withComments(m.starter,x.comments)}:{title:m.title,goal:m.goal,lesson:m.lesson,tool,skeleton,starter:m.starter};
 }

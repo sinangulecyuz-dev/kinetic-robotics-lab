@@ -30,7 +30,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 83/83 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-01: `npm test` 85/85 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -97,6 +97,14 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — clearer missions, reasons, and hints
+
+- Owner's report from the live site: in Experiment 04, with an edited example in the editor, the verdict "3.6 cm off on average" did not say what was asked or what was wrong.
+- Changed: the verdict strip always shows the goal and offers the starter back; after a failed run it lists why (`diagnose` in `dist/missions.mjs`: blind script, missing sensor, encoder heading, no integral variable, and which way it missed) and opens graded hints (idea, tool, code shape with blanks; `HINTS`). Stop messages for the box, the edge, the time limit, and the instruction limit now name the line and the cause. The wind indicator has its own light label. Texts in English, Turkish, and French (French needs review).
+- Verified: `npm test` 85/85, `npm run check`, `npm run test:browser` 13/13 (new checks: goal shown, reasons listed, three hint levels, starter restored). Re-enacted the owner's case in Turkish in headless Chromium: the verdict names a blind script, no variable, and 3.2 cm too far from the wall.
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`; not yet on `main`.
+- Next / open: the owner decides when to put it live. French text needs review.
 
 ### 2026-11-01 — Claude Code (cloud) — learning feedback, sky in the scene, clear walls
 
@@ -238,27 +246,4 @@ Entry template:
   - With a parked rover, the steady state matches bias × α·T/(1 − α).
   - Headless Chrome: on ice the filtered path ends about 4.5 cm from the truth, against about 9.5 cm for encoder odometry. Zero console errors.
 - Status: pushed to `origin/main` with the next entry (owner's go-ahead, 2026-10-29).
-- Next / open: none for this entry.
-
-### 2026-10-29 — Claude Code — rover-frame camera and labels, then a 2D LiDAR
-
-- Changed (frame):
-  - Chase camera (`VIEW_YAW` = π + 0.73), and the top view faces up.
-  - The offset slider is `dir="rtl"` and reads "N cm left/right".
-  - Ramp texts say it lifts the rover's left side.
-  - The tilt-table label stays on screen.
-- Changed (LiDAR):
-  - `dist/drive.mjs`: `LIDAR`, `WALL`, `castRay` (box and walls), `lidarMeasure`, progressive scans with motion smear, a separate noise stream, `lidar*` log channels, and `toScanCsv`.
-  - `dist/physics.mjs`: six LiDAR readings in `SENSORS`.
-  - `dist/plots.mjs`: polar figures and gaps for no return.
-  - `dist/app.js`, `dist/index.html`, `dist/style.css`: walls, scan dots, LiDAR toggle, a LiDAR puck on the Kinetic rover, polar scan and ranges plots, LiDAR CSV button, "Avoid the box with the LiDAR" example, and reference and model text.
-  - Tests: new `tests/lidar.test.mjs` (7 tests).
-- Behavior change: the front range sensor now sees the walls too (capped at 3 m). Before, it read 3 m whenever the box was not ahead.
-- Verified:
-  - `npm test` 43/43, `npm run check` pass.
-  - LiDAR geometry matches hand-computed distances to the millimetre.
-  - Beam noise while parked: 0.0173 m measured vs 0.0191 m expected.
-  - Headless Chrome: the slider moves the payload to the screen side it names, the ramp tips to the low (right) side, `wheels(2, 5)` turns left in the top view, the LiDAR example completes on both robots and all terrains without collision, the polar plot reads correctly, and there are zero console errors.
-- Found while testing: an example that drove off once a single beam was clear hit the box, because the rover is wider than a ray. The example now turns 90° with the gyro instead, and its comment explains why.
-- Status: committed locally, not pushed (see the next entry).
 - Next / open: none for this entry.

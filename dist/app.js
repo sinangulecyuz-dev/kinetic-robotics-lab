@@ -1,7 +1,7 @@
 import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram,SENSORS} from './physics.mjs';
 import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,castRay,TERRAINS,ENVIRONMENTS,WIND,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
-import {MISSIONS,missionById,missionsFor,missionText,missionTrace} from './missions.mjs';
+import {MISSIONS,missionById,missionsFor,missionText,missionTrace,diagnose} from './missions.mjs';
 import {EXAMPLES,example} from './examples.mjs';
 import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
 import {skyAt,drawSky} from './sky.mjs';
@@ -50,15 +50,21 @@ const VIEW_YAW=Math.PI+.73;
 let cw=800,ch=536,zoom=1,yaw=VIEW_YAW,elevation=0.43,drag=null,lastFrame=0,needsRender=true;
 // A mission of the current experiment can place the rover near a wall; otherwise it starts at the center.
 // The mission verdict sits under the Run button: predict first, then the judge's result, the hint, and the mission plot.
-let verdict=null,missionGuess=null,hintOpen=false;
+let verdict=null,missionGuess=null,hintLevel=0;
 const currentMission=()=>{const m=lesson>1?missionById(mission):null;return m?.experiment===lesson?m:null;};
 function renderVerdict(){
   const m=mode==='drive'?currentMission():null,el=$('mission-verdict');el.hidden=!m;if(!m)return;
   show('mission-verdict',()=>{
-    const head=`<span class="eyebrow">${esc(t('verdict.eyebrow',{title:mt(m).title}))}</span>`,guessText=g=>g==='pass'?t('verdict.guess.pass'):t('verdict.guess.fail');
+    const x=mt(m),guessText=g=>g==='pass'?t('verdict.guess.pass'):t('verdict.guess.fail');
+    // The brief is always there: the goal, and a way back to the starter when the editor holds other code.
+    const head=`<span class="eyebrow">${esc(t('verdict.eyebrow',{title:x.title}))}</span><p class="verdict-goal"><b>${esc(t('verdict.goal'))}</b> ${esc(x.goal)}</p>`+($('code-editor').value!==x.starter?`<p class="verdict-note">${esc(t('verdict.notStarter'))} <button class="text-button" data-verdict="starter">${esc(t('verdict.starter'))}</button></p>`:'');
     if(verdict&&verdict.id===m.id&&state.status==='done'){
       const v=verdict,said=v.guess?`<p class="verdict-guess">${esc(t(v.guess===(v.pass?'pass':'fail')?'verdict.right':'verdict.wrong',{guess:guessText(v.guess)}))}</p>`:'';
-      return `${head}<p class="verdict-result ${v.pass?'pass':'fail'}"><strong>${esc(t(v.pass?'verdict.pass':'verdict.fail'))}</strong> ${esc(v.result())}</p>${said}<div class="verdict-actions">${v.pass?'':`<button class="text-button" data-verdict="hint" aria-expanded="${hintOpen}">${esc(t('verdict.hint'))}</button>`}<button class="text-button" data-verdict="plot">${esc(t('verdict.plot'))}</button></div>${hintOpen&&!v.pass?`<p class="verdict-hint">${esc(mt(m).lesson)}</p>`:''}`;
+      // Why it fell short, from the script itself and the way the result missed; then hints, one level at a time.
+      const why=v.why.length?`<p class="verdict-sub">${esc(t('verdict.why'))}</p><ul class="verdict-why">${v.why.map(d=>`<li>${esc(t(d.key,d.params||{}))}</li>`).join('')}</ul>`:'';
+      const hints=[['verdict.hintIdea',x.lesson],['verdict.hintTool',x.tool],['verdict.hintShape',x.skeleton]].slice(0,v.pass?0:hintLevel).map(([k,text],i)=>`<div class="verdict-hint"><b>${esc(t(k))}</b>${i===2?`<pre>${esc(text)}</pre>`:` ${esc(text)}`}</div>`).join('');
+      const more=v.pass||hintLevel>=3?'':`<button class="text-button" data-verdict="hint">${esc(t(hintLevel?'verdict.moreHint':'verdict.hint'))}</button>`;
+      return `${head}<p class="verdict-result ${v.pass?'pass':'fail'}"><strong>${esc(t(v.pass?'verdict.pass':'verdict.fail'))}</strong> ${esc(v.result())}</p>${said}${why}${hints}<div class="verdict-actions">${more}<button class="text-button" data-verdict="plot">${esc(t('verdict.plot'))}</button></div>`;
     }
     const buttons=['pass','fail'].map(g=>`<button class="preset${missionGuess===g?' active':''}" data-guess="${g}" aria-pressed="${missionGuess===g}">${esc(guessText(g))}</button>`).join('');
     return `${head}<p>${esc(missionGuess?t('verdict.predicted',{guess:guessText(missionGuess)}):t('verdict.predict'))}</p><div class="verdict-actions">${buttons}</div>`;
@@ -67,7 +73,8 @@ function renderVerdict(){
 $('mission-verdict').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.guess){missionGuess=missionGuess===b.dataset.guess?null:b.dataset.guess;renderVerdict();}
-  else if(b.dataset.verdict==='hint'){hintOpen=!hintOpen;renderVerdict();}
+  else if(b.dataset.verdict==='hint'){hintLevel=Math.min(3,hintLevel+1);renderVerdict();}
+  else if(b.dataset.verdict==='starter'){const m=currentMission();if(!m)return;reset();$('code-editor').value=mt(m).starter;updateLines();autoLidar();updateWatch(true);persist();renderVerdict();}
   else if(b.dataset.verdict==='plot'){changeTab('plots');$('plots-panel').scrollIntoView({behavior:'smooth',block:'nearest'});}
 });
 function startPose(){const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.start?m.start:null;}
@@ -154,7 +161,7 @@ function renderMissions(){
   show('mission-goal',()=>{const m=missionById(mission);return m?mt(m).goal:t('missions.pick');});
 }
 function loadMission(id){
-  const m=missionById(id);if(!m)return;mission=id;verdict=null;missionGuess=null;queueMicrotask(renderVerdict);setRobot(m.robot);if(m.wind)windOn=true;setEnvironment(m.wind?'outdoor':ENVIRONMENTS.indoor.includes(m.terrain)?'indoor':'outdoor');setTerrain(m.terrain);changeMode('drive');
+  const m=missionById(id);if(!m)return;mission=id;verdict=null;missionGuess=null;hintLevel=0;queueMicrotask(renderVerdict);setRobot(m.robot);if(m.wind)windOn=true;setEnvironment(m.wind?'outdoor':ENVIRONMENTS.indoor.includes(m.terrain)?'indoor':'outdoor');setTerrain(m.terrain);changeMode('drive');
   $('code-editor').value=mt(m).starter;updateLines();renderMissions();autoLidar();persist();changeTab('code');needsRender=true;
   discover(()=>t('discovery.mission',{title:mt(m).title}),()=>mt(m).goal);
   toast(t('toast.missionLoaded'));
@@ -192,7 +199,7 @@ function finish(success,key,params={}){
     const result=()=>judged.key==='judge.early'?t('judge.early',{message:message()}):t(judged.key,judged.params);
     discover(()=>t(judged.pass?'discovery.missionPass':'discovery.missionFail',{title:mt(m).title}),()=>judged.pass?t('discovery.missionPassCopy',{result:result()}):`${result()} ${mt(m).lesson}`);
     toast(t(judged.pass?'toast.missionPass':'toast.missionFail'));renderMissions();
-    verdict={id:m.id,pass:judged.pass,result,guess:missionGuess};missionGuess=null;hintOpen=false;renderVerdict();
+    verdict={id:m.id,pass:judged.pass,result,guess:missionGuess,why:judged.pass?[]:diagnose(m,sim,programNames($('code-editor').value))};missionGuess=null;renderVerdict();
   }else if(m)show('discovery-copy',()=>t('discovery.notJudged',{title:mt(m).title,robot:robotLabel(m.robot),terrain:terrainLower(m.terrain)}));
 }
 function tick(dt){
@@ -333,7 +340,7 @@ function updateWatch(force=false){
   const s=view(),row=(n,r,tr)=>`<tr><th scope="row">${esc(n)}</th><td>${r}</td><td class="truth">${tr}</td></tr>`;
   $('watch-body').innerHTML=names.sensors.map(n=>row(n,fmt(s.sensor(n)),fmt(truthOf(s,n)))).join('')+names.variables.map(n=>row(n,fmt(s.vars?.get(n)),'')).join('');
 }
-$('code-editor').addEventListener('input',()=>{if(state.status!=='idle')reset();if(errorLine)markLines(0,0);updateLines();updateWatch(true);persist();});
+$('code-editor').addEventListener('input',()=>{if(state.status!=='idle')reset();if(errorLine)markLines(0,0);updateLines();updateWatch(true);persist();if(currentMission())renderVerdict();});
 $('code-editor').addEventListener('scroll',()=>$('line-numbers').scrollTop=$('code-editor').scrollTop);
 $('code-editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const el=e.target,start=el.selectionStart;el.setRangeText('  ',start,el.selectionEnd,'end');el.dispatchEvent(new Event('input'));}});
 // Insert buttons: a statement on its own line, indented like the current line, or a sensor name at the cursor.
@@ -346,7 +353,7 @@ function insertCode(text,inline=false){
 document.querySelectorAll('[data-snippet]').forEach(b=>b.onclick=()=>insertCode(SNIPPETS[b.dataset.snippet]));
 $('snippet-sensor').insertAdjacentHTML('beforeend',SENSORS.map(s=>`<option value="${s}">${s}</option>`).join(''));
 $('snippet-sensor').onchange=e=>{if(e.target.value)insertCode(e.target.value,true);e.target.value='';};
-$('code-example').onchange=e=>{reset();$('code-editor').value=example(e.target.value,language());updateLines();autoLidar();persist();};
+$('code-example').onchange=e=>{reset();$('code-editor').value=example(e.target.value,language());updateLines();autoLidar();persist();if(currentMission())renderVerdict();};
 
 // Lightweight orthographic 3D renderer. Geometry and the model share SI coordinates.
 let focus={x:0,z:0},bodyFrame=null,fit={scale:1,y:.15};
@@ -465,9 +472,11 @@ function render(){
   // Wind: a fixed indicator under the stage title, its arrow turned to where the air moves as the camera sees it.
   if(mode==='drive'&&v.windOption&&v.windSpeed>.05){
     const d=v.windToward,a=project({x:v.x,y:0,z:v.z}),b=project({x:v.x+Math.sin(d)*.1,y:0,z:v.z+Math.cos(d)*.1}),n=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/n,uy=(b.y-a.y)/n;
-    const cx=40,cy=112,r=11,ink=night?'#e3e9f2':'#56708a';ctx.strokeStyle=ink;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(cx-ux*r,cy-uy*r);ctx.lineTo(cx+ux*r,cy+uy*r);
+    const cx=40,cy=112,r=11,ink='#3f566b',label=t('wind.label',{speed:v.windSpeed.toFixed(1)});ctx.font='11px system-ui,sans-serif';
+    // Its own light label, so it reads over any ground and under any sky.
+    ctx.fillStyle='#ffffffe0';ctx.beginPath();(ctx.roundRect?ctx.roundRect(cx-r-7,cy-r-5,2*r+30+ctx.measureText(label).width,2*r+10,7):ctx.rect(cx-r-7,cy-r-5,2*r+30+ctx.measureText(label).width,2*r+10));ctx.fill();ctx.strokeStyle=ink;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(cx-ux*r,cy-uy*r);ctx.lineTo(cx+ux*r,cy+uy*r);
     ctx.moveTo(cx+ux*r,cy+uy*r);ctx.lineTo(cx+ux*r-ux*5+uy*4,cy+uy*r-uy*5-ux*4);ctx.moveTo(cx+ux*r,cy+uy*r);ctx.lineTo(cx+ux*r-ux*5-uy*4,cy+uy*r-uy*5+ux*4);ctx.stroke();
-    ctx.fillStyle=ink;ctx.font='11px system-ui,sans-serif';ctx.fillText(t('wind.label',{speed:v.windSpeed.toFixed(1)}),cx+18,cy+4);
+    ctx.fillStyle=ink;ctx.fillText(label,cx+18,cy+4);
   }
   // Orientation marker.
   const origin={x:cw-48,y:ch-115};for(const [label,dx,dy,color] of [['X',18,6,'#cc8771'],['Y',0,-22,'#91a18d'],['Z',-17,9,'#799ea5']]){ctx.beginPath();ctx.moveTo(origin.x,origin.y);ctx.lineTo(origin.x+dx,origin.y+dy);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=color;ctx.font='7px sans-serif';ctx.fillText(label,origin.x+dx-2,origin.y+dy+(dy<0?-4:10));}

@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 83 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 85 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -164,7 +164,10 @@ The header has a language picker: English, Türkçe, Français. On a first visit
 
 - **What the robot reads.** While driving, a card on the stage lists the sensors and variables the program uses, each with the robot's reading beside the simulator's truth where one exists (true heading, true position, noise-free ray distances, true turn rate). It makes the gap between measurement and reality visible: `lidar_min` reads about 1.5 cm short, and a LiDAR beam lags while the rover turns because the scan is progressive.
 - **Running line.** The line number of the instruction the rover is running is highlighted; a line the parser refuses is marked red.
-- **Mission verdict under Run.** With a mission selected, the strip under the Run button asks for a prediction first (will the script pass or fall short?), then shows the judge's result, whether the prediction was right, the hint on request, and a link to the mission plot.
+- **Mission verdict under Run.** With a mission selected, the strip under the Run button always shows the goal, and offers the starter again when the editor holds other code. It asks for a prediction first (will the script pass or fall short?), then shows the judge's result and whether the prediction was right.
+- **Why it fell short.** After a failed run, `diagnose` in `dist/missions.mjs` reads the script and the true result: a script that reads no sensor ("drives blind"), one without the sensor the mission needs, turning on `odom_heading` instead of `heading`, no variable for the integral in Experiment 04, and which way the result missed (stopped short or went past, turned too little or too far, too far from or too close to the wall, or oscillating).
+- **Graded hints.** Up to three, one per click: the idea, which tool to use, then the shape of the code with blanks (`___`) for the values the student decides. A hint never gives the values that pass; `tests/missions.test.mjs` checks every code hint leaves blanks.
+- **Stops that explain themselves.** Touching the box, reaching the edge, the 30-second limit, and the instruction limit name the running line and the likely cause.
 - **Mission plot.** The first figure in Plots for a mission run is the quantity its judge measures over the whole run, with the target band (`missionTrace` in `dist/missions.mjs`); its last value equals the judge's.
 - **Insert buttons.** Above the editor, buttons insert `drive`, `wait`, `stop`, `if`, `while`, `repeat`, and `let` on a new line with the current indent, and a list inserts any sensor name at the cursor.
 
