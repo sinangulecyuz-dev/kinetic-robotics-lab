@@ -23,7 +23,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
   - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example.
-  - New: learning feedback (what the robot reads, running line, mission verdict with prediction under Run, mission plot with target band, insert buttons), the sky moved into outdoor scenes, clear walls, and a LiDAR layer that follows the lesson (branch `claude/serene-mccarthy-1vb6oq`, not yet on `main`).
+  - New: learning feedback (what the robot reads, running line, mission verdict with prediction under Run, mission plot with target band, insert buttons), the sky moved into outdoor scenes, clear walls, and a LiDAR layer that follows the lesson.
   - New: "Build your own robot" shown as coming soon in the robot picker, not selectable.
   - New: a decorative header sky, sun and moon by the local clock (`dist/sky.mjs`), at the owner's request.
   - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables.
@@ -103,8 +103,8 @@ Entry template:
 - Owner's review of the live site: the header sky was not visible (scrolled away, and at 23:03 neither sun nor moon was up), and LiDAR dots along the walls looked like a map boundary. The owner chose: move the sky into the scene, make walls clear with the LiDAR layer by lesson, and build the pedagogical improvements.
 - Changed: `dist/sky.mjs` (scene band), `dist/missions.mjs` (`missionTrace`), `dist/app.js`, `dist/index.html`, `dist/style.css`, `dist/lang/*` (watch, verdict, mission plot, insert texts), tests, README "Learning feedback" and "Outdoor sky", `dev/AGENTS.md`.
 - Verified: `npm test` 83/83, `npm run check`, `npm run test:browser` 13/13. Each mission's plot ends at the judge's own value (14.7 cm, 352.3°, 46.7 cm, 41.1 cm on seed 1). Deliberate breaks of the refused-line mark, the watch card, the prediction check, and the insert indentation each failed a browser test and were reverted. Looked at in headless Chromium: day, night, and zoomed-out outdoor skies, Experiment 03 walls, the watch card on desktop and phone, the verdict strip in Turkish, the mission plot, the insert bar in French.
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`; not yet on `main`, so not deployed.
-- Next / open: the owner decides when to merge into `main`. French text needs review. Terminology (experiment, mission, lesson, discovery) is still four words.
+- Status: pushed to `main` (fast-forward, owner's go-ahead "canlıya al", 2026-11-01), which triggers the Vercel production deploy. Not verified from the cloud session: its network policy refuses the vercel.app host.
+- Next / open: French text needs review. Terminology (experiment, mission, lesson, discovery) is still four words.
 
 ### 2026-11-01 — Claude Code (cloud) — variables, wind and grass, Experiment 04, header sky, "coming soon" robot
 
