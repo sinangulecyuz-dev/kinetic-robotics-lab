@@ -8,8 +8,8 @@ Status words used below: **local** (changed in the working tree, not committed),
 
 Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on it.
 
-- Single branch `main`, kept equal to `origin/main` (check with `git status --short --branch`). Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`, public. Everything under "What exists" is committed, pushed to `main`, and deployed on Vercel. The newest session log entry gives the status of the latest change. Check `git log` for the latest commit and `vercel ls` for the latest deployment.
-- Layout: `AGENTS.md`, `CLAUDE.md`, and this file are in `dev/`, so coding tools do not load them on their own.
+- `main` is the deployed branch, kept equal to `origin/main` (check with `git status --short --branch`). Cloud sessions (claude.ai/code) work on their own `claude/...` branch, and the owner merges into `main`; see Decisions. Remote: `github.com/sinangulecyuz-dev/kinetic-robotics-lab`, public. Everything under "What exists" is committed, pushed to `main`, and deployed on Vercel. The newest session log entry gives the status of the latest change. Check `git log` for the latest commit and `vercel ls` for the latest deployment.
+- Layout: `AGENTS.md`, `CLAUDE.md`, and this file are in `dev/`. `.claude/CLAUDE.md` imports `dev/CLAUDE.md` and `dev/AGENTS.md`, so Claude Code loads them, in the cloud too. Codex does not, and nothing loads this file.
 - What exists:
   - Milestone 1: rover builder, ramp-balance experiment, bounded pseudocode controller, local notebook (`kinetic-v1`).
   - New: a realistic driving model (`dist/drive.mjs`) on flat, rough, and slippery terrain.
@@ -23,19 +23,19 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 54/54 pass, `npm run check` passes.
+- Verification on 2026-11-01: `npm test` 54/54 pass, `npm run check` passes, `npm run test:browser` 9/9 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
 ## Open items
 
-- **Instructions no longer load on their own (since the move to `dev/`):** Codex must be told to read `dev/AGENTS.md` at the start of each session. Claude Code is pointed there by a project memory on the owner's machine only.
+- **Codex instructions do not load on their own (since the move to `dev/`):** Codex must be told to read `dev/AGENTS.md` at the start of each session. Claude Code loads them through `.claude/CLAUDE.md` since 2026-11-01.
 - **Private link still public:** the ChatGPT Sites URL remains in this file and in Git history, in a public repository. The owner asked to remove it from the README only.
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
 - **Review:** the French text needs a native speaker at Saint Michel. The owner reviews the Turkish.
-- **Finding, not fixed:** `scripts/serve.mjs` still prints `http://localhost:5173`. The README and `dev/AGENTS.md` now say 127.0.0.1.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
-- Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner.
+- Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner. `npm run test:browser` covers Chromium and two Chromium phone emulations only.
+- **Not verified:** whether Vercel builds a preview deployment for pushes to `claude/...` branches, and whether such previews ask for a Vercel login. If they build, a preview link is the way to try a branch on a real phone and in Safari before merging.
 - **TurtleBot3 calibration, open points.** The full table is in the README, "TurtleBot3 Waffle Pi calibration".
   - Not reproduced: the shorter forward legs of the straight-line test (forward/backward asymmetry), and the 4.5 cm drift of the v = 0.15 m/s circle.
   - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
@@ -49,7 +49,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - The owner's credit wording stays "Conceived and directed", not "Designed and built", because AI agents wrote the code (owner, 2026-11-01). The phrase is not in this repository.
 - Interface languages: English, Turkish, and French, for the Saint Michel robotics club (owner, 2026-10-29). Rover script keywords, sensor names, and CSV columns stay English. Translated examples and mission starters change comments only. Decimals use a point in every language, to match code and MATLAB. Simulator, parser, and judge messages carry keys, so results redraw after a language switch.
 - Hosting: Vercel (owner, 2026-10-29). The owner had not used GitHub Pages.
-- One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28).
+- One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28). Exception (owner's go-ahead, 2026-11-01): cloud sessions work on their own `claude/...` branch and never push to `main`, because a push to `main` deploys production. The owner reviews and merges. Run cloud sessions that touch `dist/`, `lang/`, or this file one at a time.
 - Left/right fixed (owner approved, 2026-10-28). Before the fix, `wheels(l, r)` drove the physically mirrored wheels, so `wheels(2, 5)` turned right. Now the robot's left is +x, a faster right wheel turns left, and positive yaw is counterclockwise (ROS REP-103). Old saved drive runs replay with the corrected direction.
 - Physics depth: planar rigid-body dynamics with motors, tire slip, load transfer, and terrain following (owner's choice, 2026-10-28). Full 3D contact, bouncing, and flight are out of scope. A lifting contact stops the run with a message.
 - Sensors were plotted only at first (owner's choice, 2026-10-28). Since 2026-10-29, programs can read them (owner chose closed-loop control as the next step). They read the latest sample only, never ground truth.
@@ -85,6 +85,22 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — instructions load on their own, browser smoke test
+
+- Changed:
+  - New `.claude/CLAUDE.md`: imports `dev/CLAUDE.md` and `dev/AGENTS.md`, so Claude Code sessions, including cloud sessions, load them without a pasted prompt. The root stays free of agent files.
+  - New `tests/browser/smoke.test.mjs` (9 tests) and `npm run test:browser`. Headless Chromium against `scripts/serve.mjs` on a free port, with a Playwright fake clock driving `requestAnimationFrame`. Expected texts come from `dist/lang/*.mjs` and `dist/missions.mjs`, the CSV header from `toCsv`. Any console error, exception, failed request, or HTTP error fails the test. A failure leaves a screenshot in `test-results/` (ignored by Git).
+  - `scripts/serve.mjs`: prints the real address, `http://127.0.0.1:<port>`, and `PORT=0` picks a free port. This closes the old "serve.mjs prints localhost" finding.
+  - `dev/AGENTS.md`, `README.md`: the browser test, and how the instructions load. `.gitignore`: `test-results/`.
+  - No change under `dist/`.
+- Verified:
+  - `npm test` 54/54, `npm run check` pass, `npm run test:browser` 9/9 pass (about 10 s).
+  - The test can fail: six deliberate breaks, each reverted with `git checkout`, failed the expected tests. A 800 px minimum width failed both phone tests; a dead CSV button failed the drive test; a dead `?` key failed the keyboard test; not restoring the saved language failed the language test; a missing module (404) failed all 9; an exception in `finish()` during drive runs failed the 4 tests that finish a drive run. That last result showed the phone tests run a drive, not the ramp, because opening the Code tab switches to driving; the test name and check were corrected.
+  - Writing `.claude/CLAUDE.md` made Claude Code load both imported files in this session. Not verified: a freshly started session.
+  - Not verified: Firefox, WebKit, and Safari (only Chromium is installed in the cloud container), and real phones.
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
+- Next / open: the owner merges into `main` if wanted. Next planned step: bounded expressions in rover scripts (for example `drive(0.3, 2*(lidar_left-0.3))`), as the prerequisite for P and PID lessons.
 
 ### 2026-11-01 — Claude Code — agent files moved to `dev/`, README opens with the project
 

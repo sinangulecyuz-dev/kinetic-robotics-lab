@@ -18,4 +18,5 @@ const server=http.createServer(async(req,res)=>{
   }catch{res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}).end('Not found');}
 });
 server.on('error',err=>{console.error(`Cannot start development server: ${err.message}`);process.exitCode=1;});
-server.listen(port,'127.0.0.1',()=>console.log(`Kinetic lab: http://localhost:${port}`));
+// PORT=0 picks a free port; the line below prints the one actually used.
+server.listen(port,'127.0.0.1',()=>console.log(`Kinetic lab: http://127.0.0.1:${server.address().port}`));

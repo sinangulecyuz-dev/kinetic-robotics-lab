@@ -2,7 +2,7 @@
 
 Build a virtual robotics lab for high-school students, one tested concept at a time. The project owner is a mechatronics student. Preserve the distinction between an educational approximation and a physically validated simulator.
 
-Paths in this file are relative to the repository root. This file, `dev/CLAUDE.md`, and `dev/HANDOFF.md` are outside the root, so coding tools do not load them on their own. Read them at the start of a task.
+Paths in this file are relative to the repository root. This file, `dev/CLAUDE.md`, and `dev/HANDOFF.md` are outside the root. Claude Code loads this file and `dev/CLAUDE.md` through `.claude/CLAUDE.md`. Codex does not load them on its own, and no tool loads `dev/HANDOFF.md`. Read them at the start of a task.
 
 ## Design direction
 
@@ -54,9 +54,12 @@ Use Node.js 20 or newer. No runtime packages are needed.
 npm run dev
 npm test
 npm run check
+npm run test:browser
 ```
 
-Open http://127.0.0.1:5173 after starting the dev server (it listens on IPv4 only). If port 5173 is busy, another copy of this lab may be serving it. Run `PORT=5174 npm run dev`, or set `$env:PORT=5174` in PowerShell first. If changing models, check an independently derived physical or geometric expectation. If changing the interface, inspect the live page when browser tooling is available. Preserve keyboard operation and responsive layouts.
+`npm run test:browser` drives the page in headless Chromium (`tests/browser/smoke.test.mjs`): load without console errors, the ramp, a drive run with plots and CSV, a parser error, a mission judge, the three languages and reload, the `?` guide, and two phone emulations without sideways scrolling. It needs Playwright with Chromium (`npm i --no-save playwright && npx playwright install chromium`), so it is kept out of `npm test`. A failing test leaves a screenshot in `test-results/`. It does not cover Firefox, Safari, or real phones.
+
+Open http://127.0.0.1:5173 after starting the dev server (it listens on IPv4 only). If port 5173 is busy, another copy of this lab may be serving it. Run `PORT=5174 npm run dev`, or set `$env:PORT=5174` in PowerShell first. If changing models, check an independently derived physical or geometric expectation. If changing the interface, run `npm run test:browser` and inspect the live page when browser tooling is available. Preserve keyboard operation and responsive layouts.
 
 ## Handoff between Codex and Claude Code
 

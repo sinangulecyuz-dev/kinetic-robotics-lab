@@ -21,7 +21,18 @@ npm test
 npm run check
 ```
 
-The first command runs 54 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax. The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
+The first command runs 54 model, dynamics, sensor, LiDAR, filter, parser, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+
+An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
+
+```sh
+npm i --no-save playwright && npx playwright install chromium
+npm run test:browser
+```
+
+It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, a mission judge, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
+
+The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
 ## What the model means
 
