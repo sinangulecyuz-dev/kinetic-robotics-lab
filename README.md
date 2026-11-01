@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 85 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 89 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -174,6 +174,14 @@ Measured in headless Chromium at 1366 × 768 on the heaviest scene (outdoor gras
 - **Stops that explain themselves.** Touching the box, reaching the edge, the 30-second limit, and the instruction limit name the running line and the likely cause.
 - **Mission plot.** The first figure in Plots for a mission run is the quantity its judge measures over the whole run, with the target band (`missionTrace` in `dist/missions.mjs`); its last value equals the judge's.
 - **Insert buttons.** Above the editor, buttons insert `drive`, `wait`, `stop`, `if`, `while`, `repeat`, and `let` on a new line with the current indent, and a list inserts any sensor name at the cursor.
+
+## Handing in results
+
+The Results tab downloads the notebook as a CSV file (`dist/results.mjs`), one row per run in the order they happened: student name (optional, kept on the device), date, experiment, mission and whether it passed, the prediction, robot, terrain, environment, wind, the outcome in the interface language, time, odometry error, and the rover script. Column names are English, like the lab's other CSV files. The file is made in the browser; nothing is sent anywhere. A student hands it in by email or a learning platform. The browser keeps the last 30 runs.
+
+## French review
+
+`npm run review:fr` writes `docs/french-review.html`: every French text beside its English source (520 texts: interface, missions and hints, example comments), with a Notes column, printable, for a native speaker at Saint Michel. `tests/french-review.test.mjs` fails while the file is stale. `docs/` is not published by Vercel.
 
 ## Outdoor sky
 

@@ -16,6 +16,7 @@ import fr from '../../dist/lang/fr.mjs';
 import {toCsv} from '../../dist/drive.mjs';
 import {missionById,missionText} from '../../dist/missions.mjs';
 import {SENSORS} from '../../dist/physics.mjs';
+import {RESULT_COLUMNS} from '../../dist/results.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const shots=path.join(root,'test-results');
@@ -102,6 +103,15 @@ test('ramp experiment: the balanced rover holds at the target tilt and is record
     assert.ok(!(await page.getAttribute('#stage-outcome','class')).includes('failed'));
     await page.click('#results-tab');
     assert.equal(await page.locator('#results-list > *').count(),1);
+    // The notebook downloads as a CSV for the teacher, with the student's name.
+    await page.fill('#student-name','Ada Test');
+    const [file]=await Promise.all([page.waitForEvent('download'),page.click('#results-csv')]);
+    assert.match(file.suggestedFilename(),/^kinetic-results-Ada-Test-\d{4}-\d{2}-\d{2}\.csv$/);
+    const rows=(await readFile(await file.path(),'utf8')).replace(/^\ufeff/,'').trim().split('\r\n').map(l=>l.split(','));
+    assert.deepEqual(rows[0],RESULT_COLUMNS);assert.equal(rows.length,2);
+    const col=c=>rows[1][RESULT_COLUMNS.indexOf(c)];
+    assert.equal(col('student'),'Ada Test');assert.equal(col('mode'),'tilt');assert.equal(col('experiment'),'1');
+    assert.equal(col('outcome'),fill(en['tilt.balanced'],{angle:target}));
   });
 });
 

@@ -30,7 +30,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 85/85 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-01: `npm test` 89/89 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -39,7 +39,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - **Codex instructions do not load on their own (since the move to `dev/`):** Codex must be told to read `dev/AGENTS.md` at the start of each session. Claude Code loads them through `.claude/CLAUDE.md` since 2026-11-01.
 - **Private link still public:** the ChatGPT Sites URL remains in this file and in Git history, in a public repository. The owner asked to remove it from the README only.
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
-- **Review:** the French text needs a native speaker at Saint Michel. The owner reviews the Turkish.
+- **Review:** the French text needs a native speaker at Saint Michel; `docs/french-review.html` (`npm run review:fr`) lists all of it beside the English. The owner reviews the Turkish.
 - **Finding, not fixed:** with four experiments, the lesson strip still fits a 377 px phone, but the text beside it is narrow; a fifth experiment needs a new layout.
 - **Finding, not fixed:** on a 377 px phone emulation the header's help (?) button is cut off at the right edge; the page itself does not scroll sideways. This predates the 2026-11-01 work.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
@@ -97,6 +97,14 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — performance, results download, French review pack
+
+- Changed: bumpy ground drawn from a cached texture (`groundTexture` in `dist/app.js`); new `dist/results.mjs` and a "Download my results (CSV)" button with an optional student name in Results; records now keep `experiment`, `environment`, and the mission prediction; new `scripts/french-review.mjs` and `docs/french-review.html`; the lab guide no longer names the old terrain buttons. README "Performance", "Handing in results", "French review"; `dev/AGENTS.md`.
+- Verified: `npm test` 89/89, `npm run check`, `npm run test:browser` 13/13 (the ramp test downloads and reads the CSV). Throttled headless Chromium, heaviest scene: 61 / 26 / 17 frames/s at 1× / 4× / 6× (before 61 / 21 / 13), simulation at real time throughout; ground screenshots before and after differ by 0.2–0.3/255. The results CSV round-trips commas, quotes, and multi-line scripts through an independent reader.
+- Not verified: real phones and Chromebooks; the French itself (the pack is for that review).
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`; not yet on `main`.
+- Next / open: the owner gives `docs/french-review.html` to the Saint Michel reviewer; the instructor kit is next.
 
 ### 2026-11-01 — Claude Code (cloud) — clearer missions, reasons, and hints
 
@@ -230,20 +238,3 @@ Entry template:
   - Headless Chrome top view shows a closed square. Zero console errors.
 - Status: committed and pushed to `origin/main` with the three commits before it (owner's go-ahead, 2026-10-29).
 - Next / open: none.
-
-### 2026-10-29 — Claude Code — complementary filter
-
-- Changed:
-  - `dist/drive.mjs`: `FUSION_ALPHA` = 0.999, a 100 Hz fused heading, filtered odometry and its path, and `fused*` channels (CSV `fused_*`).
-  - `dist/physics.mjs`: the `filter(alpha)` statement and `fused_heading`, `fused_x`, `fused_y` readings.
-  - `dist/plots.mjs`: a fourth color, MATLAB slot 5 green. The validator passes it, with a contrast warning that legends and CSV cover.
-  - `dist/app.js`, `dist/index.html`, `dist/style.css`: filtered series in the trajectory, heading, and error plots, a green path toggle, the "Complementary filter on ice" example, and reference and model text.
-  - Tests: new `tests/fusion.test.mjs` (4 tests).
-- Decision: the default α is 0.999, not 0.98, from a measured comparison (README table). Both sensors err slowly, so a fast crossover helps almost nothing.
-- Verified:
-  - `npm test` 47/47, `npm run check` pass.
-  - α = 1 equals gyro integration and α = 0 equals encoder odometry, to 1e-12.
-  - With a parked rover, the steady state matches bias × α·T/(1 − α).
-  - Headless Chrome: on ice the filtered path ends about 4.5 cm from the truth, against about 9.5 cm for encoder odometry. Zero console errors.
-- Status: pushed to `origin/main` with the next entry (owner's go-ahead, 2026-10-29).
-- Next / open: none for this entry.

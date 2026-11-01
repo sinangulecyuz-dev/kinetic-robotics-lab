@@ -5,6 +5,7 @@ import {MISSIONS,missionById,missionsFor,missionText,missionTrace,diagnose} from
 import {EXAMPLES,example} from './examples.mjs';
 import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
 import {skyAt,drawSky} from './sky.mjs';
+import {toResultsCsv} from './results.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -34,8 +35,8 @@ function icon(name){return `<svg viewBox="0 0 24 24" fill="none" stroke="current
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 
 setLanguage(preferredLanguage(navigator.languages||[navigator.language]));
-let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[],environment='indoor',windOn=true;
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3,4].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[],environment='indoor',windOn=true,student='';
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3,4].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(typeof saved.student==='string')student=saved.student.slice(0,40);if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 // Labels in the chosen language. An unedited example or mission starter follows that language.
 const robotLabel=id=>t('robot.'+id),terrainLabel=id=>t('terrain.'+id),terrainLower=id=>terrainLabel(id).toLocaleLowerCase(language()),mt=m=>missionText(m,language());
 function translateCode(src,to){for(const l of Object.keys(LANGUAGES)){for(const name of Object.keys(EXAMPLES))if(example(name,l)===src)return example(name,to);for(const m of MISSIONS)if(missionText(m,l).starter===src)return missionText(m,to).starter;}return src;}
@@ -82,7 +83,7 @@ function startPose(){const m=lesson>1?missionById(mission):null;return m?.experi
 function windOption(){if(environment!=='outdoor'||!windOn)return null;const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.wind?m.wind:true;}
 function view(){if(sim)return sim;const start=startPose(),key=JSON.stringify([p,start])+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false,start});idleKey=key;}return idle;}
 const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
-function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,environment,windOn,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
+function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,environment,windOn,student,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
 // Text that depends on the language is kept as a function, so a language change can redraw it.
 const shown=new Map();
 function redraw(id){const {text,html}=shown.get(id),s=text();if(html)$(id).innerHTML=s;else $(id).textContent=s;}
@@ -190,8 +191,8 @@ function finish(success,key,params={}){
   // A mission is judged only on the robot and ground it was written for, using the simulator's ground truth.
   const picked=mode==='drive'&&lesson>1?missionById(mission):null,m=picked?.experiment===lesson?picked:null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain&&JSON.stringify(sim.windOption)===JSON.stringify(m.wind??null)?m.judge(sim):null;
   if(judged?.pass&&!missionsDone.includes(m.id))missionsDone.push(m.id);
-  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,start:sim.origin,wind:sim.windOption,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
-  const record={id:Date.now(),mode,design:{...state.runDesign},success,message:message(),messageKey:key,messageParams:params,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
+  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,start:sim.origin,wind:sim.windOption,environment,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
+  const record={id:Date.now(),experiment:lesson,guess:judged?missionGuess:null,mode,design:{...state.runDesign},success,message:message(),messageKey:key,messageParams:params,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
   if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;}
   records.unshift(record);records=records.slice(0,30);persist();renderResults();if(tab==='plots')renderPlots();
   const d=mode==='tilt'?(success?'tiltPass':'tiltFail'):'drive';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));
@@ -226,6 +227,20 @@ function updateTelemetry(){
 }
 // Saved runs carry a message key; older runs only have their English message.
 const recordMessage=r=>typeof r.messageKey==='string'&&r.messageParams&&typeof r.messageParams==='object'?t(r.messageKey,r.messageParams):r.message;
+// Download the notebook for a teacher: one CSV row per run, in the order the runs happened, with the outcome in the current language.
+function resultRows(){
+  const two=n=>String(n).padStart(2,'0'),when=ms=>{const d=new Date(ms);return `${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}`;};
+  return records.slice().reverse().map((r,i)=>{const m=r.mission?missionById(r.mission):null;return {student,run:i+1,date:when(r.id),experiment:r.experiment??(r.mode==='tilt'?1:''),mission:m?mt(m).title:'',mission_passed:m?(r.missionPass?'yes':'no'):'',
+    prediction:r.mode==='tilt'?r.prediction||'':r.guess||'',mode:r.mode,robot:r.mode==='drive'?robotOf(r):'kinetic',terrain:r.mode==='drive'?terrainOf(r):'',environment:r.mode==='drive'?r.environment||(r.wind?'outdoor':''):'',
+    wind:r.wind===true?'random':r.wind?`${r.wind.speed} m/s`:'',outcome:r.messageKey?t(r.messageKey,r.messageParams||{}):r.message,time_s:Number.isFinite(r.time)?r.time.toFixed(2):'',odom_error_m:Number.isFinite(r.odomError)?r.odomError.toFixed(3):'',code:r.code||''};});
+}
+$('student-name').value=student;
+$('student-name').addEventListener('input',e=>{student=e.target.value.slice(0,40);persist();});
+$('results-csv').onclick=()=>{
+  if(!records.length){toast(t('results.none'));return;}
+  const name=student.trim().replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-|-$/g,'')||'student',d=new Date(),day=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+toResultsCsv(resultRows())],{type:'text/csv'}));a.download=`kinetic-results-${name}-${day}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
 function renderResults(){
   $('result-count').textContent=records.length;
   if(!records.length){$('results-list').innerHTML=`<div class="empty-state">${t('results.empty')}<br><button class="text-button" id="back-build">${t('results.backBuild')}</button></div>`;$('back-build').onclick=()=>changeTab('build');return;}
