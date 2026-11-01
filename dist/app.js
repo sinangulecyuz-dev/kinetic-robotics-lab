@@ -77,7 +77,10 @@ for(const k of Object.keys(DEFAULT))$(k).addEventListener('input',e=>{if(['runni
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{reset();p={...PRESETS[b.dataset.preset]};updateInputs();persist();updateTelemetry();const d=b.dataset.preset;discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));});
 for(const [id,value] of [['predict-stable','stable'],['predict-tip','tip']])$(id).onclick=()=>{if(state.status==='running'||state.status==='paused'){toast(t('toast.resetFirst'));return;}prediction=prediction===value?null:value;updatePrediction();};
 function updatePrediction(){ $('predict-stable').setAttribute('aria-pressed',prediction==='stable');$('predict-tip').setAttribute('aria-pressed',prediction==='tip');}
-$('show-com').onchange=e=>{showCom=e.target.checked;needsRender=true;};$('show-support').onchange=e=>{showSupport=e.target.checked;needsRender=true;};$('show-odom').onchange=e=>{showOdom=e.target.checked;needsRender=true;};$('show-lidar').onchange=e=>{showLidar=e.target.checked;needsRender=true;};$('show-fused').onchange=e=>{showFused=e.target.checked;needsRender=true;};
+$('show-com').onchange=e=>{showCom=e.target.checked;needsRender=true;};$('show-support').onchange=e=>{showSupport=e.target.checked;needsRender=true;};$('show-odom').onchange=e=>{showOdom=e.target.checked;needsRender=true;};// The LiDAR layer is on in Experiments 03 and 04 and for programs that read the LiDAR; the switch still overrides it.
+const readsLidar=src=>/\blidar_/.test(src.split('\n').map(l=>l.split('#')[0]).join('\n'));
+function autoLidar(){showLidar=lesson>=3||readsLidar($('code-editor').value);$('show-lidar').checked=showLidar;needsRender=true;}
+$('show-lidar').onchange=e=>{showLidar=e.target.checked;needsRender=true;};$('show-fused').onchange=e=>{showFused=e.target.checked;needsRender=true;};
 $('experiment-mode').onchange=e=>changeMode(e.target.value);
 const driveNote=()=>t(tb3()?'note.tb3':'note.kinetic',{surface:t('surface.'+terrain),mu:TERRAINS[terrain].muPeak,battery:TB3_FIT.battery}),modelNote=()=>mode==='tilt'?t('note.tilt'):driveNote();
 // The TurtleBot3 has a fixed, datasheet geometry and only drives; the builder sliders and the ramp belong to the Kinetic rover.
@@ -116,7 +119,7 @@ function setLesson(n,user=true){
   lesson=[2,3,4].includes(n)?n:1;if(missionById(mission)?.experiment!==lesson)mission=null;
   document.querySelectorAll('[data-lesson]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.lesson===lesson));
   for(const [id,k] of [['lesson-time','time'],['lesson-title','title'],['lesson-question','question'],['lesson-concept-text','concept']])show(id,()=>t(`lesson.${lesson}.${k}`));
-  const d=lesson>1?'lesson'+lesson:'balanced';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));$('mission-card').hidden=lesson===1;renderMissions();needsRender=true;
+  autoLidar();const d=lesson>1?'lesson'+lesson:'balanced';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));$('mission-card').hidden=lesson===1;renderMissions();needsRender=true;
   if(user){if(lesson===1){setRobot('kinetic');changeMode('tilt');changeTab('build');}else changeMode('drive');persist();}
   // Experiments 02 to 04 are driving experiments, also after a reload.
   else if(lesson>1&&mode!=='drive')changeMode('drive');
@@ -131,7 +134,7 @@ function renderMissions(){
 }
 function loadMission(id){
   const m=missionById(id);if(!m)return;mission=id;setRobot(m.robot);if(m.wind)windOn=true;setEnvironment(m.wind?'outdoor':ENVIRONMENTS.indoor.includes(m.terrain)?'indoor':'outdoor');setTerrain(m.terrain);changeMode('drive');
-  $('code-editor').value=mt(m).starter;updateLines();renderMissions();persist();changeTab('code');needsRender=true;
+  $('code-editor').value=mt(m).starter;updateLines();renderMissions();autoLidar();persist();changeTab('code');needsRender=true;
   discover(()=>t('discovery.mission',{title:mt(m).title}),()=>mt(m).goal);
   toast(t('toast.missionLoaded'));
 }
@@ -145,6 +148,7 @@ $('run').onclick=()=>{
   if(mode==='drive'){
     let program;try{program=parseProgram($('code-editor').value);}catch(e){changeTab('code');show('code-error',()=>e.key?t('parse.'+e.key,{line:e.line,...e.params}):e.message);$('code-error').hidden=false;toast(t('toast.checkProgram'));return;}
     if(!tb3()&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
+    if(!showLidar&&readsLidar($('code-editor').value)){showLidar=true;$('show-lidar').checked=true;}
     sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0,start:startPose(),wind:windOption()});
   }
   state.status='running';state.runDesign={...p};state.minMargin=balance(p,0).margin;state.runPrediction=prediction;setRunButton();needsRender=true;
@@ -273,7 +277,7 @@ function updateLines(){$('line-numbers').textContent=$('code-editor').value.spli
 $('code-editor').addEventListener('input',()=>{if(state.status!=='idle')reset();updateLines();persist();});
 $('code-editor').addEventListener('scroll',()=>$('line-numbers').scrollTop=$('code-editor').scrollTop);
 $('code-editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const el=e.target,start=el.selectionStart;el.setRangeText('  ',start,el.selectionEnd,'end');el.dispatchEvent(new Event('input'));}});
-$('code-example').onchange=e=>{reset();$('code-editor').value=example(e.target.value,language());updateLines();persist();};
+$('code-example').onchange=e=>{reset();$('code-editor').value=example(e.target.value,language());updateLines();autoLidar();persist();};
 
 // Lightweight orthographic 3D renderer. Geometry and the model share SI coordinates.
 let focus={x:0,z:0},bodyFrame=null,fit={scale:1,y:.15};
@@ -339,11 +343,15 @@ function render(){
     for(let i=-6;i<=6;i++)line(ground({x:-.82,y:-.008,z:i*.1}),ground({x:.82,y:-.008,z:i*.1}),'#e6e9e1',.65);
     const A=project(ground({x:.7,y:0,z:-.55}));ctx.fillStyle='#a3ada1';ctx.font='8px monospace';ctx.fillText(t('canvas.tiltTable')+' / '+state.angle.toFixed(1)+'°',Math.max(12,Math.min(cw-130,A.x-100)),Math.max(20,Math.min(ch-110,A.y)));
   }
+  // Outdoors, far ground melts into a sky placed by the local clock. It is drawn before every object, so it covers no measurement.
+  const night=mode==='drive'&&environment==='outdoor'&&drawSky(ctx,cw,ch*.3,skyAt(new Date()));$('stage-wrap').classList.toggle('night-sky',!!night);
   // Soft footprint shadow, projected onto the supporting plane.
   const foot=tb3()&&mode==='drive'?{x:.17,z:.17,c:-.064}:{x:p.width/150,z:.28,c:0},shadow=Array.from({length:40},(_,i)=>{const a=i/40*Math.PI*2;return world({x:Math.cos(a)*foot.x,y:.001,z:foot.c+Math.sin(a)*foot.z},true);});poly(shadow,'#2f403317');
   if(mode==='drive'){
-    // Low arena walls at ±WALL, which the LiDAR and the front range sensor both see.
-    for(const [a,b] of [[[-WALL,-WALL],[WALL,-WALL]],[[WALL,-WALL],[WALL,WALL]],[[WALL,WALL],[-WALL,WALL]],[[-WALL,WALL],[-WALL,-WALL]]])poly([{x:a[0],y:0,z:a[1]},{x:b[0],y:0,z:b[1]},{x:b[0],y:.3,z:b[1]},{x:a[0],y:.3,z:a[1]}],'#e6eae6d9','#c9d1c9',1);
+    // Arena walls at ±WALL, 0.3 m tall, above both LiDAR planes, which the LiDAR and the front range sensor both see.
+    for(const [a,b] of [[[-WALL,-WALL],[WALL,-WALL]],[[WALL,-WALL],[WALL,WALL]],[[WALL,WALL],[-WALL,WALL]],[[-WALL,WALL],[-WALL,-WALL]]])poly([{x:a[0],y:0,z:a[1]},{x:b[0],y:0,z:b[1]},{x:b[0],y:.3,z:b[1]},{x:a[0],y:.3,z:a[1]}],'#b4c0ca73','#8e9ca8',1);
+    // A dark top edge makes the walls read as walls, which the LiDAR dots then trace.
+    for(const [a,b] of [[[-WALL,-WALL],[WALL,-WALL]],[[WALL,-WALL],[WALL,WALL]],[[WALL,WALL],[-WALL,WALL]],[[-WALL,WALL],[-WALL,-WALL]]])line({x:a[0],y:.3,z:a[1]},{x:b[0],y:.3,z:b[1]},'#6f7f8c',2);
     const trail=(points,color)=>{if(points.length<2)return;ctx.beginPath();points.forEach((pt,i)=>{const q=project(lift(pt.x,pt.z));i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y);});ctx.strokeStyle=color;ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);};
     trail(v.path,'#f2a27f');if(showOdom)trail(v.odomPath,'#5b9bd0');if(showFused)trail(v.fusedPath,'#77AC30');
     box(OBSTACLE.x,terrainHeight(surface,OBSTACLE.x,OBSTACLE.z)+.12,OBSTACLE.z,OBSTACLE.halfX*2,.24,OBSTACLE.halfZ*2,['#d87950','#ed9369','#c66c47','#f3a879','#d77d57','#dc825b'],v=>v);
@@ -388,9 +396,9 @@ function render(){
   // Wind: a fixed indicator under the stage title, its arrow turned to where the air moves as the camera sees it.
   if(mode==='drive'&&v.windOption&&v.windSpeed>.05){
     const d=v.windToward,a=project({x:v.x,y:0,z:v.z}),b=project({x:v.x+Math.sin(d)*.1,y:0,z:v.z+Math.cos(d)*.1}),n=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/n,uy=(b.y-a.y)/n;
-    const cx=40,cy=112,r=11;ctx.strokeStyle='#56708a';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(cx-ux*r,cy-uy*r);ctx.lineTo(cx+ux*r,cy+uy*r);
+    const cx=40,cy=112,r=11,ink=night?'#e3e9f2':'#56708a';ctx.strokeStyle=ink;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(cx-ux*r,cy-uy*r);ctx.lineTo(cx+ux*r,cy+uy*r);
     ctx.moveTo(cx+ux*r,cy+uy*r);ctx.lineTo(cx+ux*r-ux*5+uy*4,cy+uy*r-uy*5-ux*4);ctx.moveTo(cx+ux*r,cy+uy*r);ctx.lineTo(cx+ux*r-ux*5-uy*4,cy+uy*r-uy*5+ux*4);ctx.stroke();
-    ctx.fillStyle='#56708a';ctx.font='11px system-ui,sans-serif';ctx.fillText(t('wind.label',{speed:v.windSpeed.toFixed(1)}),cx+18,cy+4);
+    ctx.fillStyle=ink;ctx.font='11px system-ui,sans-serif';ctx.fillText(t('wind.label',{speed:v.windSpeed.toFixed(1)}),cx+18,cy+4);
   }
   // Orientation marker.
   const origin={x:cw-48,y:ch-115};for(const [label,dx,dy,color] of [['X',18,6,'#cc8771'],['Y',0,-22,'#91a18d'],['Z',-17,9,'#799ea5']]){ctx.beginPath();ctx.moveTo(origin.x,origin.y);ctx.lineTo(origin.x+dx,origin.y+dy);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=color;ctx.font='7px sans-serif';ctx.fillText(label,origin.x+dx-2,origin.y+dy+(dy<0?-4:10));}
@@ -418,6 +426,5 @@ function applyLanguage(){
 }
 $('language').onchange=e=>{setLanguage(e.target.value);const src=$('code-editor').value,next=translateCode(src,language());if(next!==src){$('code-editor').value=next;updateLines();}applyLanguage();persist();};
 setEnvironment(environment);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();requestAnimationFrame(frame);
-// The header sky follows the local clock; it is redrawn once a minute and on resize, never animated.
-function paintSky(){const c=$('sky'),r=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);if(!r.width)return;c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);drawSky(x,r.width,r.height,skyAt(new Date()));}
-paintSky();setInterval(paintSky,60000);new ResizeObserver(paintSky).observe($('sky'));
+// The outdoor sky follows the local clock: the scene is redrawn once a minute for it, never animated.
+setInterval(()=>{needsRender=true;},60000);

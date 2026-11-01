@@ -174,7 +174,9 @@ test('Experiment 02: a mission starter loads and the judge marks it not yet pass
 test('Experiment 03: a mission starts the rover near a wall, and the judge reads the true gap',async()=>{
   const park=missionText(missionById('park'),'en'),[before,after]=en['judge.park'].split('{gap}');
   await withLab('lesson3',{},async page=>{
+    assert.equal(await page.isChecked('#show-lidar'),false,'the LiDAR layer is off before Experiment 03');
     await page.click('[data-lesson="3"]');
+    assert.equal(await page.isChecked('#show-lidar'),true,'Experiment 03 turns the LiDAR layer on');
     assert.equal((await page.textContent('#missions-eyebrow')).trim(),en['missions.eyebrow3']);
     assert.equal(await page.locator('#mission-list .mission').count(),2);
     await page.click('[data-mission="park"]');

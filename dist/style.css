@@ -60,4 +60,4 @@ button.lesson-number:active{transform:scale(.97)}
 .purple{background:#7E2F8E}
 .green{background:#77AC30}
 .wind-row{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px;font-size:11px;color:#7e8992;cursor:pointer}
-.topbar{position:relative;overflow:hidden}.topbar>*{position:relative;z-index:1}.topbar>.sky{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.night-sky .stage-heading h3{color:#f4f6fb}.night-sky .stage-heading p{color:#c4ccda}

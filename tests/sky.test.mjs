@@ -27,8 +27,9 @@ test('the full moon is up at midnight and the new moon is not',()=>{
   assert.ok(full.moon.up&&full.moon.lit>.95);assert.equal(fresh.moon.up,false);
 });
 
-test('drawing works on a minimal canvas at any hour',()=>{
+test('drawing works on a minimal canvas at any hour, and reports a dark sky only at night',()=>{
   const calls=[],ctx=new Proxy({},{get:(_,k)=>k==='createLinearGradient'||k==='createRadialGradient'?()=>({addColorStop(){}}):()=>calls.push(k),set:()=>true});
-  for(let h=0;h<24;h++)drawSky(ctx,800,80,skyAt(new Date(2024,0,25,h,10)));
+  const dark=Array.from({length:24},(_,h)=>drawSky(ctx,800,160,skyAt(new Date(2024,5,21,h,10))));
   assert.ok(calls.includes('arc'));
+  assert.equal(dark[13],false,'midday is light');assert.equal(dark[1],true,'1 am is dark');
 });
