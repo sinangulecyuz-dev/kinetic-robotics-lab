@@ -396,6 +396,16 @@ function drawTurtlebot(v){
   wheel(-half,.033,0,.033,.018,false,v?v.wheels[1].theta:0);wheel(half,.033,0,.033,.018,false,v?v.wheels[0].theta:0);
   for(const x of [-.064,.064])box(x,.012,-.177,.02,.02,.02,['#b8bec3','#cfd4d8','#a9b0b5','#e1e5e8','#bcc2c6','#c5cbcf']);
 }
+// Slope-shaded ground for bumpy terrains, 32 × 32 cells of 0.15 m over ±2.4 m, cached per terrain. Texture x is world x, texture y is world z.
+const groundTextures={};
+function groundTexture(surface){
+  if(groundTextures[surface])return groundTextures[surface];
+  const N=32,P=8,s=.15,c=document.createElement('canvas');c.width=c.height=N*P;const g=c.getContext('2d');
+  const h=(x,z)=>terrainHeight(surface,x,z),gain=5/TERRAINS[surface].bumps,[r0,g0,b0]=surface==='grass'?[199,217,178]:[222,218,206];
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){const x0=(i-16)*s,z0=(j-16)*s,x1=x0+s,z1=z0+s,a=h(x0,z0),b=h(x1,z0),cc=h(x1,z1),d=h(x0,z1),gx=(b+cc-a-d)/(2*s),gz=(cc+d-a-b)/(2*s),k=Math.max(-1,Math.min(1,(gx*.6+gz*.4)*gain));
+    g.fillStyle=`rgb(${Math.round(r0+k*20)},${Math.round(g0+k*20)},${Math.round(b0+k*20)})`;g.fillRect(i*P,j*P,P,P);}
+  return groundTextures[surface]=c;
+}
 function render(){
   fit=tb3()&&mode==='drive'?{scale:1.7,y:.07}:{scale:Math.min(1,.5/(.26+p.height/100)),y:.15};
   document.querySelector('.stage-scale>span').style.width=(Math.min(cw*.8,ch*1.05)*zoom*fit.scale*.2)+'px';
@@ -405,9 +415,10 @@ function render(){
   const ground=v=>world(v,false),surface=mode==='drive'?terrain:'flat',lift=(x,z,dy=.004)=>({x,y:terrainHeight(surface,x,z)+dy,z});
   if(TERRAINS[surface].bumps){
     // True bump heights (about 2 cm on gravel, 1 cm on grass) are too small to see at this scale, so slope shading shows them.
-    const s=.15,h=(x,z)=>terrainHeight(surface,x,z),gain=5/TERRAINS[surface].bumps,[r0,g0,b0]=surface==='grass'?[199,217,178]:[222,218,206];
-    for(let i=-16;i<16;i++)for(let j=-16;j<16;j++){const x0=i*s,z0=j*s,x1=x0+s,z1=z0+s,a=h(x0,z0),b=h(x1,z0),c=h(x1,z1),d=h(x0,z1),gx=(b+c-a-d)/(2*s),gz=(c+d-a-b)/(2*s),k=Math.max(-1,Math.min(1,(gx*.6+gz*.4)*gain));
-      const col=`rgb(${Math.round(r0+k*20)},${Math.round(g0+k*20)},${Math.round(b0+k*20)})`;poly([{x:x0,y:a,z:z0},{x:x1,y:b,z:z0},{x:x1,y:c,z:z1},{x:x0,y:d,z:z1}],col,col,.6);}
+    // The orthographic camera maps the ground plane to the screen by an affine transform, so the shaded ground is drawn once
+    // into a texture and placed with one drawImage per frame, instead of 1024 polygons.
+    const tex=groundTexture(surface),E=2.4,o=project({x:-E,y:0,z:-E}),px=project({x:E,y:0,z:-E}),pz=project({x:-E,y:0,z:E});
+    ctx.save();ctx.transform((px.x-o.x)/tex.width,(px.y-o.y)/tex.width,(pz.x-o.x)/tex.height,(pz.y-o.y)/tex.height,o.x,o.y);ctx.drawImage(tex,0,0);ctx.restore();
   }else{
     const icy=surface==='slippery'&&mode==='drive';
     if(icy){poly([{x:-2.8,y:-.012,z:-2.8},{x:2.8,y:-.012,z:-2.8},{x:2.8,y:-.012,z:2.8},{x:-2.8,y:-.012,z:2.8}],'#e5eff4');for(const k of [-1.7,-.5,.8,1.9])line({x:k-.5,y:-.011,z:-2.5},{x:k+.5,y:-.011,z:2.5},'#f6fafc',4);}

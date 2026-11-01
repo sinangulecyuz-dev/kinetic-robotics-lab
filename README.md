@@ -160,6 +160,10 @@ The header has a language picker: English, Türkçe, Français. On a first visit
 - `tests/i18n.test.mjs` checks that all three dictionaries have the same keys and placeholders, that code inside the help text is unchanged, that translated examples and starters run the same code, and that every key the interface uses exists and every key is used.
 - The French text was written by Claude Code and still needs a review by a native speaker. The Turkish text needs a review by the owner.
 
+## Performance
+
+Measured in headless Chromium at 1366 × 768 on the heaviest scene (outdoor grass with wind, the LiDAR wall follower, the "what the robot reads" card), with the CPU slowed by Chromium's throttling: 61 frames/s at 1×, 26 at 4×, 17 at 6×. At every rate the simulation kept real time (1.02–1.05× over 6 s), and results never depend on frame rate, because runs are deterministic for a seed and independent of how frames split the time. A slow device shows a choppier picture, not different physics. In a 4× profile, the lab's own JavaScript is about a quarter of the CPU time, no function above 2.5 %; the rest is the browser drawing the canvas, which headless Chromium does in software and real devices mostly on the GPU, so these numbers are pessimistic. The shaded ground of gravel and grass is drawn once into a texture and placed by the camera's affine transform each frame (before: 1024 polygons per frame; 21 → 26 frames/s at 4×, pixel difference under 0.3/255 on average). Not measured: real phones and Chromebooks.
+
 ## Learning feedback
 
 - **What the robot reads.** While driving, a card on the stage lists the sensors and variables the program uses, each with the robot's reading beside the simulator's truth where one exists (true heading, true position, noise-free ray distances, true turn rate). It makes the gap between measurement and reality visible: `lidar_min` reads about 1.5 cm short, and a LiDAR beam lags while the rover turns because the scan is progressive.
