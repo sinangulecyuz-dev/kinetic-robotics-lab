@@ -34,7 +34,7 @@ document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.datase
 
 setLanguage(preferredLanguage(navigator.languages||[navigator.language]));
 let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[],environment='indoor',windOn=true;
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3,4].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 // Labels in the chosen language. An unedited example or mission starter follows that language.
 const robotLabel=id=>t('robot.'+id),terrainLabel=id=>t('terrain.'+id),terrainLower=id=>terrainLabel(id).toLocaleLowerCase(language()),mt=m=>missionText(m,language());
 function translateCode(src,to){for(const l of Object.keys(LANGUAGES)){for(const name of Object.keys(EXAMPLES))if(example(name,l)===src)return example(name,to);for(const m of MISSIONS)if(missionText(m,l).starter===src)return missionText(m,to).starter;}return src;}
@@ -112,18 +112,18 @@ function setEnvironment(next){
 document.querySelectorAll('[data-environment]').forEach(b=>b.onclick=()=>{setEnvironment(b.dataset.environment);persist();});
 $('wind-on').onchange=e=>{if(state.status!=='idle')reset();windOn=e.target.checked;setTerrain(terrain);persist();};
 function setLesson(n,user=true){
-  lesson=[2,3].includes(n)?n:1;if(missionById(mission)?.experiment!==lesson)mission=null;
+  lesson=[2,3,4].includes(n)?n:1;if(missionById(mission)?.experiment!==lesson)mission=null;
   document.querySelectorAll('[data-lesson]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.lesson===lesson));
   for(const [id,k] of [['lesson-time','time'],['lesson-title','title'],['lesson-question','question'],['lesson-concept-text','concept']])show(id,()=>t(`lesson.${lesson}.${k}`));
   const d=lesson>1?'lesson'+lesson:'balanced';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));$('mission-card').hidden=lesson===1;renderMissions();needsRender=true;
   if(user){if(lesson===1){setRobot('kinetic');changeMode('tilt');changeTab('build');}else changeMode('drive');persist();}
-  // Experiments 02 and 03 are driving experiments, also after a reload.
+  // Experiments 02 to 04 are driving experiments, also after a reload.
   else if(lesson>1&&mode!=='drive')changeMode('drive');
 }
 document.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>setLesson(+b.dataset.lesson));
 // Status carries a label as well as a color, so it never depends on color alone.
 function renderMissions(){
-  show('missions-eyebrow',()=>t(lesson===3?'missions.eyebrow3':'missions.eyebrow'));show('missions-title',()=>t(lesson===3?'missions.title3':'missions.title'));
+  show('missions-eyebrow',()=>t(lesson===4?'missions.eyebrow4':lesson===3?'missions.eyebrow3':'missions.eyebrow'));show('missions-title',()=>t(lesson===4?'missions.title4':lesson===3?'missions.title3':'missions.title'));
   $('mission-list').innerHTML=missionsFor(lesson).map(m=>{const done=missionsDone.includes(m.id);return `<button class="mission" data-mission="${m.id}" aria-pressed="${mission===m.id}"><span>${esc(mt(m).title)}<small>${esc(t('missions.ground',{robot:robotLabel(m.robot),terrain:terrainLower(m.terrain)}))}</small></span><span class="mission-status${done?' done':''}">${t(done?'missions.done':'missions.todo')}</span></button>`;}).join('');
   document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>loadMission(b.dataset.mission));
   show('mission-goal',()=>{const m=missionById(mission);return m?mt(m).goal:t('missions.pick');});
@@ -255,7 +255,8 @@ function learningPath(){openModal(t('modal.path.eyebrow'),t('modal.path.html'));
 const lessonTwo=()=>openModal(t('modal.lesson2.eyebrow'),t('modal.lesson2.html'));
 const lessonOne=()=>openModal(t('modal.lesson1.eyebrow'),t('modal.lesson1.html'));
 const lessonThree=()=>openModal(t('modal.lesson3.eyebrow'),t('modal.lesson3.html'));
-$('lesson-details').onclick=()=>lesson===3?lessonThree():lesson===2?lessonTwo():lessonOne();
+const lessonFour=()=>openModal(t('modal.lesson4.eyebrow'),t('modal.lesson4.html'));
+$('lesson-details').onclick=()=>lesson===4?lessonFour():lesson===3?lessonThree():lesson===2?lessonTwo():lessonOne();
 $('model-details').onclick=modelDetails;$('code-reference').onclick=commandReference;
 $('margin-help').onclick=()=>openModal(t('modal.margin.eyebrow'),t('modal.margin.html'));
 $('robot-picker').onclick=()=>{const option=(id,detail)=>`<button class="roadmap-item robot-option" data-robot="${id}"><span>${icon('robot')}</span><div><strong>${robotLabel(id)}</strong><small>${t(detail)}</small></div><b${robot===id?'':' class="later"'}>${t(robot===id?'robots.selected':'robots.choose')}</b></button>`;

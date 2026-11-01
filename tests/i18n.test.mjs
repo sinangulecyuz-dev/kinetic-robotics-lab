@@ -55,11 +55,11 @@ test('every key the interface asks for exists in English, and every English key 
   for(const m of source('drive.mjs').matchAll(/'(sim\.\w+)'/g))used.add(m[1]);
   for(const m of source('physics.mjs').matchAll(/['`],'(\w+)'(?:,\{[^}]*\})?\)/g))used.add('parse.'+m[1]);
   for(const m of source('missions.mjs').matchAll(/'(judge\.\w+)'/g))used.add(m[1]);
-  for(const n of [1,2,3])for(const k of ['time','title','question','concept','aria'])used.add(`lesson.${n}.${k}`);
-  for(const d of ['balanced','tall','offset','lesson2','lesson3','tiltPass','tiltFail','drive'])for(const k of ['title','copy'])used.add(`discovery.${d}.${k}`);
+  for(const n of [1,2,3,4])for(const k of ['time','title','question','concept','aria'])used.add(`lesson.${n}.${k}`);
+  for(const d of ['balanced','tall','offset','lesson2','lesson3','lesson4','tiltPass','tiltFail','drive'])for(const k of ['title','copy'])used.add(`discovery.${d}.${k}`);
   for(const id of Object.keys(TERRAINS))used.add('terrain.'+id).add('surface.'+id);
   for(const id of Object.keys(ROBOTS))used.add('robot.'+id);
-  for(const name of ['guide','model','reference','path','lesson1','lesson2','lesson3','margin'])for(const k of ['eyebrow','html'])used.add(`modal.${name}.${k}`);
+  for(const name of ['guide','model','reference','path','lesson1','lesson2','lesson3','lesson4','margin'])for(const k of ['eyebrow','html'])used.add(`modal.${name}.${k}`);
   const missing=[...used].filter(k=>!(k in en));
   assert.deepEqual(missing,[],'keys used but not defined');
   assert.deepEqual(Object.keys(en).filter(k=>!used.has(k)),[],'keys defined but never used');

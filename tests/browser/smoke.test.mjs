@@ -201,6 +201,29 @@ test('Experiment 03: a mission starts the rover near a wall, and the judge reads
   });
 });
 
+test('Experiment 04: the mission sets outdoor ice and its wind, and is judged only in that wind',async()=>{
+  const wind=missionText(missionById('wind'),'en'),prefix=en['judge.windMean'].split('{mean}')[0];
+  await withLab('lesson4',{},async page=>{
+    await page.click('[data-lesson="4"]');
+    assert.equal((await page.textContent('#missions-eyebrow')).trim(),en['missions.eyebrow4']);
+    await page.click('[data-mission="wind"]');
+    assert.equal(await page.inputValue('#code-editor'),wind.starter);
+    await page.click('#build-tab');
+    assert.equal(await page.getAttribute('[data-environment="outdoor"]','aria-pressed'),'true');
+    assert.equal(await page.getAttribute('[data-terrain="slippery"]','aria-pressed'),'true');
+    assert.ok(await page.isChecked('#wind-on'));
+    await page.click('#run');
+    await runToEnd(page);
+    assert.equal((await page.textContent('#discovery-title')).trim(),fill(en['discovery.missionFail'],{title:wind.title}));
+    assert.ok((await page.textContent('#discovery-copy')).trim().startsWith(prefix));
+    // Without its wind the run is not judged: the card shows the ordinary driving note instead.
+    await page.click('#wind-on');
+    await page.click('#run');
+    await runToEnd(page);
+    assert.equal((await page.textContent('#discovery-title')).trim(),en['discovery.drive.title']);
+  });
+});
+
 test('outdoors: grass and gravel appear, a run carries wind, and the switch turns it off',async()=>{
   await withLab('outdoor',{},async page=>{
     await page.selectOption('#experiment-mode','drive');

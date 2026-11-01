@@ -1,6 +1,7 @@
-// Missions for Experiments 02 and 03. Each is judged on ground truth, which the rover's own program never sees.
+// Missions for Experiments 02, 03, and 04. Each is judged on ground truth, which the rover's own program never sees.
 // Every starter script is a reasonable first try that falls short, so the student has something to improve.
 // start places the rover in the arena, still facing +z; without it the rover starts at the center.
+// wind is the mission's own outdoor wind ({speed, toward, gust}); a mission without one is judged only without wind.
 import {rangeTo,OBSTACLE,WALL} from './drive.mjs';
 import {withComments} from './examples.mjs';
 
@@ -92,6 +93,27 @@ export const MISSIONS=[
       for(let i=0;i<L.t.length;i++){const z=sim.start.z+L.trueX[i];length=Math.max(length,L.trueX[i]);if(z>=0&&z<=1.8)miss=Math.max(miss,Math.abs(WALL-(sim.start.x+L.trueY[i])-.5));}
       if(length<3.5)return {pass:false,text:`The rover covered only ${length.toFixed(2)} m along the wall. Drive at least 3.5 m.`,key:'judge.wallShort',params:{length:length.toFixed(2)}};
       return {pass:miss<=.1,text:`Farthest from 0.5 m: ${(miss*100).toFixed(1)} cm over the last 1.8 m (target 10 cm or less).`,key:'judge.wall',params:{miss:(miss*100).toFixed(1)}};
+    }
+  },
+  {
+    id:'wind',experiment:4,title:'Hold the line in the wind',robot:'kinetic',terrain:'slippery',start:{x:2,z:-2},wind:{speed:5,toward:-90,gust:.15},
+    goal:'On ice, with the wind pushing you away from the wall, keep 0.5 m from the wall on your left: within ±2.4 cm on average over the last 3 m, and never more than 10 cm off.',
+    lesson:'The wind pushes steadily, so the rover must keep steering slightly into it. P and D can only ask for that steering while the rover sits a little off the line: a steady error. Add the error up over time with let, and steer with that sum too. The sum grows until the steady error is gone. Start it from zero and keep its gain small.',
+    tr:{title:'Rüzgarda çizgiyi tut',goal:'Buzda, rüzgar seni duvardan uzağa iterken solundaki duvardan 0.5 m uzakta kal: son 3 m’de ortalama ±2.4 cm içinde ve hiçbir zaman 10 cm’den fazla sapmadan.',
+      lesson:'Rüzgar sürekli iter, bu yüzden rover hep biraz rüzgara doğru dönmelidir. P ve D bu dönüşü ancak rover çizginin biraz dışındayken isteyebilir: kalıcı bir hata. Hatayı let ile zaman içinde topla ve bu toplamla da dön. Toplam, kalıcı hata yok olana kadar büyür. Sıfırdan başlat ve kazancını küçük tut.',
+      comments:['Görev: rüzgarda solundaki duvardan 0.50 m uzakta kal (ortalama ±2.4 cm içinde).','Bu ilk deneme mesafeye ve duvara göre açıya göre dönüyor: P ve D. Çalıştır ve ortalama sapmasını oku.']},
+    fr:{title:'Tenir la ligne dans le vent',goal:'Sur la glace, avec le vent qui te pousse loin du mur, reste à 0.5 m du mur à ta gauche : à ±2.4 cm près en moyenne sur les 3 derniers mètres, et jamais à plus de 10 cm.',
+      lesson:'Le vent pousse sans arrêt, donc le rover doit toujours tourner un peu face à lui. P et D ne peuvent demander ce virage que si le rover reste un peu à côté de la ligne : une erreur permanente. Additionne l’erreur dans le temps avec let, et dirige aussi avec cette somme. La somme grandit jusqu’à ce que l’erreur permanente disparaisse. Pars de zéro et garde un petit gain.',
+      comments:['Mission : rester à 0.50 m du mur à gauche dans le vent (à ±2.4 cm près en moyenne).','Ce premier essai dirige selon la distance et l’angle par rapport au mur : P et D. Lance-le et lis son écart moyen.']},
+    starter:'# Mission: keep 0.50 m from the wall on your left in the wind (average within ±2.4 cm).\n# This first try steers on the distance and on the angle to the wall: P and D. Run it and read its average miss.\nwhile odom_x < 3.8\n  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()',
+    // Judged on the true path between z = -1.2 and z = 1.8: the average miss is the steady error, the largest one catches oscillation.
+    judge(sim){
+      if(!sim.success)return {pass:false,text:`The run stopped early: ${sim.message}`,key:'judge.early'};
+      const L=sim.log;let sum=0,n=0,max=0,length=0;
+      for(let i=0;i<L.t.length;i++){const z=sim.start.z+L.trueX[i];length=Math.max(length,L.trueX[i]);if(z>=-1.2&&z<=1.8){const e=WALL-(sim.start.x+L.trueY[i])-.5;sum+=e;n++;max=Math.max(max,Math.abs(e));}}
+      if(length<3.5)return {pass:false,text:`The rover covered only ${length.toFixed(2)} m along the wall. Drive at least 3.5 m.`,key:'judge.wallShort',params:{length:length.toFixed(2)}};
+      const mean=sum/n;
+      return {pass:Math.abs(mean)<=.024&&max<=.1,text:`${(Math.abs(mean)*100).toFixed(1)} cm off on average, ${(max*100).toFixed(1)} cm at most, over the last 3 m (target: average within 2.4 cm, never over 10 cm).`,key:'judge.windMean',params:{mean:(Math.abs(mean)*100).toFixed(1),max:(max*100).toFixed(1)}};
     }
   }
 ];

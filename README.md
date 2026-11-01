@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 76 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 79 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -30,7 +30,7 @@ npm i --no-save playwright && npx playwright install chromium
 npm run test:browser
 ```
 
-It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, rover-script math, mission judges in Experiments 02 and 03, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
+It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, rover-script math, mission judges in Experiments 02 to 04, outdoor wind, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
 
 The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
@@ -113,7 +113,7 @@ No single α wins everywhere. Neither sensor is an absolute reference, so a real
 
 ### Experiment 02: Where am I?
 
-The lesson strip switches between Experiment 01 (balance on a ramp), Experiment 02, and Experiment 03 (below). Experiment 02 is about odometry, the gyro, and ground truth. It has three missions in `dist/missions.mjs`:
+The lesson strip switches between Experiment 01 (balance on a ramp), Experiment 02, Experiment 03, and Experiment 04 (below). Experiment 02 is about odometry, the gyro, and ground truth. It has three missions in `dist/missions.mjs`:
 
 | Mission | Robot and ground | Passes when |
 |---|---|---|
@@ -137,6 +137,14 @@ Experiment 03 is about proportional (P) control: a command that grows with the e
 The park starter drives at 0.5 m/s and brakes at the line, so it stops 4–9 cm short; a speed proportional to the remaining distance parks within 1 cm. The wall starter steers in proportion to `lidar_left` alone and runs into the wall.
 
 That second result is physics, not a tuning problem. Steering changes the heading, and only the heading changes the distance, so distance feedback alone acts on a double integrator and keeps overshooting. When the rover turns, the left beam also meets the wall at a slant and reads d / cos θ, which pushes it further. In the simulator every distance-only controller tried, on `lidar_left` or on the true perpendicular distance `lidar_min`, with gains from 0.2 to 4, hits the wall. Adding a term that steers back toward running parallel works. With the gyro heading, gyro drift biases the distance: over 40 seeds the largest miss is 8.3 cm. With the wall angle from the LiDAR (`lidar_min_angle − 90`), it is 5.1 cm. The tolerance of ±10 cm lets both pass.
+
+### Experiment 04: Hold the line
+
+Experiment 04 is about the integral term of PID, written with `let`. Its one mission runs outdoors on ice: the rover starts 0.5 m from the left wall (x = 2 m, z = −2 m), and a 5 m/s wind with gusts (15 %) blows toward −x, away from the wall. It passes when, between z = −1.2 m and z = 1.8 m, the true distance to the wall averages within 0.5 ± 0.024 m and never misses by more than 10 cm. It is judged only in that wind.
+
+The starter is the P-and-D wall follower from Experiment 03 (`lidar_min` and `lidar_min_angle`). In the wind it settles a steady 2.6–6.5 cm off over 40 seeds; adding a running sum of the error (`let sum = sum + e*0.05`, gain 1) brings the average to 2.2 cm or less, and the largest miss to 9.1 cm or less, on all 40. Part of what remains is the sensor: `lidar_min`, the smallest of many noisy beams, reads about 1.5 cm short (0.485 m for a true 0.5 m), and no controller can remove a sensor's bias.
+
+The margins are thin (2.6 against 2.4, and 2.2 against 2.4), and other mission ideas did not separate starter from solution, so Experiment 04 has one mission. Tried and dropped: an integral on heading in a crosswind (the motors' own PI wheel-speed loops already cancel a push that only twists the rover), holding heading in place on ice, parking on ice in a tailwind (the rover slides away), a fast turn without overshoot for the D term (the turn-rate limit dominates, so P alone is within 0.1 s of PD), parking on ice with a derivative from `distance` (noise), and a windup mission from 0.8 m (the best anti-windup solutions overlapped the starter).
 
 The orthographic canvas renderer uses the same dimensions and transforms as the models. It supports orbit, zoom, top view, and overlay toggles without external packages. The static floor grid is illustrative; exact measurements appear in the controls and telemetry.
 
