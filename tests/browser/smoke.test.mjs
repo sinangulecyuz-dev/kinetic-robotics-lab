@@ -139,6 +139,9 @@ test('math on sensors: the P example runs, an unknown name is refused, and a div
     assert.match(await page.inputValue('#code-editor'),/drive\(0, 0\.05\*\(90 - heading\)\)/);
     await page.click('#run');
     assert.equal(await runToEnd(page),en['sim.complete']);
+    await page.fill('#code-editor','let n = 0\nwhile n < 3\n  let n = n + 1\n  drive(0.1*n, 0)\n  wait(0.2)\nend\nstop()');
+    await page.click('#run');
+    assert.equal(await runToEnd(page),en['sim.complete']);
     await page.fill('#code-editor','drive(0.2, 2*speed)');
     await page.click('#run');
     await page.clock.runFor(300);

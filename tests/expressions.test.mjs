@@ -133,3 +133,59 @@ test('a P-controlled turn follows the sampled-data model: small gain falls short
   assert.ok(highModel.peak>95,`model peak ${highModel.peak}`);
   assert.ok(high.peak>95&&Math.abs(high.end-90)<3,`k = 0.3: peak ${high.peak.toFixed(1)}°, end ${high.end.toFixed(1)}°`);
 });
+
+test('let stores math under a name, and tests can compare a variable with a number',()=>{
+  const nodes=parseProgram('let total = 0\nwhile total < 3\n  let step2 = 0.5 * 2\n  let total = total + step2\n  drive(0, total - heading)\n  wait(0.05)\nend');
+  assert.deepEqual(nodes[0],{type:'let',name:'total',value:0,line:1});
+  assert.equal(nodes[1].variable,'total');assert.equal(nodes[1].sensor,undefined);
+  assert.deepEqual(nodes[1].body[0],{type:'let',name:'step2',value:1,line:3});
+  assert.deepEqual(nodes[1].body[1].value,{op:'+',a:{variable:'total'},b:{variable:'step2'}});
+  assert.deepEqual(nodes[1].body[2].w,{op:'-',a:{variable:'total'},b:{sensor:'heading'}});
+  // A loop may use a name that its body sets further down.
+  assert.doesNotThrow(()=>parseProgram('repeat 2\n  drive(0, last)\n  let last = heading\n  wait(0.05)\nend'));
+});
+
+test('variable names, counts, and forms are bounded',()=>{
+  const cases={
+    'let heading = 1':'varReserved','let abs = 1':'varReserved','let drive = 1':'varReserved','let end = 1':'varReserved','let let = 1':'varReserved',
+    [Array.from({length:11},(_,i)=>`let v${i} = ${i}`).join('\n')]:'varCount',
+    'x = 1':'letSyntax','let x':'letSyntax','let X = 1':'letSyntax','let 2x = 1':'letSyntax','let x = 1, 2':'letSyntax','let x = ':'letSyntax',
+    'let x = 1 / 0':'exprValue','drive(0, never_set)':'exprName','if never_set > 1\nstop()\nend':'unknownSensor','let x = y + 1':'exprName',
+  };
+  for(const [source,key] of Object.entries(cases)){
+    let error;try{parseProgram(source);}catch(e){error=e;}
+    assert.ok(error,`${JSON.stringify(source)} was accepted`);assert.equal(error.key,key,source);assert.match(error.message,/^Line \d+: /,source);
+  }
+  assert.equal(parseProgram(Array.from({length:10},(_,i)=>`let v${i} = ${i}`).join('\n')).length,10,'ten variables are allowed');
+});
+
+test('variables keep their values through the run: a sum and a counter match hand arithmetic',()=>{
+  // time reads 0, 0.1, …, 0.9 at the ten let lines, so the sum of time·0.1 is 0.45.
+  const sum=run('let s = 0\nrepeat 10\n  let s = s + time*0.1\n  wait(0.1)\nend');
+  assert.equal(sum.success,true,sum.message);assert.ok(Math.abs(sum.vars.get('s')-.45)<1e-9,`s = ${sum.vars.get('s')}`);
+  const count=run('let n = 0\nwhile n < 5\n  let n = n + 1\n  wait(0.1)\nend');
+  assert.equal(count.vars.get('n'),5);
+  // The loop ends after five 0.1 s waits; the run then settles before it finishes.
+  assert.ok(count.log.t.length>0&&count.time>=.5,`ran ${count.time} s`);
+});
+
+test('a variable read before its let, or math with no value in a let, stops the run on its line',()=>{
+  const unset=run('if x > 1\n  stop()\nend\nlet x = 2');
+  assert.equal(unset.success,false);assert.equal(unset.messageKey,'sim.unsetVar');assert.deepEqual(unset.messageParams,{name:'x',line:1});
+  const nan=run('wait(0.2)\nlet z = 1/(time - time)\ndrive(0.2, z)');
+  assert.equal(nan.messageKey,'sim.noValue');assert.deepEqual(nan.messageParams,{line:2});
+  // A loop of lets without a wait still meets the instruction limit.
+  assert.equal(run('let n = 0\nwhile n > -1\n  let n = n + 1\nend').messageKey,'sim.instructions');
+});
+
+test('random text in a let never escapes the parser as anything but a line-numbered message',()=>{
+  const r=random(11),alphabet='0123456789.+-*/(),  abcdhilmnstx_e=;"[]',words=['abs(','heading','time','v1','let ','total'];
+  for(let i=0;i<10000;i++){
+    let s='';const n=Math.floor(r()*40);
+    for(let j=0;j<n;j++)s+=r()<.15?words[Math.floor(r()*words.length)]:alphabet[Math.floor(r()*alphabet.length)];
+    for(const source of [`let v1 = ${s}`,`let ${s}`,`let total = 1\n${s}`]){
+      try{parseProgram(source);}
+      catch(e){assert.ok(KEYS.has(e.key)||['letSyntax','varReserved','varCount','unknownSensor','closeIf','closeBlock','closeRepeat','unexpected','repeatRange','waitRange','filterRange','nesting','empty'].includes(e.key),`${JSON.stringify(source)}: ${e.message}`);assert.match(e.message,/^Line \d+: /);}
+    }
+  }
+});

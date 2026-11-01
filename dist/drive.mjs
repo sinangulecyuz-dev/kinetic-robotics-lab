@@ -129,7 +129,7 @@ export class DriveSim{
     this.wheels=[0,1].map(()=>({w:0,theta:0,ref:0,volts:0,current:0,integral:0,count:0,speed:0,slip:0}));
     this.caster={spin:0,swivel:0};
     this.steps=0;this.budget=0;this.status='running';this.success=false;this.message='';
-    this.queue=[...program];this.waitSteps=0;this.instructions=0;this.sinceAdvance=0;this.line=program[0]?.line||1;this.phase='run';this.settleSteps=0;this.quietSteps=0;
+    this.queue=[...program];this.vars=new Map();this.waitSteps=0;this.instructions=0;this.sinceAdvance=0;this.line=program[0]?.line||1;this.phase='run';this.settleSteps=0;this.quietSteps=0;
     this.seed=seed;this.noise=noise;this.rand=random(seed);this.lidarRand=random(seed^0x9E3779B9);
     const imu=spec.imu,bias=(sd,offset)=>[0,1,2].map(i=>(noise?gauss(this.rand)*sd:0)+offset[i]);this.bias={gyro:bias(imu.gyroBias,[0,0,0]),accel:bias(imu.accelBias,imu.accelOffset)};
     this.odom={x:0,y:0,yaw:0};this.desired={x:0,y:0,yaw:0,v:0,w:0};this.fusion={alpha:FUSION_ALPHA,x:0,y:0,yaw:0};this.gyroYaw=0;this.gyroZ=0;this.imuPoints=[];this.imuFrames=[];this.heightPrev=null;
@@ -173,6 +173,14 @@ export class DriveSim{
       const n=this.queue.shift();
       if(!n){this.phase='settle';this.setTargets(0,0);this.command(0,0);return;}
       this.line=n.line;
+      try{this.execute(n);if(this.status!=='running')return;}catch(e){
+        // A variable read before any let gave it a value stops the run on that line.
+        if(e?.unset)return this.finish(false,`Stopped at line ${n.line}: ${e.unset} is used before let gives it a value.`,'sim.unsetVar',{name:e.unset,line:n.line});
+        throw e;
+      }
+    }
+  }
+  execute(n){
       if(n.type==='wheels'||n.type==='drive'){
         // Values computed from sensors are clipped to the parser's limits, as a motor driver saturates.
         // Math with no value (a division by zero) stops the run on its line.
@@ -192,7 +200,11 @@ export class DriveSim{
       else if(n.type==='repeat')this.queue.unshift(...Array.from({length:n.n},()=>n.body).flat());
       else if(n.type==='if')this.queue.unshift(...(this.test(n)?n.body:n.other));
       else if(n.type==='while'&&this.test(n))this.queue.unshift(...n.body,n);
-    }
+      else if(n.type==='let'){
+        const v=this.compute(n.value);
+        if(Number.isNaN(v))return this.finish(false,`Stopped at line ${n.line}: the math has no value here, for example a division by zero.`,'sim.noValue',{line:n.line});
+        this.vars.set(n.name,v);
+      }
   }
   // What a program sees: the latest sensor samples, never the simulator's ground truth.
   sensor(name){
@@ -200,8 +212,10 @@ export class DriveSim{
     return {distance:this.range,heading:this.gyroYaw*deg,odom_heading:this.odom.yaw*deg,gyro_z:this.gyroZ,encoder_left:this.wheels[0].count,encoder_right:this.wheels[1].count,odom_x:this.odom.x,odom_y:this.odom.y,time:this.time,lidar_front:this.lidar.front,lidar_left:this.lidar.left,lidar_back:this.lidar.back,lidar_right:this.lidar.right,lidar_min:this.lidar.min,lidar_min_angle:this.lidar.minAngle,fused_heading:this.fusion.yaw*deg,fused_x:this.fusion.x,fused_y:this.fusion.y}[name];
   }
   // A wheels() or drive() value: a number from the parser, or math on the latest sensor samples, clipped to ±limit. NaN passes through.
-  value(x,limit){const v=typeof x==='number'?x:evaluate(x,name=>this.sensor(name));return Math.max(-limit,Math.min(limit,v));}
-  test(n){const v=this.sensor(n.sensor);return n.op==='<'?v<n.value:n.op==='>'?v>n.value:n.op==='<='?v<=n.value:v>=n.value;}
+  value(x,limit){const v=this.compute(x);return Math.max(-limit,Math.min(limit,v));}
+  // Math on the latest sensor samples and the program's variables. Reading a variable no let has set throws {unset}.
+  compute(x){return typeof x==='number'?x:evaluate(x,(name,isVariable)=>{if(!isVariable)return this.sensor(name);if(!this.vars.has(name))throw {unset:name};return this.vars.get(name);});}
+  test(n){const v=n.variable!==undefined?this.compute({variable:n.variable}):this.sensor(n.sensor);return n.op==='<'?v<n.value:n.op==='>'?v>n.value:n.op==='<='?v<=n.value:v>=n.value;}
   // 1 kHz: support plane from the terrain under the wheels and casters, gravity components, and contact loads.
   updateContacts(){
     const s=Math.sin(this.heading),c=Math.cos(this.heading),at=({x:lx,z:lz})=>{const px=this.x+lx*c+lz*s,pz=this.z-lx*s+lz*c;return [px,terrainHeight(this.terrain,px,pz),pz];};

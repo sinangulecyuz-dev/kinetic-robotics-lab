@@ -48,15 +48,19 @@ export function stepDrive(pose,left,right,width,dt) {
 // lidar_min is the closest return in m and lidar_min_angle its direction in degrees, counterclockwise from the front.
 // fused_heading (degrees), fused_x and fused_y (m) come from the complementary filter set by filter(alpha).
 export const SENSORS=['distance','heading','odom_heading','gyro_z','encoder_left','encoder_right','odom_x','odom_y','time','lidar_front','lidar_left','lidar_back','lidar_right','lidar_min','lidar_min_angle','fused_heading','fused_x','fused_y'];
-// Math inside wheels() and drive(): numbers, sensor names, + - * /, parentheses, abs(x), min(a, b), max(a, b).
+// Math inside wheels(), drive(), and let: numbers, sensor names, variables, + - * /, parentheses, abs(x), min(a, b), max(a, b).
 // A tokenizer and a recursive-descent parser build a small tree, and evaluate() walks it: no eval, no JavaScript.
-// A tree is a number, {sensor}, {op:'neg',a}, {op:'+'|'-'|'*'|'/',a,b}, or {fn,args}.
+// A tree is a number, {sensor}, {variable}, {op:'neg',a}, {op:'+'|'-'|'*'|'/',a,b}, or {fn,args}.
 export const MATH_FUNCTIONS=new Map([['abs',1],['min',2],['max',2]]);
-export const MATH_LIMITS={symbols:40,depth:5};
+export const MATH_LIMITS={symbols:40,depth:5,variables:10};
+// Words a variable cannot be called: sensors, math functions, and the language's own keywords.
+export const RESERVED=new Set([...SENSORS,...MATH_FUNCTIONS.keys(),'wheels','drive','wait','stop','filter','repeat','if','while','else','end','let']);
 // Division by zero has no value (NaN), even where IEEE would give infinity, so a student sees it instead of a silent saturation.
+// read(name) returns a sensor sample; read(name, true) a variable.
 export function evaluate(e,read){
   if(typeof e==='number')return e;
   if(e.sensor)return read(e.sensor);
+  if(e.variable)return read(e.variable,true);
   if(e.fn){const x=e.args.map(a=>evaluate(a,read));return e.fn==='abs'?Math.abs(x[0]):e.fn==='min'?Math.min(x[0],x[1]):Math.max(x[0],x[1]);}
   const a=evaluate(e.a,read);if(e.op==='neg')return -a;
   const b=evaluate(e.b,read);
@@ -64,11 +68,12 @@ export function evaluate(e,read){
 }
 // Parser errors carry a key and params as well as English text, so the interface can explain them in the student's language.
 const fail=(line,msg,key,params={})=>{const e=new Error(`Line ${line}: ${msg}`);e.line=line;e.key=key;e.params=params;throw e;};
-const usesSensor=e=>typeof e!=='number'&&(!!e.sensor||(e.args||[e.a,e.b]).some(x=>x!==undefined&&usesSensor(x)));
-// Parses the comma-separated values between the parentheses of one instruction.
-// A value without sensors is computed here, so range errors still appear before the run.
-export function parseValues(text,line=1){
-  const tokens=[],re=/\s*(?:(\d+(?:\.\d+)?)|([a-z_]+)|([-+*/(),]))/y;
+const usesSensor=e=>typeof e!=='number'&&(!!e.sensor||!!e.variable||(e.args||[e.a,e.b]).some(x=>x!==undefined&&usesSensor(x)));
+// Parses the comma-separated values between the parentheses of one instruction, or the math of a let.
+// variables holds the names the program sets with let. A value without sensors or variables is computed here,
+// so range errors still appear before the run.
+export function parseValues(text,line=1,variables=new Set()){
+  const tokens=[],re=/\s*(?:(\d+(?:\.\d+)?)|([a-z_][a-z0-9_]*)|([-+*/(),]))/y;
   for(re.lastIndex=0;re.lastIndex<text.length&&text.slice(re.lastIndex).trim();){
     const m=re.exec(text);if(!m)fail(line,'Check the math. Use numbers, sensor names, + - * /, parentheses, abs(x), min(a, b), and max(a, b).','exprSyntax');
     if(tokens.push(m[1]!==undefined?{num:+m[1]}:m[2]!==undefined?{name:m[2]}:{sym:m[3]})>MATH_LIMITS.symbols)fail(line,'Keep the math in one instruction under 40 symbols.','exprLong');
@@ -86,8 +91,8 @@ export function parseValues(text,line=1){
     if(t.sym==='('){open();const e=sum();expect(')');depth--;return e;}
     if(t.name===undefined)syntax();
     const name=t.name,call=is('(');
-    if(call?!MATH_FUNCTIONS.has(name):!SENSORS.includes(name))fail(line,`${name} is not a sensor or a math function. Sensors: ${SENSORS.join(', ')}.`,'exprName',{name,list:SENSORS.join(', ')});
-    if(!call)return {sensor:name};
+    if(call?!MATH_FUNCTIONS.has(name):!SENSORS.includes(name)&&!variables.has(name))fail(line,`${name} is not a sensor, a variable set with let, or a math function. Sensors: ${SENSORS.join(', ')}.`,'exprName',{name,list:SENSORS.join(', ')});
+    if(!call)return SENSORS.includes(name)?{sensor:name}:{variable:name};
     i++;open();const args=[sum()];while(is(',')){i++;args.push(sum());}expect(')');depth--;
     if(args.length!==MATH_FUNCTIONS.get(name))fail(line,'abs(x) takes one value; min(a, b) and max(a, b) take two.','exprArity');
     return {fn:name,args};
@@ -103,6 +108,13 @@ export function parseValues(text,line=1){
 // Bounded parser: no eval, arbitrary JavaScript, imports, or network access.
 export function parseProgram(source) {
   const lines=source.split('\n');let count=0,index=0;
+  // Variables are the names any let in the program sets, so a loop can use a name its body sets further down.
+  const variables=new Set();
+  lines.forEach((raw,i)=>{
+    const m=raw.split('#')[0].trim().match(/^let\s+([a-z_][a-z0-9_]*)\s*=/);if(!m)return;
+    if(RESERVED.has(m[1]))fail(i+1,`${m[1]} is already a sensor, a function, or a keyword. Pick another name.`,'varReserved',{name:m[1]});
+    variables.add(m[1]);if(variables.size>MATH_LIMITS.variables)fail(i+1,'Use at most 10 variables.','varCount');
+  });
   const parseBlock=(depth=0)=>{
     if(depth>5)fail(index+1,'Use at most five nested blocks.','nesting');
     const nodes=[];
@@ -114,7 +126,7 @@ export function parseProgram(source) {
       let m;
       if((m=s.match(/^(wheels|drive)\((.*)\)$/))){
         // A value is a number, or a tree computed from sensors at run time and clipped to the same limits there.
-        const name=m[1],values=parseValues(m[2],lineNo),over=(x,limit)=>typeof x==='number'&&Math.abs(x)>limit;
+        const name=m[1],values=parseValues(m[2],lineNo,variables),over=(x,limit)=>typeof x==='number'&&Math.abs(x)>limit;
         if(values.length!==2)fail(lineNo,`${name} needs two values, like ${name}(a, b).`,'args',{name});
         if(name==='wheels'){
           const [l,r]=values;if(over(l,10)||over(r,10))fail(lineNo,'Wheel speeds must be between -10 and 10 rad/s.','wheelRange');
@@ -123,6 +135,11 @@ export function parseProgram(source) {
           const [v,w]=values;if(over(v,.75))fail(lineNo,'Forward speed v must be between -0.75 and 0.75 m/s.','driveV');if(over(w,6))fail(lineNo,'Turn rate w must be between -6 and 6 rad/s.','driveW');
           nodes.push({type:'drive',v,w,line:lineNo});
         }
+      }else if(/^let\b/.test(s)||/^[a-z_][a-z0-9_]*\s*=(?!=)/.test(s)){
+        // let name = math. The same math as in drive(), computed each time the line runs.
+        if(!(m=s.match(/^let\s+([a-z_][a-z0-9_]*)\s*=\s*(.+)$/)))fail(lineNo,'Write let name = math, for example let error = 0.5 - lidar_left.','letSyntax');
+        const values=parseValues(m[2],lineNo,variables);if(values.length!==1)fail(lineNo,'Write let name = math, for example let error = 0.5 - lidar_left.','letSyntax');
+        nodes.push({type:'let',name:m[1],value:values[0],line:lineNo});
       }else if((m=s.match(/^filter\(\s*(\d+(?:\.\d+)?)\s*\)$/))){
         const alpha=+m[1];if(alpha>1)fail(lineNo,'The filter weight alpha must be between 0 and 1.','filterRange');
         nodes.push({type:'filter',alpha,line:lineNo});
@@ -134,13 +151,14 @@ export function parseProgram(source) {
         const n=+m[1];if(n<1||n>20)fail(lineNo,'Repeat between 1 and 20 times.','repeatRange');
         const block=parseBlock(depth+1);if(block.closing!=='end')fail(lineNo,'Close your repeat block with end.','closeRepeat');
         nodes.push({type:'repeat',n,body:block.nodes,line:lineNo});
-      }else if((m=s.match(/^(if|while)\s+([a-z_]+)\s*(<=|>=|<|>)\s*(-?\d+(?:\.\d+)?)\s*:?$/))){
-        const [,kind,sensor,op,value]=m;if(!SENSORS.includes(sensor))fail(lineNo,`Unknown sensor ${sensor}. Use ${SENSORS.join(', ')}.`,'unknownSensor',{sensor,list:SENSORS.join(', ')});
+      }else if((m=s.match(/^(if|while)\s+([a-z_][a-z0-9_]*)\s*(<=|>=|<|>)\s*(-?\d+(?:\.\d+)?)\s*:?$/))){
+        // A test compares one sensor or one variable with one number.
+        const [,kind,sensor,op,value]=m;if(!SENSORS.includes(sensor)&&!variables.has(sensor))fail(lineNo,`Unknown sensor or variable ${sensor}. Use ${SENSORS.join(', ')}, or set a variable with let.`,'unknownSensor',{sensor,list:SENSORS.join(', ')});
         const block=parseBlock(depth+1);let other=[];
         if(kind==='if'&&block.closing==='else'){const b=parseBlock(depth+1);if(b.closing!=='end')fail(lineNo,'Close your if block with end.','closeIf');other=b.nodes;}
         else if(block.closing!=='end')fail(lineNo,`Close your ${kind} block with end.`,'closeBlock',{kind});
-        nodes.push({type:kind,sensor,op,value:+value,body:block.nodes,other,line:lineNo});
-      }else fail(lineNo,'Try wheels(left, right), drive(v, w), wait(seconds), stop(), filter(alpha), repeat N, or if/while sensor < N.','unknown');
+        nodes.push({type:kind,...(SENSORS.includes(sensor)?{sensor}:{variable:sensor}),op,value:+value,body:block.nodes,other,line:lineNo});
+      }else fail(lineNo,'Try wheels(left, right), drive(v, w), wait(seconds), stop(), filter(alpha), let name = math, repeat N, or if/while sensor < N.','unknown');
     }
     return {nodes,closing:null};
   };
