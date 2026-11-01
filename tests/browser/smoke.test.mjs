@@ -163,6 +163,41 @@ test('Experiment 02: a mission starter loads and the judge marks it not yet pass
   });
 });
 
+test('Experiment 03: a mission starts the rover near a wall, and the judge reads the true gap',async()=>{
+  const park=missionText(missionById('park'),'en'),[before,after]=en['judge.park'].split('{gap}');
+  await withLab('lesson3',{},async page=>{
+    await page.click('[data-lesson="3"]');
+    assert.equal((await page.textContent('#missions-eyebrow')).trim(),en['missions.eyebrow3']);
+    assert.equal(await page.locator('#mission-list .mission').count(),2);
+    await page.click('[data-mission="park"]');
+    assert.equal(await page.inputValue('#code-editor'),park.starter);
+    await page.click('#build-tab');
+    await page.clock.runFor(300);
+    // From this start the wall ahead is past the front sensor's 3 m range; from the center the box would read 0.84 m.
+    assert.match(await page.textContent('#metric-tilt'),/^\s*3\.00/);
+    await page.click('#run');
+    await runToEnd(page);
+    assert.equal((await page.textContent('#discovery-title')).trim(),fill(en['discovery.missionFail'],{title:park.title}));
+    const copy=(await page.textContent('#discovery-copy')).trim();
+    assert.ok(copy.startsWith(before)&&copy.includes(after),copy);
+    // The experiment, the mission, and its start survive a reload.
+    await page.reload();
+    await page.clock.runFor(300);
+    assert.equal(await page.getAttribute('[data-lesson="3"]','aria-pressed'),'true');
+    assert.equal(await page.getAttribute('[data-mission="park"]','aria-pressed'),'true');
+    assert.match(await page.textContent('#metric-tilt'),/^\s*3\.00/);
+    // The saved run replays from its start: in the LiDAR CSV, the 270° beam sees the right wall 1.0 m away, not 2.5 m.
+    await page.click('#plots-tab');
+    await page.clock.runFor(300);
+    const [download]=await Promise.all([page.waitForEvent('download'),page.click('#plot-lidar')]);
+    const row=(await readFile(await download.path(),'utf8')).trim().split('\n')[1].split(',').map(Number);
+    assert.ok(Math.abs(row[1+270]-1)<.05,`270° beam reads ${row[1+270]} m`);
+    await page.click('[data-lesson="2"]');
+    assert.equal((await page.textContent('#missions-eyebrow')).trim(),en['missions.eyebrow']);
+    assert.equal(await page.locator('#mission-list .mission').count(),3);
+  });
+});
+
 test('Turkish and French redraw the interface and the choice survives a reload',async()=>{
   await withLab('language',{},async page=>{
     for(const [code,dict] of [['tr',tr],['fr',fr]]){

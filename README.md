@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 62 model, dynamics, sensor, LiDAR, filter, parser, rover-script math, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 66 model, dynamics, sensor, LiDAR, filter, parser, rover-script math, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -30,7 +30,7 @@ npm i --no-save playwright && npx playwright install chromium
 npm run test:browser
 ```
 
-It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, rover-script math, a mission judge, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
+It checks loading without console errors, the ramp, a drive run with plots and CSV export, a parser error, rover-script math, mission judges in Experiments 02 and 03, the three languages across a reload, the `?` guide, and two phone screens without sideways scrolling. Phone screens are Chromium emulation only; it does not test Firefox, Safari, or real phones.
 
 The app is a static frontend; browser localStorage stores designs and experiments per device. There is no classroom backend in this version.
 
@@ -112,7 +112,7 @@ No single α wins everywhere. Neither sensor is an absolute reference, so a real
 
 ### Experiment 02: Where am I?
 
-The lesson strip switches between Experiment 01 (balance on a ramp) and Experiment 02, which is about odometry, the gyro, and ground truth. Experiment 02 has three missions in `dist/missions.mjs`:
+The lesson strip switches between Experiment 01 (balance on a ramp), Experiment 02, and Experiment 03 (below). Experiment 02 is about odometry, the gyro, and ground truth. It has three missions in `dist/missions.mjs`:
 
 | Mission | Robot and ground | Passes when |
 |---|---|---|
@@ -123,6 +123,19 @@ The lesson strip switches between Experiment 01 (balance on a ramp) and Experime
 Missions are judged on the simulator's ground truth, which student programs never see. That plays the role of a motion-capture system or a tape measure in a real lab. Each starter script is a reasonable first try that falls short on purpose: it ignores braking, trusts the encoders, or uses timing on ice. The hint appears after a failed attempt.
 
 `tests/missions.test.mjs` checks, for four seeds each, that every starter fails and a sensor-based reference solution passes. The reference solutions live only in the tests, so the lab never shows the answers. Completed missions are stored per device.
+
+### Experiment 03: Follow the wall
+
+Experiment 03 is about proportional (P) control: a command that grows with the error, written with math on sensors. Its missions start the rover near a wall instead of at the center, still facing +z, so odometry keeps its frame. The camera then follows the rover itself.
+
+| Mission | Start | Passes when |
+|---|---|---|
+| Park 0.5 m from the wall | x = −1.5 m, z = −2 m, wall 4.2 m ahead of the front sensor | the true gap from the front sensor to the wall is 50 ± 2 cm |
+| Follow the wall at 0.5 m | x = 1.7 m, z = −2 m, 0.8 m from the left wall | the rover covers at least 3.5 m, and between z = 0 and z = 1.8 m it stays 0.5 ± 0.1 m from the wall |
+
+The park starter drives at 0.5 m/s and brakes at the line, so it stops 4–9 cm short; a speed proportional to the remaining distance parks within 1 cm. The wall starter steers in proportion to `lidar_left` alone and runs into the wall.
+
+That second result is physics, not a tuning problem. Steering changes the heading, and only the heading changes the distance, so distance feedback alone acts on a double integrator and keeps overshooting. When the rover turns, the left beam also meets the wall at a slant and reads d / cos θ, which pushes it further. In the simulator every distance-only controller tried, on `lidar_left` or on the true perpendicular distance `lidar_min`, with gains from 0.2 to 4, hits the wall. Adding a term that steers back toward running parallel works. With the gyro heading, gyro drift biases the distance: over 40 seeds the largest miss is 8.3 cm. With the wall angle from the LiDAR (`lidar_min_angle − 90`), it is 5.1 cm. The tolerance of ±10 cm lets both pass.
 
 The orthographic canvas renderer uses the same dimensions and transforms as the models. It supports orbit, zoom, top view, and overlay toggles without external packages. The static floor grid is illustrative; exact measurements appear in the controls and telemetry.
 

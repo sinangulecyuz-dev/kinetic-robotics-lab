@@ -23,8 +23,9 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 02 "Where am I?": a lesson switch (01/02) and three missions judged on ground truth (`dist/missions.mjs`).
   - New: the interface in English, Turkish, and French, with a header language picker (`dist/i18n.mjs`, `dist/lang/`). See README "Languages".
   - New: math in `wheels` and `drive` values, on sensor readings, and a "P control · smooth 90° turn" example (branch `claude/serene-mccarthy-1vb6oq`, not yet on `main`).
+  - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m" (same branch, not yet on `main`).
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 62/62 pass, `npm run check` passes, `npm run test:browser` 10/10 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-01: `npm test` 66/66 pass, `npm run check` passes, `npm run test:browser` 11/11 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -34,6 +35,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - **Private link still public:** the ChatGPT Sites URL remains in this file and in Git history, in a public repository. The owner asked to remove it from the README only.
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
 - **Review:** the French text needs a native speaker at Saint Michel. The owner reviews the Turkish.
+- **Finding, not fixed:** on a 377 px phone emulation the header's help (?) button is cut off at the right edge; the page itself does not scroll sideways. This predates the 2026-11-01 work.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner. `npm run test:browser` covers Chromium and two Chromium phone emulations only.
 - **Not verified:** whether Vercel builds a preview deployment for pushes to `claude/...` branches, and whether such previews ask for a Vercel login. If they build, a preview link is the way to try a branch on a real phone and in Safari before merging.
@@ -42,12 +44,14 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
   - The Lab 1 `.mat` files were not found on this machine. The owner will save CSV (`writetable`) in future labs.
   - The Kinetic rover itself (a made-up design) remains unvalidated.
+- Plan for the cloud-credit days (proposed by Claude Code and followed by the owner so far, 2026-11-01): browser test (done), math in rover scripts (done), Experiment 03 (done), then Experiment 04 (PID: decide variables or an `integral` reading first), then an instructor kit for Saint Michel (TR/FR/EN). Dropping LiDAR scan matching as too advanced for high school was proposed, not yet confirmed by the owner.
 - Items 0–3 of the agreed plan are done. The owner asked for, in order: the slider and camera frame fix, a 2D LiDAR, and a complementary filter. All three are done. Next candidates: raw-log comparison after the next lab, or an absolute heading reference (LiDAR scan matching).
 
 ## Decisions
 
 - Agent files live in `dev/`, and the README opens with the project (owner, 2026-11-01). AI use is not hidden: Git history and co-author lines stay, and the README points to `dev/`.
 - The owner's credit wording stays "Conceived and directed", not "Designed and built", because AI agents wrote the code (owner, 2026-11-01). The phrase is not in this repository.
+- Experiment 03 (2026-11-01): two missions, not three. A "drive straight on gravel" mission was dropped because open-loop drift (1.6–4.4 cm) did not separate the starter from a P solution, and a "turn to 90° with P" mission would have repeated the P example. Mission starts are positions only; the rover always starts facing +z, so odometry, desired paths, and plots keep their frame.
 - Interface languages: English, Turkish, and French, for the Saint Michel robotics club (owner, 2026-10-29). Rover script keywords, sensor names, and CSV columns stay English. Translated examples and mission starters change comments only. Decimals use a point in every language, to match code and MATLAB. Simulator, parser, and judge messages carry keys, so results redraw after a language switch.
 - Hosting: Vercel (owner, 2026-10-29). The owner had not used GitHub Pages.
 - One branch only: all work is committed on `main` and pushed there. No feature branches (owner's decision, 2026-10-28). Exception (owner's go-ahead, 2026-11-01): cloud sessions work on their own `claude/...` branch and never push to `main`, because a push to `main` deploys production. The owner reviews and merges. Run cloud sessions that touch `dist/`, `lang/`, or this file one at a time.
@@ -87,6 +91,26 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-01 — Claude Code (cloud) — Experiment 03 "Follow the wall"
+
+- Changed:
+  - `dist/drive.mjs`: `DriveSim` option `start` ({x, z}, still facing +z, clamped to `START_LIMIT` = 2 m), kept as `origin`.
+  - `dist/missions.mjs`: `experiment` on every mission, `missionsFor`, and two Experiment 03 missions, `park` and `wall`, with starts, judges, and Turkish and French texts.
+  - `dist/app.js`, `dist/index.html`: lesson 03 button, per-experiment mission card titles, `startPose()` for the idle view, runs, records, and replays; the camera follows the rover when the run starts off-center; the lesson 3 details dialog. Fixed: after a reload, Experiment 02 or 03 came back in ramp mode; it now comes back in drive mode.
+  - `dist/lang/{en,tr,fr}.mjs`: lesson 3, mission card, discovery, judge, and details texts; the learning path gets "Steer by feedback" as item 03 and renumbers the planned items 04–06. French needs the native speaker's review.
+  - Tests: two reference solutions and three tests in `tests/missions.test.mjs`, the lesson 3 keys in `tests/i18n.test.mjs`, one browser test. README "Experiment 03", `dev/AGENTS.md`.
+- Verified:
+  - `npm test` 66/66, `npm run check`, `npm run test:browser` 11/11 pass.
+  - The 156-run fingerprint (every example and Experiment 02 starter, both robots, three terrains, noise on and off) is still bit-identical.
+  - Park: the starter stops at 41–46 cm, a P solution at 49.4–50.2 cm. Wall: the starter hits the wall for seeds 1–4; distance-only control hit the wall for every gain tried (0.2–4, on `lidar_left` and `lidar_min`); with a heading term the largest miss over 40 seeds is 8.3 cm (gyro) or 5.1 cm (LiDAR wall angle), against a ±10 cm tolerance. Driving straight misses by 30 cm and fails.
+  - Start geometry checked independently: `lidar_left` reads 2.5 − 1.7 = 0.8 m at the wall start with noise off.
+  - The tests can fail: start ignored in the simulator, start never passed by the app, lesson 3 not restored, a 1 m wall tolerance, and the judge measuring the wrong wall each failed the expected tests; all were reverted.
+  - Looked at in headless Chromium: the rover centered at the wall start, the wall and LiDAR dots in view, the reference solution passing in the app with a 3.2 cm miss.
+  - A saved Experiment 03 run replays from its start after a reload: the browser test reads the replayed LiDAR CSV, whose 270° beam sees the right wall about 1.0 m away.
+  - Not verified: real phones, Safari, Firefox; a native French review.
+- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
+- Next / open: Experiment 04 needs the owner's decision on variables or an `integral` reading. The owner merges the branch into `main` at the end.
 
 ### 2026-11-01 — Claude Code (cloud) — math in rover scripts (P control)
 
@@ -243,20 +267,3 @@ Entry template:
   - Not verified: real devices.
 - Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
 - Next / open: item 3, the guided lesson.
-
-### 2026-10-29 — Claude Code — closed-loop control (item 1)
-
-- Changed:
-  - `dist/physics.mjs`: `SENSORS`, `drive(v, w)`, and `if`/`while` on any sensor with four operators.
-  - `dist/drive.mjs`: drive-to-wheel mapping with saturation scaling, `sensor()`/`test()` that read samples only, and `while` execution.
-  - `dist/app.js` and `dist/index.html`: two new examples ("Turn 90° with the gyro", "Drive 0.5 m by encoders") and a rewritten command reference with a sensor list.
-  - Tests: 1 parser test, the reject list extended, and 2 drive tests. README and `AGENTS.md` updated.
-- Verified:
-  - `npm test` 23/23, `npm run check` pass.
-  - `drive(0.2, 1)` gives a 0.999 rad/s yaw rate at 0.199 m/s. Wheel targets match (v ± w·W/2)/R exactly. At saturation the wheel ratio is kept.
-  - A gyro-guided 90° turn stops at about 96° true (polling plus braking). An encoder-guided turn travels one wheel circumference within 3 cm.
-  - Headless Chrome on 5174: both new examples run, invalid programs show line-numbered errors and do not start, zero console errors.
-  - Not verified: real devices.
-- Known limit: on ice, a slow 90° turn shows only about 2° between the gyro and the encoders, because in-place scrubbing is under-modelled (see the TurtleBot gap in Open items). The tests therefore make no "gyro beats encoders on ice" claim yet.
-- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29).
-- Next / open: item 2 (TurtleBot3 preset and calibration).

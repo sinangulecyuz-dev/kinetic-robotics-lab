@@ -1,11 +1,12 @@
-// Experiment 02 missions. Each is judged on ground truth, which the rover's own program never sees.
+// Missions for Experiments 02 and 03. Each is judged on ground truth, which the rover's own program never sees.
 // Every starter script is a reasonable first try that falls short, so the student has something to improve.
-import {rangeTo,OBSTACLE} from './drive.mjs';
+// start places the rover in the arena, still facing +z; without it the rover starts at the center.
+import {rangeTo,OBSTACLE,WALL} from './drive.mjs';
 import {withComments} from './examples.mjs';
 
 export const MISSIONS=[
   {
-    id:'stop',title:'Stop 20 cm from the box',robot:'kinetic',terrain:'flat',
+    id:'stop',experiment:2,title:'Stop 20 cm from the box',robot:'kinetic',terrain:'flat',
     goal:'End the run with the front sensor 20 cm from the box, within ±3 cm, without touching it.',
     lesson:'The sensor updates 20 times per second, your loop checks every 0.05 s, and braking takes distance. Slow down before the target.',
     tr:{title:'Kutudan 20 cm önce dur',goal:'Denemeyi ön sensör kutudan 20 cm uzaktayken, ±3 cm içinde ve ona değmeden bitir.',
@@ -22,7 +23,7 @@ export const MISSIONS=[
     }
   },
   {
-    id:'turn',title:'Turn exactly once around',robot:'turtlebot3',terrain:'flat',
+    id:'turn',experiment:2,title:'Turn exactly once around',robot:'turtlebot3',terrain:'flat',
     goal:'Turn in place and end within 3° of a full 360° turn, judged on the true heading.',
     lesson:'The encoders count wheel turns, but the ball casters drag and the wheels creep. The IMU measures the body itself.',
     tr:{title:'Tam bir tur dön',goal:'Yerinde dön ve tam 360°’lik dönüşün 3° yakınında bitir; gerçek yönelime göre değerlendirilir.',
@@ -39,7 +40,7 @@ export const MISSIONS=[
     }
   },
   {
-    id:'square',title:'Close a square on ice',robot:'kinetic',terrain:'slippery',
+    id:'square',experiment:2,title:'Close a square on ice',robot:'kinetic',terrain:'slippery',
     goal:'Drive a square with 0.5 m sides and finish within 10 cm of where you started.',
     lesson:'On ice, time is not distance and wheel turns are not body turns. Measure distance with odometry, turns with the gyro, and drive gently.',
     tr:{title:'Buzda bir kareyi kapat',goal:'Kenarları 0.5 m olan bir kare çiz ve başladığın yerin 10 cm yakınında bitir.',
@@ -55,9 +56,47 @@ export const MISSIONS=[
       if(length<1.6)return {pass:false,text:`The path was only ${length.toFixed(2)} m long. A 0.5 m square is 2 m.`,key:'judge.short',params:{length:length.toFixed(2)}};
       return {pass:miss<=.1,text:`Finished ${(miss*100).toFixed(1)} cm from the start (target 10 cm or less) after ${length.toFixed(2)} m.`,key:'judge.square',params:{miss:(miss*100).toFixed(1),length:length.toFixed(2)}};
     }
+  },
+  {
+    id:'park',experiment:3,title:'Park 0.5 m from the wall',robot:'kinetic',terrain:'flat',start:{x:-1.5,z:-2},
+    goal:'End the run with the front sensor 0.50 m from the wall ahead, within ±2 cm.',
+    lesson:'Braking from full speed takes several centimeters. Make the speed proportional to the distance left, so the rover slows down by itself as it arrives, and keep the loop running until it settles.',
+    tr:{title:'Duvardan 0.5 m önce park et',goal:'Denemeyi ön sensör öndeki duvardan 0.50 m uzaktayken, ±2 cm içinde bitir.',
+      lesson:'Tam hızdan frenlemek birkaç santimetre sürer. Hızı kalan mesafeyle orantılı yap; böylece rover yaklaştıkça kendiliğinden yavaşlar. Döngüyü rover durulana kadar sürdür.',
+      comments:['Görev: ön sensör öndeki duvardan 0.50 m uzaktayken park et (±2 cm).','Bu ilk deneme 0.5 m/s ile gidiyor ve çizgide frenliyor. Çalıştır, sonucu oku, sonra geliştir.']},
+    fr:{title:'Se garer à 0.5 m du mur',goal:'Termine l’essai avec le capteur avant à 0.50 m du mur devant, à ±2 cm près.',
+      lesson:'Freiner depuis la pleine vitesse demande plusieurs centimètres. Rends la vitesse proportionnelle à la distance restante : le rover ralentit de lui-même en arrivant. Laisse la boucle tourner jusqu’à ce qu’il se stabilise.',
+      comments:['Mission : se garer avec le capteur avant à 0.50 m du mur devant (±2 cm).','Ce premier essai roule à 0.5 m/s et freine sur la ligne. Lance-le, lis le résultat, puis améliore-le.']},
+    starter:'# Mission: park with the front sensor 0.50 m from the wall ahead (±2 cm).\n# This first try drives at 0.5 m/s and brakes at the line. Run it, read the result, then improve it.\ndrive(0.5, 0)\nwhile distance > 0.5\n  wait(0.05)\nend\nstop()',
+    judge(sim){
+      const gap=rangeTo(sim,OBSTACLE,sim.spec.rangeAhead);
+      if(!sim.success)return {pass:false,text:`The run stopped early: ${sim.message}`,key:'judge.early'};
+      return {pass:Math.abs(gap-.5)<=.02,text:`True gap ${(gap*100).toFixed(1)} cm (target 50 ± 2 cm).`,key:'judge.park',params:{gap:(gap*100).toFixed(1)}};
+    }
+  },
+  {
+    id:'wall',experiment:3,title:'Follow the wall at 0.5 m',robot:'kinetic',terrain:'flat',start:{x:1.7,z:-2},
+    goal:'Drive along the wall on your left and keep 0.5 m from it, within ±10 cm, over the last 1.8 m.',
+    lesson:'When the rover turns toward the wall, the left beam hits it at a slant and reads long, and even the true distance changes only after the rover has turned. Steering on distance alone always overshoots. Also steer back toward running parallel to the wall: the gyro heading, or the angle of the closest LiDAR return, tells you how far you are turned.',
+    tr:{title:'Duvarı 0.5 m’den takip et',goal:'Solundaki duvar boyunca sür ve son 1.8 m boyunca ondan 0.5 m uzakta kal, ±10 cm içinde.',
+      lesson:'Rover duvara doğru döndüğünde sol ışın duvara eğik çarpar ve uzun okur; gerçek mesafe de ancak rover döndükten sonra değişir. Yalnızca mesafeye göre direksiyon kırmak hep hedefi aşar. Duvara paralel gitmeye doğru da dön: jiroskop yönelimi ya da en yakın LiDAR dönüşünün açısı ne kadar döndüğünü söyler.',
+      comments:['Görev: son 1.8 m boyunca solundaki duvarı 0.50 m’den takip et (±10 cm).','Bu ilk deneme yalnızca sol LiDAR okumasıyla orantılı direksiyon kırıyor. Çalıştır ve yolu izle.']},
+    fr:{title:'Suivre le mur à 0.5 m',goal:'Longe le mur à ta gauche et reste à 0.5 m de lui, à ±10 cm près, sur les 1.8 derniers mètres.',
+      lesson:'Quand le rover tourne vers le mur, le faisceau gauche le touche en biais et mesure trop long, et même la vraie distance ne change qu’après le virage. Diriger avec la distance seule dépasse toujours. Ramène aussi le rover parallèle au mur : le cap du gyroscope, ou l’angle du retour LiDAR le plus proche, indique de combien il est tourné.',
+      comments:['Mission : longer le mur à gauche à 0.50 m (±10 cm) sur les 1.8 derniers mètres.','Ce premier essai dirige seulement en proportion de la mesure LiDAR gauche. Lance-le et regarde le trajet.']},
+    starter:'# Mission: follow the wall on your left at 0.50 m (±10 cm) over the last 1.8 m.\n# This first try steers in proportion to the left LiDAR reading alone. Run it and watch the path.\nwhile odom_x < 3.8\n  drive(0.2, 1*(lidar_left - 0.5))\n  wait(0.05)\nend\nstop()',
+    // The judged stretch is the true path between z = 0 and z = 1.8, after 2 m to settle from the 0.8 m start.
+    judge(sim){
+      if(!sim.success)return {pass:false,text:`The run stopped early: ${sim.message}`,key:'judge.early'};
+      const L=sim.log;let miss=0,length=0;
+      for(let i=0;i<L.t.length;i++){const z=sim.start.z+L.trueX[i];length=Math.max(length,L.trueX[i]);if(z>=0&&z<=1.8)miss=Math.max(miss,Math.abs(WALL-(sim.start.x+L.trueY[i])-.5));}
+      if(length<3.5)return {pass:false,text:`The rover covered only ${length.toFixed(2)} m along the wall. Drive at least 3.5 m.`,key:'judge.wallShort',params:{length:length.toFixed(2)}};
+      return {pass:miss<=.1,text:`Farthest from 0.5 m: ${(miss*100).toFixed(1)} cm over the last 1.8 m (target 10 cm or less).`,key:'judge.wall',params:{miss:(miss*100).toFixed(1)}};
+    }
   }
 ];
 export const missionById=id=>MISSIONS.find(m=>m.id===id);
+export const missionsFor=experiment=>MISSIONS.filter(m=>m.experiment===experiment);
 // A mission's title, goal, lesson, and starter in one language. The starter keeps the English code lines under translated comments.
 export function missionText(m,lang='en'){
   const x=lang==='en'?null:m[lang];

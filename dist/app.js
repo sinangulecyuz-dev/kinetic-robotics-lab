@@ -1,7 +1,7 @@
 import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram} from './physics.mjs';
 import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,TERRAINS,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
-import {MISSIONS,missionById,missionText} from './missions.mjs';
+import {MISSIONS,missionById,missionsFor,missionText} from './missions.mjs';
 import {EXAMPLES,example} from './examples.mjs';
 import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
 
@@ -34,7 +34,7 @@ document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.datase
 
 setLanguage(preferredLanguage(navigator.languages||[navigator.language]));
 let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[];
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if(saved.lesson===2)lesson=2;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 // Labels in the chosen language. An unedited example or mission starter follows that language.
 const robotLabel=id=>t('robot.'+id),terrainLabel=id=>t('terrain.'+id),terrainLower=id=>terrainLabel(id).toLocaleLowerCase(language()),mt=m=>missionText(m,language());
 function translateCode(src,to){for(const l of Object.keys(LANGUAGES)){for(const name of Object.keys(EXAMPLES))if(example(name,l)===src)return example(name,to);for(const m of MISSIONS)if(missionText(m,l).starter===src)return missionText(m,to).starter;}return src;}
@@ -47,7 +47,9 @@ const canvas=$('scene'),ctx=canvas.getContext('2d');
 // Camera from behind the rover, so its own left is on screen left, matching wheels(left, right) and the sensors.
 const VIEW_YAW=Math.PI+.73;
 let cw=800,ch=536,zoom=1,yaw=VIEW_YAW,elevation=0.43,drag=null,lastFrame=0,needsRender=true;
-function view(){if(sim)return sim;const key=JSON.stringify(p)+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false});idleKey=key;}return idle;}
+// A mission of the current experiment can place the rover near a wall; otherwise it starts at the center.
+function startPose(){const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.start?m.start:null;}
+function view(){if(sim)return sim;const start=startPose(),key=JSON.stringify([p,start])+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false,start});idleKey=key;}return idle;}
 const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
 function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
 // Text that depends on the language is kept as a function, so a language change can redraw it.
@@ -98,22 +100,25 @@ function setTerrain(next){
 }
 document.querySelectorAll('[data-terrain]').forEach(b=>b.onclick=()=>{setTerrain(b.dataset.terrain);persist();});
 function setLesson(n,user=true){
-  lesson=n===2?2:1;
+  lesson=[2,3].includes(n)?n:1;if(missionById(mission)?.experiment!==lesson)mission=null;
   document.querySelectorAll('[data-lesson]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.lesson===lesson));
   for(const [id,k] of [['lesson-time','time'],['lesson-title','title'],['lesson-question','question'],['lesson-concept-text','concept']])show(id,()=>t(`lesson.${lesson}.${k}`));
-  const d=lesson===2?'lesson2':'balanced';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));$('mission-card').hidden=lesson!==2;renderMissions();
+  const d=lesson>1?'lesson'+lesson:'balanced';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));$('mission-card').hidden=lesson===1;renderMissions();needsRender=true;
   if(user){if(lesson===1){setRobot('kinetic');changeMode('tilt');changeTab('build');}else changeMode('drive');persist();}
+  // Experiments 02 and 03 are driving experiments, also after a reload.
+  else if(lesson>1&&mode!=='drive')changeMode('drive');
 }
 document.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>setLesson(+b.dataset.lesson));
 // Status carries a label as well as a color, so it never depends on color alone.
 function renderMissions(){
-  $('mission-list').innerHTML=MISSIONS.map(m=>{const done=missionsDone.includes(m.id);return `<button class="mission" data-mission="${m.id}" aria-pressed="${mission===m.id}"><span>${esc(mt(m).title)}<small>${esc(t('missions.ground',{robot:robotLabel(m.robot),terrain:terrainLower(m.terrain)}))}</small></span><span class="mission-status${done?' done':''}">${t(done?'missions.done':'missions.todo')}</span></button>`;}).join('');
+  show('missions-eyebrow',()=>t(lesson===3?'missions.eyebrow3':'missions.eyebrow'));show('missions-title',()=>t(lesson===3?'missions.title3':'missions.title'));
+  $('mission-list').innerHTML=missionsFor(lesson).map(m=>{const done=missionsDone.includes(m.id);return `<button class="mission" data-mission="${m.id}" aria-pressed="${mission===m.id}"><span>${esc(mt(m).title)}<small>${esc(t('missions.ground',{robot:robotLabel(m.robot),terrain:terrainLower(m.terrain)}))}</small></span><span class="mission-status${done?' done':''}">${t(done?'missions.done':'missions.todo')}</span></button>`;}).join('');
   document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>loadMission(b.dataset.mission));
   show('mission-goal',()=>{const m=missionById(mission);return m?mt(m).goal:t('missions.pick');});
 }
 function loadMission(id){
   const m=missionById(id);if(!m)return;mission=id;setRobot(m.robot);setTerrain(m.terrain);changeMode('drive');
-  $('code-editor').value=mt(m).starter;updateLines();renderMissions();persist();changeTab('code');
+  $('code-editor').value=mt(m).starter;updateLines();renderMissions();persist();changeTab('code');needsRender=true;
   discover(()=>t('discovery.mission',{title:mt(m).title}),()=>mt(m).goal);
   toast(t('toast.missionLoaded'));
 }
@@ -127,7 +132,7 @@ $('run').onclick=()=>{
   if(mode==='drive'){
     let program;try{program=parseProgram($('code-editor').value);}catch(e){changeTab('code');show('code-error',()=>e.key?t('parse.'+e.key,{line:e.line,...e.params}):e.message);$('code-error').hidden=false;toast(t('toast.checkProgram'));return;}
     if(!tb3()&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
-    sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0});
+    sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0,start:startPose()});
   }
   state.status='running';state.runDesign={...p};state.minMargin=balance(p,0).margin;state.runPrediction=prediction;setRunButton();needsRender=true;
 };
@@ -138,9 +143,9 @@ function finish(success,key,params={}){
   $('stage-outcome').hidden=false;$('stage-outcome').classList.toggle('failed',!success);show('stage-outcome',message);
   if(mode==='drive'){const time=sim.time.toFixed(1);show('code-progress',()=>t('code.finished',{message:message(),time}));}
   // A mission is judged only on the robot and ground it was written for, using the simulator's ground truth.
-  const m=mode==='drive'&&lesson===2?missionById(mission):null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain?m.judge(sim):null;
+  const picked=mode==='drive'&&lesson>1?missionById(mission):null,m=picked?.experiment===lesson?picked:null,judged=m&&sim.robot===m.robot&&sim.terrain===m.terrain?m.judge(sim):null;
   if(judged?.pass&&!missionsDone.includes(m.id))missionsDone.push(m.id);
-  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
+  const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,start:sim.origin,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
   const record={id:Date.now(),mode,design:{...state.runDesign},success,message:message(),messageKey:key,messageParams:params,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
   if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;}
   records.unshift(record);records=records.slice(0,30);persist();renderResults();if(tab==='plots')renderPlots();
@@ -187,7 +192,7 @@ function plotSource(){
   if(sim&&['running','paused'].includes(state.status))return {sim,label:t('plots.live'),name:'current'};
   const drives=records.filter(r=>r.mode==='drive');if(!drives.length)return null;
   const r=drives.find(x=>x.id===plotRunId)||drives[0],n=records.length-records.indexOf(r);plotRunId=r.id;
-  if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
+  if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0,start:r.start}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
   const entry=plotCache.get(r.id);return {sim:entry.sim,replayed:entry.replayed,record:r,label:t('plots.runLabel',{n}),name:`run-${n}`};
 }
 function plotSpecs(s){
@@ -237,7 +242,8 @@ function learningPath(){openModal(t('modal.path.eyebrow'),t('modal.path.html'));
 ['notebook','notebook-nav'].forEach(id=>$(id).onclick=()=>{changeTab('results');$('results-panel').scrollIntoView({behavior:'smooth',block:'nearest'});});
 const lessonTwo=()=>openModal(t('modal.lesson2.eyebrow'),t('modal.lesson2.html'));
 const lessonOne=()=>openModal(t('modal.lesson1.eyebrow'),t('modal.lesson1.html'));
-$('lesson-details').onclick=()=>lesson===2?lessonTwo():lessonOne();
+const lessonThree=()=>openModal(t('modal.lesson3.eyebrow'),t('modal.lesson3.html'));
+$('lesson-details').onclick=()=>lesson===3?lessonThree():lesson===2?lessonTwo():lessonOne();
 $('model-details').onclick=modelDetails;$('code-reference').onclick=commandReference;
 $('margin-help').onclick=()=>openModal(t('modal.margin.eyebrow'),t('modal.margin.html'));
 $('robot-picker').onclick=()=>{const option=(id,detail)=>`<button class="roadmap-item robot-option" data-robot="${id}"><span>${icon('robot')}</span><div><strong>${robotLabel(id)}</strong><small>${t(detail)}</small></div><b${robot===id?'':' class="later"'}>${t(robot===id?'robots.selected':'robots.choose')}</b></button>`;
@@ -297,7 +303,8 @@ function drawTurtlebot(v){
 function render(){
   fit=tb3()&&mode==='drive'?{scale:1.7,y:.07}:{scale:Math.min(1,.5/(.26+p.height/100)),y:.15};
   document.querySelector('.stage-scale>span').style.width=(Math.min(cw*.8,ch*1.05)*zoom*fit.scale*.2)+'px';
-  const v=mode==='drive'?view():null;focus=v?{x:v.x*.65,z:v.z*.65}:{x:0,z:0};bodyFrame=v?.frame||null;
+  // The camera trails the rover from the arena center, keeping the box in view. A run that starts near a wall follows the rover itself.
+  const v=mode==='drive'?view():null,o=v?.origin||{x:0,z:0},k=o.x||o.z?1:.65;focus=v?{x:o.x+(v.x-o.x)*k,z:o.z+(v.z-o.z)*k}:{x:0,z:0};bodyFrame=v?.frame||null;
   ctx.clearRect(0,0,cw,ch);const bg=ctx.createLinearGradient(0,0,0,ch);bg.addColorStop(0,'#f4f5f2');bg.addColorStop(1,'#edf0ed');ctx.fillStyle=bg;ctx.fillRect(0,0,cw,ch);
   const ground=v=>world(v,false),surface=mode==='drive'?terrain:'flat',lift=(x,z,dy=.004)=>({x,y:terrainHeight(surface,x,z)+dy,z});
   if(surface==='rough'){

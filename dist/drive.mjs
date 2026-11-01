@@ -54,6 +54,8 @@ export const ROBOTS={
 export const OBSTACLE={x:0,z:1.3,halfX:.28,halfZ:.16};
 export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw'];
 const ARENA=2.3;
+// A start position stays at least 0.3 m inside the edge stop.
+export const START_LIMIT=2;
 
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -113,7 +115,8 @@ export function lidarMeasure(d,draw=()=>0,lidar=LIDAR){
 }
 
 export class DriveSim{
-  constructor({design,terrain='flat',robot='kinetic',program=[],seed=1,noise=true}){
+  // start places the rover's origin at {x, z} in the arena, still facing +z, so odometry and desired paths keep their frame.
+  constructor({design,terrain='flat',robot='kinetic',program=[],seed=1,noise=true,start}){
     this.design={...design};this.terrain=TERRAINS[terrain]?terrain:'flat';this.surface=TERRAINS[this.terrain];this.curve=frictionCurve(this.surface);
     this.robot=ROBOTS[robot]?robot:'kinetic';const spec=this.spec=ROBOTS[this.robot],body=spec.body(design);
     this.com=body.com;this.mass=this.com.mass;this.iz=body.iz;this.width=body.track;this.R=spec.wheelRadius;this.axleZ=spec.axleZ;this.motor=spec.motor;
@@ -121,7 +124,8 @@ export class DriveSim{
     const mid=this.casters.length===1?this.casters[0]:{x:this.casters.reduce((s,c)=>s+c.x,0)/this.casters.length,z:this.casters.reduce((s,c)=>s+c.z,0)/this.casters.length};
     this.tri=[...this.wheelContacts,{x:mid.x,z:mid.z}];this.polygon=this.casters.length===1?this.tri:[...this.wheelContacts,...[...this.casters].sort((a,b)=>a.x-b.x)];
     this.foot=spec.footprint(this.width);
-    this.x=0;this.z=0;this.heading=0;this.u=0;this.v=0;this.w=0;this.acc={f:0,l:0,n:0};this.transfer={f:0,l:0};
+    const place=v=>Number.isFinite(v)?Math.max(-START_LIMIT,Math.min(START_LIMIT,v)):0;this.origin={x:place(start?.x),z:place(start?.z)};
+    this.x=this.origin.x;this.z=this.origin.z;this.heading=0;this.u=0;this.v=0;this.w=0;this.acc={f:0,l:0,n:0};this.transfer={f:0,l:0};
     this.wheels=[0,1].map(()=>({w:0,theta:0,ref:0,volts:0,current:0,integral:0,count:0,speed:0,slip:0}));
     this.caster={spin:0,swivel:0};
     this.steps=0;this.budget=0;this.status='running';this.success=false;this.message='';
