@@ -47,6 +47,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - **Not verified:** whether Vercel builds a preview deployment for pushes to `claude/...` branches, and whether such previews ask for a Vercel login. If they build, a preview link is the way to try a branch on a real phone and in Safari before merging.
 - **TurtleBot3 calibration, open points.** The full table is in the README, "TurtleBot3 Waffle Pi calibration".
   - Not reproduced: the shorter forward legs of the straight-line test (forward/backward asymmetry), and the 4.5 cm drift of the v = 0.15 m/s circle.
+  - Not reproduced, from Lab 2 (2026-11-04, numbers in the session log): encoder speed 2–6 % below the command, a full stall at about 0.009 m/s per wheel, and a freeze when one wheel is asked for more than its limit. The first may also explain Lab 1's short forward legs.
   - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
   - The Lab 1 `.mat` files were not found on this machine. The owner will save CSV (`writetable`) in future labs.
   - The Kinetic rover itself (a made-up design) remains unvalidated.
@@ -57,6 +58,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 
 - Agent files live in `dev/`, and the README opens with the project (owner, 2026-11-01). AI use is not hidden: Git history and co-author lines stay, and the README points to `dev/`.
 - The owner's credit wording stays "Conceived and directed", not "Designed and built", because AI agents wrote the code (owner, 2026-11-01). The phrase is not in this repository.
+- Example scripts must work on every robot and wheel spacing (2026-10-29): "Repeat a square" turns with `drive(0, 1)` for 1.6 s instead of fixed wheel speeds, and `tests/examples.test.mjs` runs every example on both robots and three spacings.
 - Experiment 03 (2026-11-01): two missions, not three. A "drive straight on gravel" mission was dropped because open-loop drift (1.6–4.4 cm) did not separate the starter from a P solution, and a "turn to 90° with P" mission would have repeated the P example. Mission starts are positions only; the rover always starts facing +z, so odometry, desired paths, and plots keep their frame.
 - Interface languages: English, Turkish, and French, for the Saint Michel robotics club (owner, 2026-10-29). Rover script keywords, sensor names, and CSV columns stay English. Translated examples and mission starters change comments only. Decimals use a point in every language, to match code and MATLAB. Simulator, parser, and judge messages carry keys, so results redraw after a language switch.
 - Hosting: Vercel (owner, 2026-10-29). The owner had not used GitHub Pages.
@@ -97,6 +99,15 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-04 — Claude Code (cloud) — Lab 2 and HW1 data examined against the TurtleBot3 model
+- Changed: this file only. The owner uploaded ME425 Lab 2 (polar parking controller on the TurtleBot3: 8 fixed-goal runs, line and circle moving goals, 4 extra runs, 3 early runs without a speed floor) and HW1 (Simulink parking controllers). The files carry a name and a student ID, so they stay out of the repository; only numbers may come in. Nothing from the archives was run; the controller was re-implemented from the handout.
+- Verified, replaying the controller on our TurtleBot3 every 0.145 s (the measured loop period):
+  - Reproduced: heading at the 2 cm stop within 1.5° in 7 of 8 runs (the eighth, kρ = 0.8: 19.1° vs 15.4°). An ideal unicycle does as well, so this tests the control law, not our dynamics. Circle radius by odometry 0.4936 m, measured 0.4936 m.
+  - Not reproduced: (1) at steady 0.05–0.10 m/s the encoders run 2–6 % (about 3 mm/s) below cmd_vel; our PI loop removes this, so our line distance is exactly vG/kρ (0.125 m vs 0.132 m measured). (2) Wheels stall completely once the command falls to about 0.009 m/s; ours keep creeping. (3) The robot froze at v 0.18, w 1.2 (one wheel asked for 0.35 m/s); ours saturates and keeps driving.
+  - Predicted, not measured: the true stop point lies 3–4 cm from the goal, although odometry says under 2 cm (caster slip). A tape measure at the next lab can test this.
+- Status: committed and pushed to the `claude/...` branch only.
+- Next / open: whether to add the Lab 2 numbers to `tests/fixtures/turtlebot3-lab.json` as independent checks, with the three mismatches marked `notReproduced`. This is the owner's decision; `TB3_FIT` is not retuned.
 
 ### 2026-11-01 — Claude Code (cloud) — performance, results download, French review pack
 
@@ -223,18 +234,3 @@ Entry template:
   - Not verified: a native French review, real phones, Safari, Firefox.
 - Status: deployed to Vercel production from the working tree first. Then committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29); the push deploys production again through the Git connection.
 - Next / open: native French review, the owner's Turkish review, and the Vercel item in Open items.
-
-### 2026-10-29 — Claude Code — example scripts fixed and put under test
-
-- The owner reported that "Repeat a square" did not draw a square. Cause: it used `wheels(4, -4)` for a fixed time. The turn rate R·Δω/W depends on wheel spacing and robot, so the square only closed at 44 cm. At 24 cm a corner was −175°, at 60 cm −66°, and on the TurtleBot3 −59°.
-- Changed:
-  - "Repeat a square" now uses `drive(0.2, 0)` for 2 s and `drive(0, 1)` for 1.6 s. That is π/2 plus spin-up and slow-down time, and it turns left.
-  - "Straight & turn" (`wheels(4, 4)` 1 s, then `wheels(1, 5)` 1.5 s) no longer reaches the box at 60 cm.
-  - The examples moved from `app.js` into `dist/examples.mjs`.
-  - New `tests/examples.test.mjs` (2 tests): every example must finish without hitting anything on flat ground with Kinetic at 24, 44, and 60 cm and with the TurtleBot3, and the square must turn 90 ± 3° per corner and close within 6 cm. That test is what found the "Straight & turn" collision.
-- Verified:
-  - `npm test` 49/49, `npm run check` pass.
-  - The square turns 88.5–91.5° per corner and ends 1.2–3.6 cm from the start on all four setups.
-  - Headless Chrome top view shows a closed square. Zero console errors.
-- Status: committed and pushed to `origin/main` with the three commits before it (owner's go-ahead, 2026-10-29).
-- Next / open: none.
