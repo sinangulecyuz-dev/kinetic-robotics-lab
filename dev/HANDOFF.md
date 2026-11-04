@@ -106,7 +106,7 @@ Entry template:
 ### 2026-11-04 — Claude Code (cloud) — Lab 2 checks in the TurtleBot3 calibration, next-lab checklist
 - Changed: `tests/fixtures/turtlebot3-lab.json` (new `lab2` section, numbers only; description now says three units), new `tests/turtlebot3-lab2.test.mjs` (4 tests, the polar controller re-implemented and replayed on our TurtleBot3 every 0.145 s), `package.json`, README (calibration table, Lab 2 paragraph, test count), "About the model" in `dist/lang/{en,tr,fr}.mjs`, `docs/french-review.html`, `dev/AGENTS.md`, new `docs/lab-checklist.md`, this file.
 - Verified: `npm test` 93/93, `npm run check`, `npm run test:browser` 13/13. Mutations caught: wrong β sign (2 tests fail), vMin scaling only v (parking fails), a zero wheel-speed integral (the honesty test fails, as it should once a mismatch disappears). Turkish dialog checked in headless Chromium at 1280 px, no console errors. Not checked: the dialog on a phone (the "About the model" button is not visible at 390 px; that predates this change).
-- Status: committed and pushed to the `claude/...` branch only; `main` still lacks this and the three commits before it.
+- Status: pushed to the `claude/...` branch, then fast-forwarded onto `main` with the three commits before it (`main` at `59e3ce1`, owner's go-ahead, 2026-11-04). That push deploys production; the deploy was not checked from here, because the cloud network blocks vercel.app. Check with `vercel ls`.
 - Next / open: the owner reviews the Turkish paragraph, a native speaker the French one. The checklist runs at the next lab.
 
 ### 2026-11-04 — Claude Code (cloud) — Lab 2 and HW1 data examined against the TurtleBot3 model
@@ -115,7 +115,7 @@ Entry template:
   - Reproduced: heading at the 2 cm stop within 1.5° in 7 of 8 runs (the eighth, kρ = 0.8: 19.1° vs 15.4°). An ideal unicycle does as well, so this tests the control law, not our dynamics. Circle radius by odometry 0.4936 m, measured 0.4936 m.
   - Not reproduced: (1) at steady 0.05–0.10 m/s the encoders run 2–6 % (about 3 mm/s) below cmd_vel; our PI loop removes this, so our line distance is exactly vG/kρ (0.125 m vs 0.132 m measured). (2) Wheels stall completely once the command falls to about 0.009 m/s; ours keep creeping. (3) The robot froze at v 0.18, w 1.2 (one wheel asked for 0.35 m/s); ours saturates and keeps driving.
   - Predicted, not measured: the true stop point lies 3–4 cm from the goal, although odometry says under 2 cm (caster slip). A tape measure at the next lab can test this.
-- Status: committed and pushed to the `claude/...` branch only.
+- Status: on `main` since 2026-11-04 (fourth merge).
 - Next / open: whether to add the Lab 2 numbers to `tests/fixtures/turtlebot3-lab.json` as independent checks, with the three mismatches marked `notReproduced`. This is the owner's decision; `TB3_FIT` is not retuned.
 
 ### 2026-11-01 — Claude Code (cloud) — performance, results download, French review pack
@@ -123,7 +123,7 @@ Entry template:
 - Changed: bumpy ground drawn from a cached texture (`groundTexture` in `dist/app.js`); new `dist/results.mjs` and a "Download my results (CSV)" button with an optional student name in Results; records now keep `experiment`, `environment`, and the mission prediction; new `scripts/french-review.mjs` and `docs/french-review.html`; the lab guide no longer names the old terrain buttons. README "Performance", "Handing in results", "French review"; `dev/AGENTS.md`.
 - Verified: `npm test` 89/89, `npm run check`, `npm run test:browser` 13/13 (the ramp test downloads and reads the CSV). Throttled headless Chromium, heaviest scene: 61 / 26 / 17 frames/s at 1× / 4× / 6× (before 61 / 21 / 13), simulation at real time throughout; ground screenshots before and after differ by 0.2–0.3/255. The results CSV round-trips commas, quotes, and multi-line scripts through an independent reader.
 - Not verified: real phones and Chromebooks; the French itself (the pack is for that review).
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`; not yet on `main`.
+- Status: on `main` since 2026-11-04 (fourth merge).
 - Next / open: the owner gives `docs/french-review.html` to the Saint Michel reviewer; the instructor kit is next.
 
 ### 2026-11-01 — Claude Code (cloud) — clearer missions, reasons, and hints
