@@ -2,7 +2,7 @@
 
 A browser-based robotics lab for high-school students. Build a differential-drive rover, predict its balance on a ramp, program it in a small pseudocode language, and compare what its sensors report with what really happened. The interface is in English, Turkish, and French.
 
-Under the interface is a planar rigid-body model integrated at 10 kHz: DC motors with a 100 Hz PI speed loop, a Pacejka-style tire friction curve, load transfer, and flat, rough, or slippery ground. Encoders, a noisy IMU, a range sensor, and a 2D LiDAR are logged and plotted in MATLAB-style figures. A TurtleBot3 Waffle Pi preset is calibrated to one robot's lab data. This is an educational model and a calibration of one robot, not a validated simulator; "What the model means" states its assumptions and limits.
+Under the interface is a planar rigid-body model integrated at 10 kHz: DC motors with a 100 Hz PI speed loop, a Pacejka-style tire friction curve, load transfer, and flat, rough, or slippery ground. Encoders, a noisy IMU, a range sensor, and a 2D LiDAR are logged and plotted in MATLAB-style figures. A TurtleBot3 Waffle Pi preset is calibrated to ME425 lab data, with its drive parameters fitted to one robot. This is an educational model and a calibration, not a validated simulator; "What the model means" states its assumptions and limits.
 
 Live: https://kinetic-robotics-lab.vercel.app (Vercel, see "Hosting").
 
@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 89 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 93 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -76,9 +76,9 @@ The TurtleBot3 preset is for driving only. It starts from datasheet values:
 - 4096-count encoders.
 - Firmware limits of 0.26 m/s and 1.82 rad/s, applied to `drive(v, w)` without rescaling the wheels.
 
-Two parameters were then fitted to one robot's measurements from an ME425 lab course. The measurements are in `tests/fixtures/turtlebot3-lab.json`, numbers only. Every other row below is an independent check, and `tests/turtlebot3.test.mjs` enforces the matching ones.
+Two drive parameters were then fitted to one robot's measurements from an ME425 lab course (Lab 1), and the IMU noise and offsets to Lab 0. Each lab set a different ROS domain, which in this course belongs to one robot, so Labs 0, 1, and 2 most likely used three units of the same model. The measurements are in `tests/fixtures/turtlebot3-lab.json`, numbers only. Every other row below is an independent check. `tests/turtlebot3.test.mjs` (Labs 0 and 1) and `tests/turtlebot3-lab2.test.mjs` (Lab 2) enforce the matching ones, and check that the rows marked not reproduced still differ.
 
-| Quantity | Measured (≈ read from plots) | Simulated | Role |
+| Quantity | Measured (Labs 0–1 ≈ read from plots, Lab 2 from logs) | Simulated | Role |
 |---|---|---|---|
 | v = 0.20 m/s circle, final odometry heading | 333° | 333.5° | fitted: battery 10.93 V (outer wheel at the motor limit) |
 | Turning in place at 1 rad/s, encoder minus IMU | 9.4° per turn | 9.4° per turn | fitted: ball-caster friction 0.261 |
@@ -90,12 +90,22 @@ Two parameters were then fitted to one robot's measurements from an ME425 lab co
 | Gyro during a 0.5 rad/s spin (Lab 0) | 0.47–0.50 rad/s | 0.469 rad/s | predicted (at the edge) |
 | IMU at rest: az mean and spread, ax mean | 9.9, 9.3–10.4, −0.16 m/s² | matched | fitted |
 | Straight line at 0.1 m/s, forward leg by odometry | 0.275–0.28 m | 0.297 m | **not reproduced** (forward/backward asymmetry) |
+| Lab 2 parking, 8 starts and a 1 cm stop: heading at the stop | 4.1° to −58.7° | within 1.5° in 8 of 9 | predicted, but an ideal unicycle does as well |
+| Lab 2 parking at k<sub>ρ</sub> = 0.8: heading at the stop | 15.4° | 19.1° | **not reproduced** (an ideal unicycle gives 18.9°) |
+| Lab 2 parking time | 5.24–13.12 s | 5–9 % shorter | **not reproduced** |
+| Lab 2 circle at 0.08 m/s: radius by odometry, heading lag | 0.4936 m, −23.4° | 0.4936 m, −22.9° | predicted |
+| Lab 2 line at 0.05 / 0.10 m/s: steady distance to the goal | 0.132 / 0.259 m | 0.125 / 0.250 m | **not reproduced**: the real encoders run 3–6 mm/s below the command |
+| Lab 2 line with feedforward | weaves, ±18°, about 2.4 s period | weaves, ±11° | reproduced only qualitatively |
+| Lab 2 without the 0.02 m/s speed floor | stops for good 2.2–2.3 cm from the goal, wheels commanded 7–11 mm/s | reaches the 2 cm stop | **not reproduced** (no static friction) |
+| Lab 2, one wheel asked for 0.35 m/s | froze (read from one screenshot) | keeps driving | **not reproduced** |
 
 The fit also produces a testable prediction. Ball-caster drag makes the wheels creep, so odometry should overstate straight-line distance by about 3%. A tape measure can check this without the IMU.
 
+Lab 2 drove to a goal with the polar controller (v = k<sub>ρ</sub>ρ, ω = k<sub>α</sub>α + k<sub>β</sub>β) from encoder odometry, every 0.145 s. `tests/turtlebot3-lab2.test.mjs` re-implements that controller and replays it on this model; nothing from Lab 2 was used to fit. The heading left at the stop is a property of the control law: near the goal it shrinks as ρ<sup>|λ|/k<sub>ρ</sub></sup>, where λ is the slower root of λ² + (k<sub>α</sub> − k<sub>ρ</sub>)λ − k<sub>ρ</sub>k<sub>β</sub>, and the logged runs follow that exponent (0.16 measured against 0.16 predicted for k<sub>α</sub> = 3). The steady encoder lag is the main gap. Lab 1's short forward legs may be the same effect, but Lab 1 cannot tell. Setting the TurtleBot3's wheel-speed integral gain to zero gives a 0.1345 m line distance against 0.1321 m measured, so a weak integral in the real speed loop is one candidate. It is not adopted: the cause is unmeasured, and it would be a third fitted value. The model also predicts that the real robot stopped 3–4 cm from the goal although its odometry said under 2 cm. [`docs/lab-checklist.md`](docs/lab-checklist.md) lists the measurements that would settle these points.
+
 The 31.4 s run at w = 0.2 rad/s exceeds the 30 s limit and is not replayed. Lab 0's forward run was recorded on another day with an unknown battery charge and is not used.
 
-All of this comes from one robot, on one floor, at one battery charge, with values read from plots. It is a calibration, not a general validation. The Plots tab shows the desired (commanded) path and a Lab 1–style error figure, which separates two things the lab could not tell apart: the robot leaving its command (true vs desired) and the odometry misjudging the robot (odometry vs true).
+All of this comes from a few runs on each of three units of one model, on one floor, with the Lab 0 and Lab 1 values read from plots. It is a calibration, not a general validation. The Plots tab shows the desired (commanded) path and a Lab 1–style error figure, which separates two things the lab could not tell apart: the robot leaving its command (true vs desired) and the odometry misjudging the robot (odometry vs true).
 
 ### Complementary filter
 

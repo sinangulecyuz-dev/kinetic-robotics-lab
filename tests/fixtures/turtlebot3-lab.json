@@ -1,5 +1,5 @@
 {
-  "description": "Measurements from one TurtleBot3 Waffle Pi in a university mobile-robotics lab course, October 2026, driven from MATLAB over ROS 2. Values marked approximate were read from the report plots. usedToFit marks the only values the simulator was tuned to; every other value is an independent check, and notReproduced marks the ones the simulator does not match.",
+  "description": "Measurements from TurtleBot3 Waffle Pi robots in a university mobile-robotics lab course, October and November 2026, driven from MATLAB over ROS 2. Each lab set a different ROS domain, which in this course belongs to one robot, so lab0, lab1, and lab2 most likely used three units of the same model. Values marked approximate were read from report plots or a screenshot; the other lab2 values are computed from the logged runs. usedToFit marks the only values the simulator was tuned to (the drive parameters from lab1, the IMU noise and offsets from lab0); every other value is an independent check, and notReproduced marks the ones the simulator does not match.",
   "robot": {
     "wheelRadius_m": 0.033,
     "track_m": 0.287,
@@ -106,6 +106,287 @@
       "leftWheel_rad": 22,
       "approximate": true,
       "note": "recorded on a different day with an unknown battery state; not used"
+    }
+  },
+  "lab2": {
+    "description": "Lab 2: the polar parking controller (v = k_rho*rho, w = k_alpha*alpha + k_beta*beta), driven from wheel-encoder odometry only. Gains are [k_rho, k_alpha, k_beta]. Positions are in the start frame of the handout: x forward, y left, the goal at the origin facing +x.",
+    "controller": {
+      "loopPeriod_s": 0.145,
+      "stop_m": 0.02,
+      "vMin_m_s": 0.02,
+      "vMax_m_s": 0.2,
+      "wMax_rad_s": 1.2,
+      "wheelMax_m_s": 0.2,
+      "note": "v and w are divided by one common factor whenever v, w, or a wheel speed passes its limit, and multiplied by one when v falls below vMin, so the path keeps its curvature. reverse drives backward when the goal starts behind the robot."
+    },
+    "fixedGoal": {
+      "runs": [
+        {
+          "start": {
+            "x_m": -0.5,
+            "y_m": -0.2,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 8.27,
+          "headingAtStop_deg": 11.5
+        },
+        {
+          "start": {
+            "x_m": -0.5,
+            "y_m": -0.2,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.8,
+            1.5,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 5.24,
+          "headingAtStop_deg": 15.4,
+          "notReproduced": "headingAtStop_deg: the simulator gives 19.1°. An ideal unicycle with the same 0.145 s loop gives 18.9°, so neither explains the measured value"
+        },
+        {
+          "start": {
+            "x_m": -0.5,
+            "y_m": -0.2,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            3.0,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 8.17,
+          "headingAtStop_deg": 15.9
+        },
+        {
+          "start": {
+            "x_m": -0.5,
+            "y_m": -0.2,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.7
+          ],
+          "reverse": true,
+          "time_s": 8.28,
+          "headingAtStop_deg": 4.1
+        },
+        {
+          "start": {
+            "x_m": -0.4,
+            "y_m": 0.4,
+            "heading_deg": -90
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 8.75,
+          "headingAtStop_deg": -11.4
+        },
+        {
+          "start": {
+            "x_m": 0.5,
+            "y_m": 0.3,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 8.69,
+          "headingAtStop_deg": 16.3
+        },
+        {
+          "start": {
+            "x_m": 0.3,
+            "y_m": -0.4,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 8.95,
+          "headingAtStop_deg": -28.2
+        },
+        {
+          "start": {
+            "x_m": 0.5,
+            "y_m": 0.3,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "reverse": false,
+          "time_s": 13.12,
+          "headingAtStop_deg": -58.7
+        },
+        {
+          "start": {
+            "x_m": -0.5,
+            "y_m": -0.2,
+            "heading_deg": 0
+          },
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "reverse": true,
+          "time_s": 8.7,
+          "headingAtStop_deg": 8.1,
+          "stop_m": 0.01
+        }
+      ],
+      "notReproduced": "time_s: the simulator stops 5–9 % sooner. Part of this is the encoder lag shown by the line runs; the rest is an unmeasured start-up delay"
+    },
+    "line": {
+      "start": {
+        "x_m": -0.05,
+        "y_m": 0,
+        "heading_deg": 0
+      },
+      "note": "distance_m, command_m_s, and encoderSpeed_m_s are means over the last 40 % of each run (total path over total time for the speed)",
+      "runs": [
+        {
+          "vG_m_s": 0.05,
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "seconds": 39.9,
+          "distance_m": 0.1321,
+          "command_m_s": 0.0529,
+          "encoderSpeed_m_s": 0.0499
+        },
+        {
+          "vG_m_s": 0.1,
+          "gains": [
+            0.4,
+            1.5,
+            -0.4
+          ],
+          "seconds": 20.0,
+          "distance_m": 0.2588,
+          "command_m_s": 0.1035,
+          "encoderSpeed_m_s": 0.0997
+        },
+        {
+          "vG_m_s": 0.1,
+          "gains": [
+            0.8,
+            1.5,
+            -0.4
+          ],
+          "seconds": 20.0,
+          "distance_m": 0.1322,
+          "command_m_s": 0.1058,
+          "encoderSpeed_m_s": 0.1
+        }
+      ],
+      "notReproduced": "distance_m and command_m_s: at steady speed the real encoders run 3–6 mm/s below the command, so the controller asks for more and the distance is 4–6 % above vG/k_rho. The simulator's PI speed loop removes the error and holds exactly vG/k_rho"
+    },
+    "feedforward": {
+      "start": {
+        "x_m": -0.05,
+        "y_m": 0,
+        "heading_deg": 0
+      },
+      "vG_m_s": 0.1,
+      "gains": [
+        0.4,
+        1.5,
+        -0.4
+      ],
+      "law": "v = vG + k_rho*rho",
+      "seconds": 19.9,
+      "distance_m": 0.0295,
+      "weave": {
+        "headingMax_deg": 17.6,
+        "wMax_rad_s": 0.81,
+        "period_s": 2.35,
+        "grows": true
+      },
+      "note": "reproduced only qualitatively: the simulator weaves too, at a smaller distance (0.009 m) and harder (w at its 1.2 rad/s limit, heading up to 11°)"
+    },
+    "circle": {
+      "start": {
+        "x_m": -0.05,
+        "y_m": 0,
+        "heading_deg": 0
+      },
+      "vG_m_s": 0.08,
+      "radius_m": 0.5,
+      "seconds": 39.2,
+      "robotRadius_m": 0.4936,
+      "headingLag_deg": -23.39,
+      "distance_m": 0.2015,
+      "notReproduced": "distance_m: the simulator gives 0.197 m, short by the same encoder lag as the line runs"
+    },
+    "stall": {
+      "start": {
+        "x_m": -0.5,
+        "y_m": -0.2,
+        "heading_deg": 0
+      },
+      "gains": [
+        0.4,
+        1.5,
+        -0.4
+      ],
+      "vMin_m_s": 0,
+      "runs": 3,
+      "stoppedAt_m": [
+        0.0224,
+        0.0234
+      ],
+      "commandAtStop_m_s": [
+        0.009,
+        0.0094
+      ],
+      "wheelCommands_m_s": [
+        0.0074,
+        0.0112
+      ],
+      "stillFor_s": 29,
+      "notReproduced": "the robot stopped for good just outside the 2 cm stop, with both wheels commanded 7–11 mm/s. The simulator's wheels keep turning and reach the stop: the model has no static friction"
+    },
+    "overLimit": {
+      "command": {
+        "v_m_s": 0.18,
+        "w_rad_s": 1.2
+      },
+      "wheelRequest_m_s": [
+        0.008,
+        0.352
+      ],
+      "movedThenStopped_m": 0.13,
+      "stillFor_s": 38,
+      "approximate": true,
+      "source": "one screenshot of the odometry plots, before the common-factor limit was added",
+      "notReproduced": "the robot froze while one wheel was asked for more than its limit. The simulator saturates that motor and keeps driving (0.28 m and 133° in 3 s)"
     }
   }
 }

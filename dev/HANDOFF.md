@@ -30,7 +30,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-01: `npm test` 89/89 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-04: `npm test` 93/93 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -39,7 +39,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - **Codex instructions do not load on their own (since the move to `dev/`):** Codex must be told to read `dev/AGENTS.md` at the start of each session. Claude Code loads them through `.claude/CLAUDE.md` since 2026-11-01.
 - **Private link still public:** the ChatGPT Sites URL remains in this file and in Git history, in a public repository. The owner asked to remove it from the README only.
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
-- **Review:** the French text needs a native speaker at Saint Michel; `docs/french-review.html` (`npm run review:fr`) lists all of it beside the English. The owner reviews the Turkish.
+- **Review:** the French text needs a native speaker at Saint Michel (new on 2026-11-04: the Lab 2 paragraph in "About the model"); `docs/french-review.html` (`npm run review:fr`) lists all of it beside the English. The owner reviews the Turkish.
 - **Finding, not fixed:** with four experiments, the lesson strip still fits a 377 px phone, but the text beside it is narrow; a fifth experiment needs a new layout.
 - **Finding, not fixed:** on a 377 px phone emulation the header's help (?) button is cut off at the right edge; the page itself does not scroll sideways. This predates the 2026-11-01 work.
 - **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
@@ -47,7 +47,9 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - **Not verified:** whether Vercel builds a preview deployment for pushes to `claude/...` branches, and whether such previews ask for a Vercel login. If they build, a preview link is the way to try a branch on a real phone and in Safari before merging.
 - **TurtleBot3 calibration, open points.** The full table is in the README, "TurtleBot3 Waffle Pi calibration".
   - Not reproduced: the shorter forward legs of the straight-line test (forward/backward asymmetry), and the 4.5 cm drift of the v = 0.15 m/s circle.
-  - Not reproduced, from Lab 2 (2026-11-04, numbers in the session log): encoder speed 2–6 % below the command, a full stall at about 0.009 m/s per wheel, and a freeze when one wheel is asked for more than its limit. The first may also explain Lab 1's short forward legs.
+  - Lab 2 (2026-11-04) is in the fixture (`lab2`) and replayed by `tests/turtlebot3-lab2.test.mjs`. Not reproduced: encoder speed 3–6 mm/s below the command, a full stall once wheels are commanded below about 1 cm/s, a freeze when one wheel is asked for more than its limit, parking 5–9 % too fast, and one start's heading (k_rho 0.8). The first may also explain Lab 1's short forward legs. A zero wheel-speed integral reproduces the line distance (0.1345 vs 0.1321 m); not adopted, because the cause is unmeasured and it would be a third fitted value.
+  - Labs 0, 1, and 2 each set a different ROS domain. In this course the domain belongs to a robot, so they were most likely three units. README, fixture, interface, and `dev/AGENTS.md` now say so; the drive fit still comes from Lab 1 alone.
+  - `docs/lab-checklist.md` lists the next lab's measurements: message stamps and raw wheel angles in every log, wheel speed lifted and on the floor, the stall threshold, one wheel over its limit (lifted), and tape measurements of a parking stop, a 2 m line, and one lap.
   - The model predicts about 3% straight-line odometry overstatement from ball-caster drag. A tape measure in the next lab can test this.
   - The Lab 1 `.mat` files were not found on this machine. The owner will save CSV (`writetable`) in future labs.
   - The Kinetic rover itself (a made-up design) remains unvalidated.
@@ -58,6 +60,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 
 - Agent files live in `dev/`, and the README opens with the project (owner, 2026-11-01). AI use is not hidden: Git history and co-author lines stay, and the README points to `dev/`.
 - The owner's credit wording stays "Conceived and directed", not "Designed and built", because AI agents wrote the code (owner, 2026-11-01). The phrase is not in this repository.
+- Interface text goes through `t()` in English, Turkish, and French, and `vercel.json` serves `dist` only (2026-10-29).
 - Example scripts must work on every robot and wheel spacing (2026-10-29): "Repeat a square" turns with `drive(0, 1)` for 1.6 s instead of fixed wheel speeds, and `tests/examples.test.mjs` runs every example on both robots and three spacings.
 - Experiment 03 (2026-11-01): two missions, not three. A "drive straight on gravel" mission was dropped because open-loop drift (1.6–4.4 cm) did not separate the starter from a P solution, and a "turn to 90° with P" mission would have repeated the P example. Mission starts are positions only; the rover always starts facing +z, so odometry, desired paths, and plots keep their frame.
 - Interface languages: English, Turkish, and French, for the Saint Michel robotics club (owner, 2026-10-29). Rover script keywords, sensor names, and CSV columns stay English. Translated examples and mission starters change comments only. Decimals use a point in every language, to match code and MATLAB. Simulator, parser, and judge messages carry keys, so results redraw after a language switch.
@@ -99,6 +102,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-04 — Claude Code (cloud) — Lab 2 checks in the TurtleBot3 calibration, next-lab checklist
+- Changed: `tests/fixtures/turtlebot3-lab.json` (new `lab2` section, numbers only; description now says three units), new `tests/turtlebot3-lab2.test.mjs` (4 tests, the polar controller re-implemented and replayed on our TurtleBot3 every 0.145 s), `package.json`, README (calibration table, Lab 2 paragraph, test count), "About the model" in `dist/lang/{en,tr,fr}.mjs`, `docs/french-review.html`, `dev/AGENTS.md`, new `docs/lab-checklist.md`, this file.
+- Verified: `npm test` 93/93, `npm run check`, `npm run test:browser` 13/13. Mutations caught: wrong β sign (2 tests fail), vMin scaling only v (parking fails), a zero wheel-speed integral (the honesty test fails, as it should once a mismatch disappears). Turkish dialog checked in headless Chromium at 1280 px, no console errors. Not checked: the dialog on a phone (the "About the model" button is not visible at 390 px; that predates this change).
+- Status: committed and pushed to the `claude/...` branch only; `main` still lacks this and the three commits before it.
+- Next / open: the owner reviews the Turkish paragraph, a native speaker the French one. The checklist runs at the next lab.
 
 ### 2026-11-04 — Claude Code (cloud) — Lab 2 and HW1 data examined against the TurtleBot3 model
 - Changed: this file only. The owner uploaded ME425 Lab 2 (polar parking controller on the TurtleBot3: 8 fixed-goal runs, line and circle moving goals, 4 extra runs, 3 early runs without a speed floor) and HW1 (Simulink parking controllers). The files carry a name and a student ID, so they stay out of the repository; only numbers may come in. Nothing from the archives was run; the controller was re-implemented from the handout.
@@ -218,19 +227,3 @@ Entry template:
   - Not verified: a fresh Claude Code or Codex session on the new layout, and the README as rendered on GitHub.
 - Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-11-01); the push deploys production through the Git connection.
 - Next / open: see Open items.
-
-### 2026-10-29 — Claude Code — three interface languages and Vercel hosting
-
-- Changed:
-  - New `dist/i18n.mjs` and `dist/lang/en.mjs`, `tr.mjs`, `fr.mjs` (351 keys each, including the help dialogs).
-  - `dist/index.html`: `data-i18n` attributes and a language picker. `dist/style.css`: picker style and three selectors narrowed for wrapped text.
-  - `dist/app.js`: every visible string through `t()`. Language-dependent text is kept as functions, so a switch redraws it. Saved runs store a message key. An unedited example or starter follows the language.
-  - `dist/drive.mjs`, `dist/physics.mjs`, `dist/missions.mjs`: message keys and params next to the English text. `dist/examples.mjs` and `dist/missions.mjs`: Turkish and French comments and mission texts. `dist/plots.mjs`: two strings through `t()`.
-  - New `tests/i18n.test.mjs` (5 tests). `package.json`, README ("Languages", "Hosting"), `AGENTS.md`, `.gitignore` (`.vercel`), new `vercel.json`.
-- Verified:
-  - `npm test` 54/54, `npm run check` pass.
-  - Headless Chrome on 127.0.0.1:5174 and on the live site: no English text left on screen in Turkish or French (one false match, "Rover programı"). A Turkish mission run shows the outcome, judge, result card, plots, and CSV meta in Turkish. Switching to French redraws all of them and swaps the starter's comments. Parser errors redraw. All six dialogs translate. The language survives a reload. No horizontal overflow at 390 px. Zero console errors.
-  - Live site: `index.html`, `.mjs`, and `.css` return 200 with JavaScript and CSS MIME types. `tests/` and `HANDOFF.md` return 404.
-  - Not verified: a native French review, real phones, Safari, Firefox.
-- Status: deployed to Vercel production from the working tree first. Then committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-10-29); the push deploys production again through the Git connection.
-- Next / open: native French review, the owner's Turkish review, and the Vercel item in Open items.
