@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quadcopter model · ME 425</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<style>
+:root{--bg:#0c1016;--panel:#141a22;--line:#232c38;--text:#dbe3ec;--dim:#8494a6;--accent:#f4a340;--ccw:#4da3ff;--cw:#ff8a4c;--x:#ff5d5d;--y:#4cd47a;--z:#5b9bff;--ghost:#b48cff;--warn:#ff5d5d;--ok:#4cd47a;font:13px/1.45 ui-sans-serif,system-ui,sans-serif;color:var(--text)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 400px;overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+#stage{position:relative;min-width:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+#top{display:flex;gap:10px;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.rotor{flex:1 1 120px;min-width:110px}.rotor .name{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);letter-spacing:.04em}
+.rotor .name b{color:var(--text);font-weight:600}.bar{height:8px;background:#0a0e13;border-radius:4px;overflow:hidden;margin:4px 0 2px;position:relative}
+.bar i{display:block;height:100%;width:50%;border-radius:4px}.bar u{position:absolute;top:0;bottom:0;width:1px;background:#fff8;left:50%}
+.rotor .val{font:12px ui-monospace,monospace;display:flex;justify-content:space-between}.rotor .val span:last-child{color:var(--dim)}
+.ccw i{background:var(--ccw)}.cw i{background:var(--cw)}
+#clock{font:12px ui-monospace,monospace;color:var(--dim);display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:150px}
+#clock .row{display:flex;gap:6px}#clock button{flex:1}
+#view{position:relative;min-height:0;overflow:hidden}#view canvas{display:block}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#labels span{position:absolute;transform:translate(-50%,-50%);font:11px ui-monospace,monospace;white-space:nowrap;padding:1px 5px;border-radius:4px;background:#0c1016cc;border:1px solid var(--line)}
+#labels .axis{background:none;border:0;font-weight:700;font-size:12px}
+#warnings{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+#warnings div{background:#3a1218;border:1px solid var(--warn);color:#ffd0d0;padding:4px 9px;border-radius:6px;font-size:12px}
+#question{position:absolute;right:12px;top:12px;max-width:340px;background:#1b2330ee;border:1px solid var(--accent);border-radius:8px;padding:8px 11px;font-size:12.5px;display:none}
+#question b{color:var(--accent);display:block;margin-bottom:2px}
+#legend{position:absolute;left:12px;bottom:10px;font-size:11.5px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
+#legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+#eq{border-top:1px solid var(--line);background:var(--panel);padding:8px 12px;font:12px ui-monospace,monospace;display:grid;grid-template-columns:1fr 1fr;gap:2px 22px;max-height:38vh;overflow:auto}
+#eq .r{display:flex;align-items:center;gap:5px;white-space:nowrap;min-height:22px}#eq .lhs{width:34px;color:var(--dim)}#eq .res{margin-left:auto;font-weight:600;min-width:74px;text-align:right}
+#eq .t{padding:1px 6px;border-radius:4px;border:1px solid var(--line);background:rgba(244,163,64,calc(var(--k,0)*.55));transition:background .15s}
+#eq .t small{color:var(--dim);font-size:10.5px;margin-right:4px}#eq .off{opacity:.35;text-decoration:line-through}
+#eq h4{grid-column:1/-1;margin:2px 0;font:600 11px ui-sans-serif,system-ui;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+#side{border-left:1px solid var(--line);background:var(--panel);overflow:auto;min-height:0}
+section{padding:10px 12px;border-bottom:1px solid var(--line)}
+h3{margin:0 0 8px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:10px}
+button{background:#1c2430;border:1px solid var(--line);border-radius:6px;padding:5px 8px;cursor:pointer}button:hover{border-color:#3a4860}
+button[aria-pressed=true]{background:var(--accent);color:#1a1206;border-color:var(--accent);font-weight:600}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sl{display:grid;grid-template-columns:92px 1fr 78px;gap:8px;align-items:center;margin:5px 0}.sl output{font:12px ui-monospace,monospace;text-align:right}
+.sl label{color:var(--dim)}.sl label b{color:var(--text);font-weight:600}input[type=range]{width:100%;accent-color:var(--accent)}
+.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0}.chk small{display:block;color:var(--dim)}
+.scn{display:grid;grid-template-columns:1fr 1fr;gap:5px}.scn button{text-align:left;font-size:12px}
+details{margin-top:8px}summary{cursor:pointer;color:var(--dim)}table{width:100%;border-collapse:collapse;margin-top:6px}
+td,th{padding:2px 3px;font-size:12px;text-align:left}th{color:var(--dim);font-weight:500}
+td input,.pgrid input{width:100%;background:#0a0e13;border:1px solid var(--line);border-radius:4px;padding:2px 5px;font:12px ui-monospace,monospace}
+.pgrid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:5px 8px;align-items:center;margin-top:6px}.pgrid label{color:var(--dim)}
+.chart{margin:0 0 10px}.chart canvas{width:100%;height:120px;display:block;background:#0a0e13;border:1px solid var(--line);border-radius:6px}
+.chart .cap{display:flex;gap:10px;font-size:11px;color:var(--dim);margin-bottom:3px;flex-wrap:wrap}.chart .cap i{display:inline-block;width:10px;height:2px;margin-right:4px;vertical-align:3px}
+.hide{display:none!important}.note{color:var(--dim);font-size:12px;margin:6px 0 0}
+select{background:#0a0e13;border:1px solid var(--line);border-radius:5px;padding:3px 6px}
+@media(max-width:900px){body{grid-template-columns:1fr;grid-template-rows:60vh auto;height:auto;overflow:auto}#side{border-left:0}#eq{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main id="stage">
+  <div id="top">
+    <div class="rotor ccw" data-i="0"><div class="name"><b>Ω1</b>FRONT · CCW</div><div class="bar"><i></i><u></u></div><div class="val"><span></span><span></span></div></div>
+    <div class="rotor cw" data-i="1"><div class="name"><b>Ω2</b>RIGHT · CW</div><div class="bar"><i></i><u></u></div><div class="val"><span></span><span></span></div></div>
+    <div class="rotor ccw" data-i="2"><div class="name"><b>Ω3</b>REAR · CCW</div><div class="bar"><i></i><u></u></div><div class="val"><span></span><span></span></div></div>
+    <div class="rotor cw" data-i="3"><div class="name"><b>Ω4</b>LEFT · CW</div><div class="bar"><i></i><u></u></div><div class="val"><span></span><span></span></div></div>
+    <div id="clock"><span id="time">t = 0.00 s</span><div class="row"><button id="pause">Pause</button><button id="reset">Reset</button><select id="rate" aria-label="Simulation speed"><option value="1">1×</option><option value="0.25">¼×</option><option value="0.1">⅒×</option></select></div></div>
+  </div>
+  <div id="view">
+    <div id="labels"></div>
+    <div id="warnings" role="status" aria-live="polite"></div>
+    <div id="question"><b></b><span></span></div>
+    <div id="legend"><span><i style="background:var(--ccw)"></i>counterclockwise (front, rear)</span><span><i style="background:var(--cw)"></i>clockwise (left, right)</span><span><i style="background:var(--accent)"></i>U1 and its horizontal part</span><span id="ghost-legend"><i style="background:var(--ghost)"></i>ghost: full slide model, improved PID</span></div>
+  </div>
+  <div id="eq" aria-label="Equations of motion with live term values"></div>
+</main>
+<aside id="side">
+  <section>
+    <h3>Control mode</h3>
+    <div class="tabs"><button data-mode="manual" aria-pressed="true">Manual</button><button data-mode="hover">Hover</button><button data-mode="traj">Trajectory</button></div>
+    <div id="m-manual">
+      <div class="sl"><label><b>U1</b> throttle</label><input type="range" id="U1" min="0" max="2" step="0.005"><output></output></div>
+      <div class="sl"><label><b>U2</b> roll</label><input type="range" id="U2" min="-0.05" max="0.05" step="0.0005"><output></output></div>
+      <div class="sl"><label><b>U3</b> pitch</label><input type="range" id="U3" min="-0.05" max="0.05" step="0.0005"><output></output></div>
+      <div class="sl"><label><b>U4</b> yaw</label><input type="range" id="U4" min="-0.01" max="0.01" step="0.0001"><output></output></div>
+      <button id="hoverU">Back to Ω_H (U1 = m·g, no torque)</button>
+      <p class="note">The sliders set U1–U4. The rotor speeds follow from the four U equations solved for Ω², shown above as Ω_H ± Δ.</p>
+    </div>
+    <div id="m-hover" class="hide">
+      <div class="sl"><label><b>Z<sub>d</sub></b></label><input type="range" id="Zd" min="0" max="3" step="0.05"><output></output></div>
+      <div class="sl"><label><b>φ<sub>d</sub></b> roll</label><input type="range" id="phid" min="-45" max="45" step="1"><output></output></div>
+      <div class="sl"><label><b>θ<sub>d</sub></b> pitch</label><input type="range" id="thetad" min="-45" max="45" step="1"><output></output></div>
+      <div class="sl"><label><b>ψ<sub>d</sub></b> yaw</label><input type="range" id="psid" min="-180" max="180" step="5"><output></output></div>
+      <details><summary>PID gains (on accelerations; U2–U4 scaled by the inertias)</summary><table id="g-hover"></table></details>
+    </div>
+    <div id="m-traj" class="hide">
+      <div class="sl"><label>Path</label><select id="ttype"><option value="circle">Circle</option><option value="line">Straight line</option></select><output></output></div>
+      <div class="sl"><label>Radius / length</label><input type="range" id="tsize" min="0.5" max="3" step="0.1"><output></output></div>
+      <div class="sl"><label>Speed</label><input type="range" id="tspeed" min="0.1" max="1.5" step="0.05"><output></output></div>
+      <button id="trestart">Restart the path from here</button>
+      <details><summary>PID gains</summary><table id="g-traj"></table></details>
+      <p class="note">μ = desired acceleration + PID on the tracking error; U1 = m·√(μx² + μy² + (μz + g)²); φ<sub>d</sub>, θ<sub>d</sub> from the small-angle equations with ψ<sub>d</sub> = ψ*.</p>
+    </div>
+  </section>
+  <section>
+    <h3>Model you fly (solid)</h3>
+    <label class="chk"><input type="checkbox" id="approxT"><span>T<sub>Θ</sub> ≈ I<small>Use [φ̇ θ̇ ψ̇] = [p q r], the hover assumption.</small></span></label>
+    <label class="chk"><input type="checkbox" id="noGyro"><span>Drop the gyroscopic terms<small>q·r, p·r, p·q and J<sub>TP</sub>·Ω set to zero.</small></span></label>
+    <label class="chk"><input type="checkbox" id="tradPID"><span>Traditional PID<small>Derivative of the error, no saturator on the integral.</small></span></label>
+    <label class="chk"><input type="checkbox" id="showGhost" checked><span>Show the ghost<small>The full slide model with the improved PID, given the same commands. It appears when a box above is ticked.</small></span></label>
+  </section>
+  <section>
+    <h3>Experiments</h3>
+    <div class="scn" id="scenarios"></div>
+  </section>
+  <section>
+    <h3>Plots · last 10 s</h3>
+    <div class="chart"><div class="cap" id="cap-ang"></div><canvas id="c-ang"></canvas></div>
+    <div class="chart"><div class="cap" id="cap-pos"></div><canvas id="c-pos"></canvas></div>
+    <div class="chart"><div class="cap" id="cap-u1"></div><canvas id="c-u1"></canvas></div>
+    <div class="chart"><div class="cap" id="cap-u"></div><canvas id="c-u"></canvas></div>
+    <p class="note">Solid: the model you fly. Dashed: the ghost. Dotted: the desired value.</p>
+  </section>
+  <section>
+    <h3>Parameters</h3>
+    <div class="pgrid" id="params"></div>
+    <button id="applyP" style="margin-top:8px">Apply and reset</button>
+    <p class="note" id="hoverline"></p>
+    <p class="note">Model and notation: ME 425 "Motion Control of a Quadcopter I–II". Two slips in the slides are handled here: the yaw text names the front-rear pair, while its figure and the U4 equation speed up left-right (used here); and the U1 formula is written with μ<sub>y</sub> unsquared (squared here).</p>
+  </section>
+</aside>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>

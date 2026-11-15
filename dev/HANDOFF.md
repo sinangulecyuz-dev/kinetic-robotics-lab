@@ -29,6 +29,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables.
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
+  - New, outside the lab: `tools/quadcopter/`, the owner's study tool for the ME 425 quadcopter slides (its own README). It is not in `dist`, so it is not deployed, and it does not follow the lab's i18n or design rules.
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
 - Verification on 2026-11-04: `npm test` 93/93 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
@@ -102,6 +103,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-15 — Claude Code (cloud) — quadcopter study tool in `tools/quadcopter/`
+- Changed: new `tools/quadcopter/quad.mjs` (slide model, RK4, PID, hover and trajectory control), `quad.test.mjs` (13 tests), `index.html`, `app.mjs` (Three.js from a CDN: 3D scene, ghost vehicle on the full model, live equation terms, plots, eight experiments), `README.md`; `package.json` gains `npm run test:quad`. The owner asked for it as a course study aid; it stays out of `dist` on purpose.
+- Verified: `npm run test:quad` 13/13, `npm test` 93/93. Headless Chromium at 1500 px with Three.js served locally (the cloud network blocks the CDN): no console errors, all experiments run, sliders, pause, hover to Z = 2 m, clipping and singularity warnings appear, no sideways scroll at 390 px. Not checked: the real CDN load, Firefox, Safari, a phone.
+- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Next / open: the owner tries it and says what to change. A single-file build was in the first request and is not made.
 
 ### 2026-11-04 — Claude Code (cloud) — Lab 2 checks in the TurtleBot3 calibration, next-lab checklist
 - Changed: `tests/fixtures/turtlebot3-lab.json` (new `lab2` section, numbers only; description now says three units), new `tests/turtlebot3-lab2.test.mjs` (4 tests, the polar controller re-implemented and replayed on our TurtleBot3 every 0.145 s), `package.json`, README (calibration table, Lab 2 paragraph, test count), "About the model" in `dist/lang/{en,tr,fr}.mjs`, `docs/french-review.html`, `dev/AGENTS.md`, new `docs/lab-checklist.md`, this file.
