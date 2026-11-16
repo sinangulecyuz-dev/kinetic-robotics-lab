@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kinetic Robotik Laboratuvarı · Öğretmen kiti</title>
+<style>
+body{font:14px/1.55 system-ui,"Segoe UI",Arial,sans-serif;color:#1d2938;margin:0 auto;max-width:860px;padding:28px 22px 60px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px}h2{font-size:22px;margin:0}h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#7a8390;margin:22px 0 6px}
+h4{font-size:15px;margin:0 0 2px}h5{font-size:12px;margin:10px 0 4px;color:#4f5b68}p{margin:6px 0}.sub{color:#56708a;margin:0 0 4px}.small{font-size:12px;color:#7a8390}
+ul,ol{margin:6px 0;padding-left:22px}li{margin:4px 0}b{font-weight:600}
+table{width:100%;border-collapse:collapse;margin:6px 0}th,td{border:1px solid #dfe4e8;padding:6px 9px;text-align:left;vertical-align:top}
+.flow th{width:64px;white-space:nowrap;background:#f6f8fa;font-weight:600}.stuck th{background:#f6f8fa;font-size:12px}.stuck td{width:50%}
+.script td:first-child{font:12px ui-monospace,Menlo,monospace;white-space:nowrap;background:#f6f8fa}
+pre{font:12px/1.5 ui-monospace,Menlo,monospace;background:#121c2b;color:#e8edf3;border-radius:8px;padding:10px 12px;margin:4px 0;white-space:pre-wrap}
+.session{border-top:3px solid #f46a3c;margin-top:44px;padding-top:18px}.session header{display:flex;gap:16px;align-items:flex-start}
+.num{font:700 30px/1 system-ui;color:#f46a3c;background:#fff3ec;border-radius:10px;padding:12px 14px}.q{font-size:15px;margin:2px 0}.concept{color:#7a8390;font-size:12px;margin:0}
+.idea{background:#f1f8f5;border-left:3px solid #218b7d;padding:9px 12px;border-radius:0 8px 8px 0}
+.mission{border:1px solid #dfe4e8;border-radius:10px;padding:12px 14px;margin:10px 0}.where{font-size:12px;color:#7a8390;margin:0 0 6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.cols{grid-template-columns:1fr}}
+@media print{body{max-width:none;padding:0;font-size:11.5px}.session{break-before:page;margin-top:0}.mission,tr{break-inside:avoid}pre{border:1px solid #999;background:#fff;color:#000}}
+</style></head><body>
+<h1>Kinetic Robotik Laboratuvarı · Öğretmen kiti</h1><p class="sub">Lise robotik kulübü için 40 dakikalık dört oturum</p><p class="small">Laboratuvarın kendi görevlerinden ve sınanmış çözümlerinden npm run kit ile üretildi.</p>
+<h3>İlk oturumdan önce</h3><ul><li>Her öğrenciye ya da ikiliye güncel tarayıcılı bir dizüstü ya da tablet gerekir. Laboratuvar tek bir web sayfasıdır: hesap yok, kurulum yok. Telefonda da çalışır ama kod editörü dar kalır.</li><li>Öğrencinin yaptığı her şey o cihazdaki tarayıcıda kalır. Hiçbir yere gönderilmez. Tarayıcı verisi silinirse defter de silinir; bu yüzden her oturumun sonunda sonuçlarını indirmelerini isteyin.</li><li>Dil seçici üst çubuktadır: İngilizce, Türkçe, Fransızca. Rover dilinin anahtar sözcükleri ve sensör adları, gerçek kodda olduğu gibi her dilde İngilizce kalır.</li><li>Her oturumu önce kendiniz deneyin. Bu kitteki her görevin geçen bir referans çözümü var; başarının nasıl göründüğünü bilmek için bir kez çalıştırın.</li></ul>
+<h3>Her oturumun düzeni</h3><ol><li>Tahmin et. <b>Deneyi çalıştır</b> düğmesine basmadan önce öğrenci ne olacağını söyler. Deney 01’de tahmin düğmeleri vardır; görevler sonucun tahminini ister.</li><li>Çalıştır, sonra oku. Sahnenin altındaki sonuç satırı ne olduğunu söyler. Görev şeridi denemenin ne kadar ıskaladığını ve nedenini söyler.</li><li>Tek bir şeyi değiştir. Bir sayı ya da bir satır, sonra yeniden çalıştır. Önceki deneme ekranda soluk bir hayalet olarak kalır; böylece değişikliğin etkisi görülür.</li><li>Nedenini söyle. Son beş dakika herkesin tek cümlesi içindir: ne değişti ve neden işe yaradı.</li></ol>
+<h3>Öğrencinin ekranında neler var</h3><ul><li>“<b>ROBOTUN OKUDUKLARI</b>” kartı programın kullandığı her sensörü, simülatörün bildiği gerçeğin yanında gösterir. İki sütun arasındaki fark Deney 02’nin dersidir.</li><li>Sahnenin altındaki zaman çubuğu biten denemeyi geri sarar. Sürükleyin ya da oynatın. Üstündeki işaretler tekerlek kaymasını, sınırdaki motoru ve komut sıçramalarını gösterir.</li><li><b>Grafikler</b> sekmesi her sensörü zamana karşı çizer. Bir grafiğe tıklamak sahnedeki rover’ı o ana götürür.</li><li>“<b>İpucunu göster</b>” sırayla üç ipucu verir: fikir, araç, sonra boşluklu kod iskeleti. Boşluklarda geçen sayılar asla yazmaz. Her ipucundan önce iki kez denemelerini isteyin.</li></ul>
+<h3>Simülatör nedir, ne değildir</h3><ul><li>Bu, öğrenmek için bir modeldir. Kinetic rover uydurma bir tasarımdır, değerleri tipik veri sayfası değerleridir; kimse ölçmedi. Bunu öğrencilere söyleyin: simülatör bir varsayımlar kümesidir ve “<b>Model hakkında</b>” bunları listeler.</li><li>TurtleBot3 ön ayarı birkaç üniversite lab denemesine kalibre edildi, doğrulanmadı. Gerçek robotun yaptığı üç şeyi yeniden üretmez. Anlatmaya en değer olanı: gerçek tekerlekler çok yavaş dönmeleri istenince tamamen durur, model ise sürünmeye devam eder.</li><li>Görevin hakemi gerçek konumu okur. Öğrencinin programı bunu asla okuyamaz. Bu fark bilerek konmuştur; “doğru görünen” bir deneme her kaldığında hatırlatmaya değer.</li></ul>
+<h3>Çalışmaları toplamak</h3><ul><li><b>Sonuçlar</b> sekmesinde öğrenci adını yazıp “<b>Sonuçlarımı indir (CSV)</b>” düğmesine basabilir. Dosyada her deneme bir satırdır: zaman, deney, görev ve geçip geçmediği, tahmin, tasarım, sonuç ve program.</li><li>Dosya öğrencinin cihazında oluşur ve size verilene kadar hiçbir yere gitmez. Her tablo programında açılır.</li><li>Yalnızca geçip geçmediğine değil, geçmeden önceki deneme sayısına bakın. Her seferinde tek bir sayıyı değiştirerek on ikinci denemede geçen öğrenci, yanındakinden kopyalayandan daha çok öğrenmiştir.</li></ul>
+<h3>Tek sayfada rover dili</h3><table class="script"><tr><td>drive(v, w)</td><td>İleri hız v (m/s) ve dönüş hızı w (rad/s). Pozitif w sola döner.</td></tr><tr><td>wheels(l, r)</td><td>Sol ve sağ tekerlek hızları (rad/s), −10 ile 10 arası.</td></tr><tr><td>wait(s)</td><td>s saniye devam et, 0.05 ile 10 arası. Her döngüde bir tane olmalı.</td></tr><tr><td>stop()</td><td>İki tekerlek sıfıra.</td></tr><tr><td>while distance &gt; 0.5 … end</td><td>Bir okuma bir sayıyla karşılaştırıldığı sürece tekrarla.</td></tr><tr><td>if … end · repeat 4 … end</td><td>Tek bir sınama ya da sabit sayıda tekrar.</td></tr><tr><td>let e = distance - 0.5</td><td>Bir değişken. Matematik + − * /, parantez, abs, min, max kullanır.</td></tr></table><ul><li>Okumalar: distance, heading, odom_heading, gyro_z, odom_x, odom_y, encoder_left, encoder_right, time, lidar_front, lidar_left, lidar_back, lidar_right, lidar_min, lidar_min_angle, fused_heading, fused_x, fused_y. Açılar derece, uzunluklar metre.</li><li>Bir deneme 30 saniye sonra biter. İçinde wait olmayan bir döngü denemeyi hemen durdurur; mesaj satırı söyler.</li></ul>
+<article class="session"><header><span class="num">01</span><div><h2>Yükü taşı</h2><p class="q">Roverın eğik bir yüzeyde dengesini koruyabilir mi?</p><p class="concept">Kütle merkezi ve destek poligonu · 40 dk</p></div></header>
+<h3>Amaç</h3><p>Öğrenciler yüklü bir rover’ın rampada devrilip devrilmeyeceğini tahmin eder, dener ve sonucu iki kavramla açıklar: kütle merkezi ve destek poligonu.</p><h3>Akılda kalması gereken fikir</h3><p class="idea">Kütle merkezinin altındaki nokta üç temas noktasının üçgeni içinde kaldıkça rover ayakta durur. Daha geniş taban ya da daha alçak yük daha çok pay bırakır.</p>
+<h3>Akış</h3><table class="flow"><tr><th>5 dk</th><td>Üç ön ayarı çalıştırmadan gösterin: <b>Dengeli</b>, <b>Üstü ağır</b>, <b>Merkez dışı</b>. Her öğrenci 25°’de hangilerinin devrileceğini yazar.</td></tr><tr><th>10 dk</th><td>Tahminlerini denerler. <b>Dengeli</b> 25°’de durur, 28.8°’de devrilir; <b>Üstü ağır</b> 7.5°’de, <b>Merkez dışı</b> 2.3°’de devrilir. İzlenecek an, turuncu noktanın kesikli üçgenden çıktığı andır.</td></tr><tr><th>15 dk</th><td>Meydan okuma: en ağır yükü (3 kg) devrilmeden 30°’ye çıkarın. Teker aralığını, yüksekliği ve yana konumu değiştirebilirler.</td></tr><tr><th>10 dk</th><td>Her ikili tasarımını gösterir ve en çok payı hangi tek değişikliğin kazandırdığını söyler.</td></tr></table>
+<h3>Sorulacak sorular</h3><ul><li>Rover devrilmek üzereyken turuncu nokta nerede?</li><li>Yükü yükselen tarafa kaydırmak neden işe yarar? (Varsayılan rover 28.8° yerine 42.5°’de devrilir; alçak tarafa kaydırınca 10.5°’de.)</li><li>Bir teslimat robotu uzun bir paket taşıyacak. Robotta neyi değiştirirdiniz, paketten ne isterdiniz?</li></ul>
+<h3>Öğrencilerin takıldığı yerler</h3><table class="stuck"><tr><th>Gördüğünüz</th><th>Ne demeli</th></tr><tr><td>“Devriliyor, alta ağırlık ekleyeyim” — ama tek ağırlık yüktür.</td><td>Kütle sürgüsünün kütle merkezinin yüksekliğine ne yaptığını sorun: yukarıda daha çok yük onu yükseltir.</td></tr><tr><td>Üç sürgüyü birden değiştirirler ve neyin işe yaradığını söyleyemezler.</td><td>Her denemede tek değişiklik. <b>Sonuçlar</b> sekmesi her denemeyi saklar; karşılaştırabilirler.</td></tr></table>
+
+<h3>Vakit kalırsa</h3><p>1.5 kg’ı 25°’ye taşıyabilen en dar rover’ı isteyin. Ödünleşimi somutlaştırır: dar robot kapıdan geçer ama daha erken devrilir.</p></article>
+<article class="session"><header><span class="num">02</span><div><h2>Neredeyim?</h2><p class="q">Roverın yalnızca kendi sensörleriyle nerede olduğunu bulabilir mi?</p><p class="concept">Odometri, jiroskop ve gerçek konum · 40 dk</p></div></header>
+<h3>Amaç</h3><p>Öğrenciler robotun nerede olduğunu bilmediğini, tahmin ettiğini keşfeder. Programın saniye saymak yerine ölçmesini sağlarlar.</p><h3>Akılda kalması gereken fikir</h3><p class="idea">Zaman mesafe değildir, tekerlek dönüşü gövde dönüşü değildir. Önem verdiğiniz şeyi ölçen sensörü kullanın ve hedeften önce yavaşlayın.</p>
+<h3>Akış</h3><table class="flow"><tr><th>5 dk</th><td>Herkes ilk görevi yükler ve başlangıç kodunu değiştirmeden çalıştırır. Kalır. Görev şeridini birlikte okuyun: ne kadar ıskaladı ve neden.</td></tr><tr><th>15 dk</th><td>İlk görev. İlk ipucundan önce iki kez denesinler. Dolaşın: yapan öğrenci yapamayana anlatsın.</td></tr><tr><th>15 dk</th><td>İkinci görev, TurtleBot3 ile. “<b>ROBOTUN OKUDUKLARI</b>” kartını açın ve dönerken heading ile odom_heading değerlerini karşılaştırın.</td></tr><tr><th>5 dk</th><td>Herkesten bir cümle: başta hangi sensöre güvendiniz, sonda hangisine?</td></tr></table>
+<h3>Sorulacak sorular</h3><ul><li>Rover 0.20 m gördü ve durdu. Şimdi neden 0.20 m’den daha yakın?</li><li>Enkoderler 360° diyor. Gövde daha az döndü. Fark nereye gitti?</li><li>Gerçek sütununda robotun bilmediği nedir?</li></ul>
+<h3>Öğrencilerin takıldığı yerler</h3><table class="stuck"><tr><th>Gördüğünüz</th><th>Ne demeli</th></tr><tr><td>Deneme hemen duruyor ve mesaj bir satırı söylüyor.</td><td>Döngüde wait yok. Her döngüye wait(0.05) gerekir, yoksa program zamanın geçmesine izin vermez.</td></tr><tr><td>Durma sayısını tekrar tekrar değiştirirler (0.2, 0.25, 0.3 …).</td><td>Bu, tek bir hızı tek bir zemine ayarlar. Başka hızda ne olacağını sorun, sonra araç ipucuna yönlendirin: iki adımda fren.</td></tr><tr><td>heading kullanınca bile dönüş hedefi aşıyor.</td><td>Döngü bittiğinde rover hâlâ dönüyor. Son kısımda daha yavaş dönsün.</td></tr></table>
+<h3>Görevler ve referans çözümler</h3><section class="mission"><h4>Kutudan 20 cm önce dur</h4><p class="where">Görevin ayarladığı: Kinetic rover · Beton</p><p><b>Hedef.</b> Denemeyi ön sensör kutudan 20 cm uzaktayken, ±3 cm içinde ve ona değmeden bitir.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: ön sensör kutudan 0.20 m uzaktayken dur (±3 cm).
+# Bu ilk deneme fren mesafesini hesaba katmıyor. Çalıştır, sonucu oku, sonra geliştir.
+drive(0.4, 0)
+while distance &gt; 0.2
+  wait(0.05)
+end
+stop()</pre><p>0.4 m/s ile gider ve 0.20 m okuyunca fren yapar. Fren mesafe alır, bu yüzden fazla yakında biter.</p></div><div><h5>Bir referans çözüm</h5><pre>drive(0.3, 0)
+while distance &gt; 0.35
+  wait(0.05)
+end
+drive(0.08, 0)
+while distance &gt; 0.21
+  wait(0.05)
+end
+stop()</pre><p>0.35 m’ye kadar hızlı, sonra 0.21 m’ye kadar yavaş: düşük hızda rover yaklaşık bir santimetre içinde durur.</p></div></div></section><section class="mission"><h4>Tam bir tur dön</h4><p class="where">Görevin ayarladığı: TurtleBot3 Waffle Pi · Beton</p><p><b>Hedef.</b> Yerinde dön ve tam 360°’lik dönüşün 3° yakınında bitir; gerçek yönelime göre değerlendirilir.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: yerinde tam 360° dön (±3°), gerçek yönelime göre değerlendirilir.
+# Bu ilk deneme tekerlek enkoderlerine güveniyor. Grafikler’de heading ile odom_heading’i karşılaştır.
+drive(0, 1)
+while odom_heading &lt; 360
+  wait(0.05)
+end
+stop()</pre><p>Enkoderlere güvenir. Bilyeli tekerler sürtünür, tekerlekler kayar ve gövde tekerleklerin söylediğinden az döner.</p></div><div><h5>Bir referans çözüm</h5><pre>drive(0, 1)
+while heading &lt; 330
+  wait(0.05)
+end
+drive(0, 0.3)
+while heading &lt; 359.5
+  wait(0.05)
+end
+stop()</pre><p>IMU’dan gelen heading değerini okur ve son 30°’de yavaş döner.</p></div></div></section><section class="mission"><h4>Buzda bir kareyi kapat</h4><p class="where">Görevin ayarladığı: Kinetic rover · Buz</p><p><b>Hedef.</b> Kenarları 0.5 m olan bir kare çiz ve başladığın yerin 10 cm yakınında bitir.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: buzda kenarları 0.5 m olan bir kare çiz ve başlangıcın 10 cm yakınında bitir.
+# Bu ilk deneme yalnızca zamanlama kullanıyor. Buzda zaman mesafe değildir.
+repeat 4
+  drive(0.3, 0)
+  wait(1.7)
+  drive(0, 1.5)
+  wait(1.05)
+end
+stop()</pre><p>Yalnızca zaman kullanır. Buzda tekerlekler kayar; eşit süreler eşit mesafe ya da eşit açı değildir.</p></div><div><h5>Bir referans çözüm</h5><pre>drive(0.15, 0)
+while odom_x &lt; 0.5
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 88
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_y &lt; 0.5
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 178
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_x &gt; 0
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 268
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_y &gt; 0
+  wait(0.05)
+end
+stop()</pre><p>Her kenar odom_x ya da odom_y ile, her köşe heading ile ölçülür; tekerlekler tutunsun diye 0.15 m/s ile.</p></div></div></section>
+<h3>Vakit kalırsa</h3><p>Üçüncü görev, buzda kare, iki fikri birden ister. Zordur; ilk oturumda 20 cm içinde kapanan bir kareyi iyi sonuç sayın.</p></article>
+<article class="session"><header><span class="num">03</span><div><h2>Duvarı takip et</h2><p class="q">Roverın hatasıyla orantılı olarak kendini düzeltebilir mi?</p><p class="concept">Oransal kontrol ve geri besleme · 40 dk</p></div></header>
+<h3>Amaç</h3><p>Öğrenciler “sür, çizgide fren yap” yerine, hata küçüldükçe küçülen bir komut yazar: oransal kontrol.</p><h3>Akılda kalması gereken fikir</h3><p class="idea">Komut = kazanç × hata. Uzaktayken rover hızlı, yakındayken yavaş gider; hedefte komut sıfırdır. Kazanç ne kadar sert denediğini belirler.</p>
+<h3>Akış</h3><table class="flow"><tr><th>5 dk</th><td>Tahtaya: hata = distance − 0.5. 2 m’de, 0.6 m’de, 0.5 m’de hangi hızı seçeceklerini sorun. Az önce P kontrolünü icat ettiler.</td></tr><tr><th>15 dk</th><td>İlk görev: 0.5 m’de park et. Geçince 0.3, 1 ve 3 kazançlarını denerler ve denemeleri hayalet ve görev grafiğiyle karşılaştırırlar. 15 saniyede 0.3 hâlâ 54 cm’dedir; 1 ve 3 geçer.</td></tr><tr><th>15 dk</th><td>İkinci görev: duvarı izle. Başlangıç kodu yalnızca mesafeye göre yönlendirir ve yalpalar. İpucundan önce yoldaki yalpalamayı izlesinler.</td></tr><tr><th>5 dk</th><td>Herkesten bir cümle: kazanç neyi belirler?</td></tr></table>
+<h3>Sorulacak sorular</h3><ul><li>Rover tam hedefteyken komut kaçtır? Ya sonra bir şey onu iterse?</li><li>0.3 kazançla rover 15 saniyede tam olarak varamaz. Hedefe yakınken neden bu kadar yavaşlar?</li><li>Yalnızca mesafeye göre yönlendirmek duvar boyunca neden yalpalatır?</li></ul>
+<h3>Öğrencilerin takıldığı yerler</h3><table class="stuck"><tr><th>Gördüğünüz</th><th>Ne demeli</th></tr><tr><td>Park döngüsü rover yerleşmeden bitiyor.</td><td>P kontrolcünün varması zaman alır. Döngüyü mesafeyle değil zamanla çalıştırın, örneğin while time &lt; 15.</td></tr><tr><td>drive(1*(0.5 - distance), 0) yazarlar ve rover geri gider.</td><td>Rover fazla uzaktayken hatanın işaretini sorun. Komut onu hedefe doğru itmelidir.</td></tr><tr><td>Hangi kazancı deneseler duvar izleyici yalpalıyor.</td><td>Mesafe ancak rover döndükten sonra değişir. Duvara olan açıya ikinci bir terim gerekir: lidar_min_angle − 90.</td></tr></table>
+<h3>Görevler ve referans çözümler</h3><section class="mission"><h4>Duvardan 0.5 m önce park et</h4><p class="where">Görevin ayarladığı: Kinetic rover · Beton</p><p><b>Hedef.</b> Denemeyi ön sensör öndeki duvardan 0.50 m uzaktayken, ±2 cm içinde bitir.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: ön sensör öndeki duvardan 0.50 m uzaktayken park et (±2 cm).
+# Bu ilk deneme 0.5 m/s ile gidiyor ve çizgide frenliyor. Çalıştır, sonucu oku, sonra geliştir.
+drive(0.5, 0)
+while distance &gt; 0.5
+  wait(0.05)
+end
+stop()</pre><p>0.5 m/s ile gider ve çizgide fren yapar, bu yüzden birkaç santimetre aşar.</p></div><div><h5>Bir referans çözüm</h5><pre>while time &lt; 15
+  drive(1*(distance - 0.5), 0)
+  wait(0.05)
+end
+stop()</pre><p>Hız, kalan mesafenin 1 katıdır, 15 saniye boyunca. Rover varırken kendiliğinden yavaşlar.</p></div></div></section><section class="mission"><h4>Duvarı 0.5 m’den takip et</h4><p class="where">Görevin ayarladığı: Kinetic rover · Beton</p><p><b>Hedef.</b> Solundaki duvar boyunca sür ve son 1.8 m boyunca ondan 0.5 m uzakta kal, ±10 cm içinde.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: son 1.8 m boyunca solundaki duvarı 0.50 m’den takip et (±10 cm).
+# Bu ilk deneme yalnızca sol LiDAR okumasıyla orantılı direksiyon kırıyor. Çalıştır ve yolu izle.
+while odom_x &lt; 3.8
+  drive(0.2, 1*(lidar_left - 0.5))
+  wait(0.05)
+end
+stop()</pre><p>Yalnızca sol ışına göre yönlendirir. Mesafe ancak rover döndükten sonra tepki verir, bu yüzden yalpalar.</p></div><div><h5>Bir referans çözüm</h5><pre>while odom_x &lt; 3.8
+  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
+  wait(0.05)
+end
+stop()</pre><p>LiDAR’dan iki terim: mesafe hatası ve duvara olan açı; rover paralel giderken bu açı sıfırdır.</p></div></div></section>
+<h3>Vakit kalırsa</h3><p>Geçen park programını buzda çalıştırın. Görev yalnızca betonda değerlendirilse de yine 0.50 m’de park eder. Ölçen bir kontrolcünün ayarlanmadığı bir zeminle neden başa çıktığını sorun.</p></article>
+<article class="session"><header><span class="num">04</span><div><h2>Çizgiyi tut</h2><p class="q">Sürekli bir itme neden kalıcı bir hata bırakır ve onu ne yok eder?</p><p class="concept">İntegral kontrol ve PID · 40 dk</p></div></header>
+<h3>Amaç</h3><p>Öğrenciler sabit bir itmenin P kontrolcüde sabit bir hata bıraktığını görür ve hatayı zaman içinde toplayarak bunu giderir: integral terimi.</p><h3>Akılda kalması gereken fikir</h3><p class="idea">P yalnızca hata varken etki eder; sabit bir itmeye karşı çizginin biraz dışında yerleşir. Hatanın birikimli toplamı, o sapma yok olana kadar büyümeye devam eder.</p>
+<h3>Akış</h3><table class="flow"><tr><th>5 dk</th><td>Başlangıç kodunu çalıştırın. Duvarı izler ama çizginin dışında kalır. Görev grafiğini açın: eğri düzdür, hedef bandının yanındadır.</td></tr><tr><th>5 dk</th><td>Rüzgârı kapatıp yeniden çalıştırın: ortalama sapma yaklaşık 5 cm’den yaklaşık 3 cm’ye düşer. Bir kısmının nedeni rüzgârdır. Kalanı, biraz kısa okuyan sensördür.</td></tr><tr><th>20 dk</th><td>Döngünün içinde let ile bir toplam eklerler ve onun bir katıyla yönlendirirler. Toplam üzerinde 0.3, 1 ve 3 kazançlarını karşılaştırın: 0.3 geçmek için fazla yavaştır, 1 geçer, 3 de geçer ama çizgiden 9 cm’ye kadar salınır.</td></tr><tr><th>10 dk</th><td>Tahtada üç terimi kendi kodlarını kullanarak adlandırın: P şimdiki hata, I onun toplamı, D ne kadar hızlı değiştiği.</td></tr></table>
+<h3>Sorulacak sorular</h3><ul><li>Rover tam çizgide olsaydı P ne isterdi? Rüzgâr sonra ne yapardı?</li><li>Toplamla bile hakem yaklaşık 1 cm buluyor. Toplam ölçülen hatayı sıfıra götürür. Sensörünün görmediği bir hatayı neden hiçbir kontrolcü gideremez?</li><li>Toplamda büyük kazançla rover salınır. Çok fazla hatırlamak neden zarar verir?</li></ul>
+<h3>Öğrencilerin takıldığı yerler</h3><table class="stuck"><tr><th>Gördüğünüz</th><th>Ne demeli</th></tr><tr><td>Deneme duruyor: bir değişken, let ona değer vermeden kullanılmış.</td><td>Toplam döngüden önce sıfırdan başlamalı: let sum = 0.</td></tr><tr><td>Hatayı bir kez, döngünün dışında eklerler.</td><td>Toplam bir hafızadır. Her turda güncellenmelidir: let sum = sum + e*0.05.</td></tr><tr><td>Laboratuvar denemenin değerlendirilmediğini söylüyor.</td><td>Yalnızca buzda ve kendi rüzgârında değerlendirilir. Görevi yeniden yükleyin; ikisini de yeniden ayarlar.</td></tr></table>
+<h3>Görevler ve referans çözümler</h3><section class="mission"><h4>Rüzgarda çizgiyi tut</h4><p class="where">Görevin ayarladığı: Kinetic rover · Buz · Rüzgar 5.0 m/s</p><p><b>Hedef.</b> Buzda, rüzgar seni duvardan uzağa iterken solundaki duvardan 0.5 m uzakta kal: son 3 m’de ortalama ±2.4 cm içinde ve hiçbir zaman 10 cm’den fazla sapmadan.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: rüzgarda solundaki duvardan 0.50 m uzakta kal (ortalama ±2.4 cm içinde).
+# Bu ilk deneme mesafeye ve duvara göre açıya göre dönüyor: P ve D. Çalıştır ve ortalama sapmasını oku.
+while odom_x &lt; 3.8
+  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
+  wait(0.05)
+end
+stop()</pre><p>P ve D rover’ı duvarın yakınında tutar, ama sabit rüzgâr sabit bir sapma bırakır.</p></div><div><h5>Bir referans çözüm</h5><pre>let sum = 0
+while odom_x &lt; 3.8
+  let e = lidar_min - 0.5
+  let sum = sum + e*0.05
+  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + 1*sum)
+  wait(0.05)
+end
+stop()</pre><p>Aynı P ve D, artı hatanın birikimli toplamı. Toplam, rüzgâra karşı kendi başına yönlendirene kadar büyür.</p></div></div></section>
+<h3>Vakit kalırsa</h3><p>Sabit bir itmenin başka nerede ortaya çıktığını sorun: eğim, bir tarafta daha ağır yük, havası az bir lastik. Aynı toplam her birini giderir.</p></article>
+</body></html>

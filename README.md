@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 101 model, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 105 model, replay, teacher kit, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -67,6 +67,10 @@ The "P control · smooth 90° turn" example holds each command for 0.1 s. A samp
 The 30-second run limit, parser depth limit, and instruction budget bound student programs. A `while` loop without a `wait` hits the instruction guard. User code is parsed into a small AST, never evaluated as JavaScript.
 
 The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. **LiDAR CSV** writes one row per scan, with 360 ranges from 0° counterclockwise and 0 for no return, like the LDS-01 and the filter in a typical MATLAB `polarplot` script. The Plots tab also draws the last scan as a polar plot. That is a file export, not a live MATLAB connection.
+
+### For teachers
+
+[`docs/teacher-kit-en.html`](docs/teacher-kit-en.html), [`-tr`](docs/teacher-kit-tr.html), and [`-fr`](docs/teacher-kit-fr.html) are a printable kit for a robotics club: what to prepare, the routine of a session, and four 40-minute plans, one per experiment, with the questions to ask, where students get stuck, and each mission's starter beside a reference solution that passes. `npm run kit` builds the three files from the lab's own missions, the tested solutions, and numbers taken from the model, and a test fails while they are stale. The kit is not served with the lab, and the solutions never reach the page students use. It has not been tried in a classroom yet.
 
 ### Looking back at a run
 

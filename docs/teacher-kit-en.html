@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kinetic Robotics Lab · Teacher kit</title>
+<style>
+body{font:14px/1.55 system-ui,"Segoe UI",Arial,sans-serif;color:#1d2938;margin:0 auto;max-width:860px;padding:28px 22px 60px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px}h2{font-size:22px;margin:0}h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#7a8390;margin:22px 0 6px}
+h4{font-size:15px;margin:0 0 2px}h5{font-size:12px;margin:10px 0 4px;color:#4f5b68}p{margin:6px 0}.sub{color:#56708a;margin:0 0 4px}.small{font-size:12px;color:#7a8390}
+ul,ol{margin:6px 0;padding-left:22px}li{margin:4px 0}b{font-weight:600}
+table{width:100%;border-collapse:collapse;margin:6px 0}th,td{border:1px solid #dfe4e8;padding:6px 9px;text-align:left;vertical-align:top}
+.flow th{width:64px;white-space:nowrap;background:#f6f8fa;font-weight:600}.stuck th{background:#f6f8fa;font-size:12px}.stuck td{width:50%}
+.script td:first-child{font:12px ui-monospace,Menlo,monospace;white-space:nowrap;background:#f6f8fa}
+pre{font:12px/1.5 ui-monospace,Menlo,monospace;background:#121c2b;color:#e8edf3;border-radius:8px;padding:10px 12px;margin:4px 0;white-space:pre-wrap}
+.session{border-top:3px solid #f46a3c;margin-top:44px;padding-top:18px}.session header{display:flex;gap:16px;align-items:flex-start}
+.num{font:700 30px/1 system-ui;color:#f46a3c;background:#fff3ec;border-radius:10px;padding:12px 14px}.q{font-size:15px;margin:2px 0}.concept{color:#7a8390;font-size:12px;margin:0}
+.idea{background:#f1f8f5;border-left:3px solid #218b7d;padding:9px 12px;border-radius:0 8px 8px 0}
+.mission{border:1px solid #dfe4e8;border-radius:10px;padding:12px 14px;margin:10px 0}.where{font-size:12px;color:#7a8390;margin:0 0 6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.cols{grid-template-columns:1fr}}
+@media print{body{max-width:none;padding:0;font-size:11.5px}.session{break-before:page;margin-top:0}.mission,tr{break-inside:avoid}pre{border:1px solid #999;background:#fff;color:#000}}
+</style></head><body>
+<h1>Kinetic Robotics Lab · Teacher kit</h1><p class="sub">Four 40-minute sessions for a high-school robotics club</p><p class="small">Made from the lab’s own missions and checked solutions by npm run kit.</p>
+<h3>Before the first session</h3><ul><li>Each student, or pair, needs a laptop or tablet with a current browser. The lab is one web page: no accounts, no installation. A phone works, but the code editor is cramped.</li><li>Everything a student does stays in that browser on that device. Nothing is sent anywhere. Clearing the browser’s data erases the notebook, so have students download their results at the end of each session.</li><li>The language picker is in the header: English, Turkish, French. Rover script keywords and sensor names stay in English in every language, as in real code.</li><li>Try each session yourself first. Every mission in this kit has a reference solution that passes; run it once so you know what success looks like.</li></ul>
+<h3>The routine of every session</h3><ol><li>Predict. Before pressing <b>Run experiment</b>, the student says what will happen. Experiment 01 has prediction buttons; missions ask for a guess of the result.</li><li>Run, then read. The result line under the stage says what happened. The mission strip says how far off the run was and why.</li><li>Change one thing. One number or one line, then run again. The previous run stays on screen as a pale ghost, so the effect of the change can be seen.</li><li>Say why. The last five minutes are for one sentence each: what changed, and why it helped.</li></ol>
+<h3>What students have on screen</h3><ul><li>“<b>WHAT THE ROBOT READS</b>” shows each sensor the program uses, next to the truth the simulator knows. The gap between the two columns is the lesson of Experiment 02.</li><li>The timeline under the stage turns a finished run back. Drag it, or press play. The marks above it show wheel slip, a motor at its limit, and jumps in the commands.</li><li>The <b>Plots</b> tab draws every sensor against time. A click in a plot moves the rover on the stage to that moment.</li><li>“<b>Show the hint</b>” gives three hints in order: the idea, the tool, then the shape of the code with blanks. The blanks never hold the passing numbers. Ask students to try twice before each hint.</li></ul>
+<h3>What the simulator is, and is not</h3><ul><li>It is a model for learning. The Kinetic rover is an invented design with typical datasheet values; nobody has measured it. Say this to students: a simulator is a set of assumptions, and “<b>About the model</b>” lists them.</li><li>The TurtleBot3 preset is calibrated to a few university lab runs, not validated. Three things the real robot did are not reproduced; the most useful one to mention is that real wheels stop completely when asked to turn very slowly, where the model keeps creeping.</li><li>The judge of a mission reads the true position. The student’s program never can. That difference is deliberate, and worth pointing out each time a run that “looked right” fails.</li></ul>
+<h3>Collecting the work</h3><ul><li>In the <b>Results</b> tab, a student may type a name and press “<b>Download my results (CSV)</b>”. The file has one row per run: time, experiment, mission and whether it passed, the guess, the design, the outcome, and the program.</li><li>The file is made on the student’s device and goes nowhere until they hand it to you. It opens in any spreadsheet.</li><li>Look at the number of runs before the pass, not only at the pass. A student who passed on the twelfth run after changing one number each time has learned more than one who copied a neighbour.</li></ul>
+<h3>Rover script on one page</h3><table class="script"><tr><td>drive(v, w)</td><td>Forward speed v in m/s and turn rate w in rad/s. Positive w turns left.</td></tr><tr><td>wheels(l, r)</td><td>Left and right wheel speeds in rad/s, from −10 to 10.</td></tr><tr><td>wait(s)</td><td>Keep going for s seconds, from 0.05 to 10. Every loop needs one.</td></tr><tr><td>stop()</td><td>Both wheels to zero.</td></tr><tr><td>while distance &gt; 0.5 … end</td><td>Repeat while one reading compares with one number.</td></tr><tr><td>if … end · repeat 4 … end</td><td>One test, or a fixed number of repeats.</td></tr><tr><td>let e = distance - 0.5</td><td>A variable. Math uses + − * /, parentheses, abs, min, max.</td></tr></table><ul><li>Readings: distance, heading, odom_heading, gyro_z, odom_x, odom_y, encoder_left, encoder_right, time, lidar_front, lidar_left, lidar_back, lidar_right, lidar_min, lidar_min_angle, fused_heading, fused_x, fused_y. Angles are in degrees, lengths in meters.</li><li>A run ends after 30 seconds. A loop with no wait in it stops the run at once, with a message that names the line.</li></ul>
+<article class="session"><header><span class="num">01</span><div><h2>Carry the load</h2><p class="q">Can your rover keep its balance on a tilted surface?</p><p class="concept">Center of mass &amp; support polygon · 40 min</p></div></header>
+<h3>Goal</h3><p>Students predict whether a loaded rover tips on a ramp, test it, and explain the result with two words: center of mass and support polygon.</p><h3>The idea to leave with</h3><p class="idea">The rover stands while the point under its center of mass stays inside the triangle of its three contacts. A wider base or a lower load gives more margin.</p>
+<h3>Flow</h3><table class="flow"><tr><th>5 min</th><td>Show the three presets without running them: <b>Balanced</b>, <b>Top-heavy</b>, <b>Off-center</b>. Each student writes which ones tip at 25°.</td></tr><tr><th>10 min</th><td>They test their guesses. <b>Balanced</b> holds at 25° and tips at 28.8°; <b>Top-heavy</b> tips at 7.5°; <b>Off-center</b> at 2.3°. The orange point leaving the dashed triangle is the moment to watch.</td></tr><tr><th>15 min</th><td>Challenge: carry the heaviest load (3 kg) to 30° without tipping. They may change the wheel spacing, the height, and the sideways position.</td></tr><tr><th>10 min</th><td>Each pair shows its design and says which single change bought the most margin.</td></tr></table>
+<h3>Questions to ask</h3><ul><li>Where is the orange point when the rover is about to tip?</li><li>Why does moving the load toward the raised side help? (With the default rover it tips at 42.5° instead of 28.8°; toward the low side, at 10.5°.)</li><li>A delivery robot must carry a tall parcel. What would you change on the robot, and what would you ask of the parcel?</li></ul>
+<h3>Where students get stuck</h3><table class="stuck"><tr><th>What you see</th><th>What to say</th></tr><tr><td>“It tips, so I add weight low down” — but the only weight is the payload.</td><td>Ask what the mass slider does to the height of the center of mass: more payload high up raises it.</td></tr><tr><td>They change three sliders at once and cannot say what worked.</td><td>One change per run. The <b>Results</b> tab keeps every run, so they can compare.</td></tr></table>
+
+<h3>If there is time</h3><p>Ask for the narrowest rover that still carries 1.5 kg to 25°. It makes the trade-off concrete: a narrow robot fits through doors and tips sooner.</p></article>
+<article class="session"><header><span class="num">02</span><div><h2>Where am I?</h2><p class="q">Can your rover tell where it is using only its own sensors?</p><p class="concept">Odometry, gyro &amp; ground truth · 40 min</p></div></header>
+<h3>Goal</h3><p>Students find out that a robot does not know where it is: it estimates. They make a program measure instead of count seconds.</p><h3>The idea to leave with</h3><p class="idea">Time is not distance, and wheel turns are not body turns. Use the sensor that measures the thing you care about, and slow down before the target.</p>
+<h3>Flow</h3><table class="flow"><tr><th>5 min</th><td>Everyone loads the first mission and runs its starter unchanged. It fails. Read the mission strip together: how far off, and why.</td></tr><tr><th>15 min</th><td>First mission. Let them try twice before the first hint. Pass around: a student who has it explains it to one who has not.</td></tr><tr><th>15 min</th><td>Second mission, on the TurtleBot3. Open “<b>WHAT THE ROBOT READS</b>” and compare heading with odom_heading while it turns.</td></tr><tr><th>5 min</th><td>One sentence each: which sensor did you trust at the start, and which at the end?</td></tr></table>
+<h3>Questions to ask</h3><ul><li>The rover saw 0.20 m and stopped. Why is it closer than 0.20 m now?</li><li>The encoders say 360°. The body turned less. Where did the difference go?</li><li>In the truth column, what does the robot not know?</li></ul>
+<h3>Where students get stuck</h3><table class="stuck"><tr><th>What you see</th><th>What to say</th></tr><tr><td>The run stops at once and the message names a line.</td><td>The loop has no wait. Every loop needs wait(0.05), or the program never lets time pass.</td></tr><tr><td>They lower the stopping number again and again (0.2, 0.25, 0.3 …).</td><td>That tunes one speed on one floor. Ask what happens at another speed, then point to the tool hint: brake in two steps.</td></tr><tr><td>The turn overshoots even with heading.</td><td>The rover is still turning when the loop ends. Turn slower for the last part.</td></tr></table>
+<h3>Missions and reference solutions</h3><section class="mission"><h4>Stop 20 cm from the box</h4><p class="where">Set by the mission: Kinetic rover · Concrete</p><p><b>Goal.</b> End the run with the front sensor 20 cm from the box, within ±3 cm, without touching it.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: stop with the front sensor 0.20 m from the box (±3 cm).
+# This first try ignores braking distance. Run it, read the result, then improve it.
+drive(0.4, 0)
+while distance &gt; 0.2
+  wait(0.05)
+end
+stop()</pre><p>It drives at 0.4 m/s and brakes when it reads 0.20 m. Braking takes distance, so it ends too close.</p></div><div><h5>A reference solution</h5><pre>drive(0.3, 0)
+while distance &gt; 0.35
+  wait(0.05)
+end
+drive(0.08, 0)
+while distance &gt; 0.21
+  wait(0.05)
+end
+stop()</pre><p>Fast until 0.35 m, then slowly to 0.21 m: at low speed the rover stops within about a centimeter.</p></div></div></section><section class="mission"><h4>Turn exactly once around</h4><p class="where">Set by the mission: TurtleBot3 Waffle Pi · Concrete</p><p><b>Goal.</b> Turn in place and end within 3° of a full 360° turn, judged on the true heading.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: turn in place exactly 360° (±3°), judged on the true heading.
+# This first try trusts the wheel encoders. In Plots, compare heading with odom_heading.
+drive(0, 1)
+while odom_heading &lt; 360
+  wait(0.05)
+end
+stop()</pre><p>It trusts the encoders. The ball casters drag, the wheels creep, and the body turns less than the wheels say.</p></div><div><h5>A reference solution</h5><pre>drive(0, 1)
+while heading &lt; 330
+  wait(0.05)
+end
+drive(0, 0.3)
+while heading &lt; 359.5
+  wait(0.05)
+end
+stop()</pre><p>It reads heading, from the IMU, and turns slowly for the last 30°.</p></div></div></section><section class="mission"><h4>Close a square on ice</h4><p class="where">Set by the mission: Kinetic rover · Ice</p><p><b>Goal.</b> Drive a square with 0.5 m sides and finish within 10 cm of where you started.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: drive a square with 0.5 m sides on ice and end within 10 cm of the start.
+# This first try uses timing only. On ice, time is not distance.
+repeat 4
+  drive(0.3, 0)
+  wait(1.7)
+  drive(0, 1.5)
+  wait(1.05)
+end
+stop()</pre><p>It uses time only. On ice the wheels slip, so equal times are not equal distances or equal angles.</p></div><div><h5>A reference solution</h5><pre>drive(0.15, 0)
+while odom_x &lt; 0.5
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 88
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_y &lt; 0.5
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 178
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_x &gt; 0
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 268
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_y &gt; 0
+  wait(0.05)
+end
+stop()</pre><p>Each side is measured with odom_x or odom_y and each corner with heading, at 0.15 m/s so the wheels hold.</p></div></div></section>
+<h3>If there is time</h3><p>The third mission, a square on ice, needs both ideas at once. It is hard; treat a square that closes within 20 cm as a good result for a first session.</p></article>
+<article class="session"><header><span class="num">03</span><div><h2>Follow the wall</h2><p class="q">Can your rover correct itself in proportion to its error?</p><p class="concept">Proportional control &amp; feedback · 40 min</p></div></header>
+<h3>Goal</h3><p>Students replace “drive, then brake at the line” with a command that shrinks as the error shrinks: proportional control.</p><h3>The idea to leave with</h3><p class="idea">Command = gain × error. Far away the rover moves fast, close by it moves slowly, and at the target the command is zero. The gain sets how hard it tries.</p>
+<h3>Flow</h3><table class="flow"><tr><th>5 min</th><td>On the board: error = distance − 0.5. Ask what speed they would choose at 2 m, at 0.6 m, at 0.5 m. They have just invented P control.</td></tr><tr><th>15 min</th><td>First mission: park at 0.5 m. Once it passes, they try gains 0.3, 1, and 3 and compare the runs with the ghost and the mission plot. In 15 seconds, 0.3 is still at 54 cm; 1 and 3 pass.</td></tr><tr><th>15 min</th><td>Second mission: follow the wall. The starter steers on distance alone and weaves. Let them watch the weave on the path before any hint.</td></tr><tr><th>5 min</th><td>One sentence each: what does the gain decide?</td></tr></table>
+<h3>Questions to ask</h3><ul><li>What is the command when the rover is exactly at the target? What if something pushes it away afterwards?</li><li>With gain 0.3 the rover never quite arrives in 15 seconds. Why does it slow down so much near the target?</li><li>Why does steering on distance alone weave along the wall?</li></ul>
+<h3>Where students get stuck</h3><table class="stuck"><tr><th>What you see</th><th>What to say</th></tr><tr><td>The parking loop ends before the rover has settled.</td><td>A P controller needs time to arrive. Run the loop on time, for example while time &lt; 15, not on the distance.</td></tr><tr><td>They write drive(1*(0.5 - distance), 0) and the rover reverses.</td><td>Ask for the sign of the error when the rover is too far. The command must push it toward the target.</td></tr><tr><td>The wall follower weaves whatever gain they try.</td><td>Distance changes only after the rover has turned. It needs a second term on the angle to the wall, lidar_min_angle − 90.</td></tr></table>
+<h3>Missions and reference solutions</h3><section class="mission"><h4>Park 0.5 m from the wall</h4><p class="where">Set by the mission: Kinetic rover · Concrete</p><p><b>Goal.</b> End the run with the front sensor 0.50 m from the wall ahead, within ±2 cm.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: park with the front sensor 0.50 m from the wall ahead (±2 cm).
+# This first try drives at 0.5 m/s and brakes at the line. Run it, read the result, then improve it.
+drive(0.5, 0)
+while distance &gt; 0.5
+  wait(0.05)
+end
+stop()</pre><p>It drives at 0.5 m/s and brakes at the line, so it overshoots by several centimeters.</p></div><div><h5>A reference solution</h5><pre>while time &lt; 15
+  drive(1*(distance - 0.5), 0)
+  wait(0.05)
+end
+stop()</pre><p>Speed is 1 × the distance left, for 15 seconds. The rover slows by itself as it arrives.</p></div></div></section><section class="mission"><h4>Follow the wall at 0.5 m</h4><p class="where">Set by the mission: Kinetic rover · Concrete</p><p><b>Goal.</b> Drive along the wall on your left and keep 0.5 m from it, within ±10 cm, over the last 1.8 m.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: follow the wall on your left at 0.50 m (±10 cm) over the last 1.8 m.
+# This first try steers in proportion to the left LiDAR reading alone. Run it and watch the path.
+while odom_x &lt; 3.8
+  drive(0.2, 1*(lidar_left - 0.5))
+  wait(0.05)
+end
+stop()</pre><p>It steers on the left beam alone. The distance answers only after the rover has turned, so it weaves.</p></div><div><h5>A reference solution</h5><pre>while odom_x &lt; 3.8
+  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
+  wait(0.05)
+end
+stop()</pre><p>Two terms from the LiDAR: the distance error, and the angle to the wall, which is zero when the rover runs parallel.</p></div></div></section>
+<h3>If there is time</h3><p>Run the passing parking program on ice. It still parks at 0.50 m, though the mission is judged only on concrete. Ask why a controller that measures copes with a floor it was not tuned for.</p></article>
+<article class="session"><header><span class="num">04</span><div><h2>Hold the line</h2><p class="q">Why does a steady push leave a steady error, and what removes it?</p><p class="concept">Integral control &amp; PID · 40 min</p></div></header>
+<h3>Goal</h3><p>Students see that a steady push leaves a P controller with a steady error, and remove it by adding the error up over time: the integral term.</p><h3>The idea to leave with</h3><p class="idea">P only acts while there is an error, so against a steady push it settles a little off the line. A running sum of the error keeps growing until the measured offset is gone.</p>
+<h3>Flow</h3><table class="flow"><tr><th>5 min</th><td>Run the starter. It follows the wall but sits off the line. Open the mission plot: the curve is flat, beside the target band.</td></tr><tr><th>5 min</th><td>Turn the wind off and run again: the average miss falls from about 5 cm to about 3 cm. The wind causes part of it. The rest is the sensor, which reads a little short.</td></tr><tr><th>20 min</th><td>They add a sum with let, inside the loop, and steer with a multiple of it. Compare gains 0.3, 1, and 3 on the sum: 0.3 is too slow to pass, 1 passes, and 3 passes but swings up to 9 cm off the line.</td></tr><tr><th>10 min</th><td>Name the three terms on the board, using their own code: P is the error now, I is its sum, D is how fast it changes.</td></tr></table>
+<h3>Questions to ask</h3><ul><li>If the rover sat exactly on the line, what would P ask for? What would the wind do next?</li><li>With the sum, the judge still finds about 1 cm. The sum drives the measured error to zero. Why can no controller remove an error its sensor does not see?</li><li>With a large gain on the sum the rover swings. Why does remembering too much hurt?</li></ul>
+<h3>Where students get stuck</h3><table class="stuck"><tr><th>What you see</th><th>What to say</th></tr><tr><td>The run stops: a variable is used before let gives it a value.</td><td>The sum must start at zero before the loop: let sum = 0.</td></tr><tr><td>They add the error once, outside the loop.</td><td>The sum is a memory. It has to be updated on every pass: let sum = sum + e*0.05.</td></tr><tr><td>The lab says the run was not judged.</td><td>It is judged only on ice in its own wind. Reload the mission, which sets both again.</td></tr></table>
+<h3>Missions and reference solutions</h3><section class="mission"><h4>Hold the line in the wind</h4><p class="where">Set by the mission: Kinetic rover · Ice · Wind 5.0 m/s</p><p><b>Goal.</b> On ice, with the wind pushing you away from the wall, keep 0.5 m from the wall on your left: within ±2.4 cm on average over the last 3 m, and never more than 10 cm off.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: keep 0.50 m from the wall on your left in the wind (average within ±2.4 cm).
+# This first try steers on the distance and on the angle to the wall: P and D. Run it and read its average miss.
+while odom_x &lt; 3.8
+  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
+  wait(0.05)
+end
+stop()</pre><p>P and D hold the rover near the wall, but the steady wind leaves a steady offset.</p></div><div><h5>A reference solution</h5><pre>let sum = 0
+while odom_x &lt; 3.8
+  let e = lidar_min - 0.5
+  let sum = sum + e*0.05
+  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + 1*sum)
+  wait(0.05)
+end
+stop()</pre><p>The same P and D, plus a running sum of the error. The sum grows until it steers into the wind by itself.</p></div></div></section>
+<h3>If there is time</h3><p>Ask where else a steady push appears: a slope, a heavier load on one side, a tyre with less air. The same sum removes each of them.</p></article>
+</body></html>

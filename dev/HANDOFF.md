@@ -30,9 +30,10 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
   - New: a timeline that turns a finished run back, the same moment marked in every plot, and the previous run as a ghost (`dist/replay.mjs`).
+  - New: a teacher kit in three languages, `docs/teacher-kit-{en,tr,fr}.html` (`npm run kit`).
   - New, outside the lab: `tools/quadcopter/`, the owner's study tool for the ME 425 quadcopter slides (its own README). It is not in `dist`, so it is not deployed, and it does not follow the lab's i18n or design rules.
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-16: `npm test` 101/101 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-16: `npm test` 105/105 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -102,6 +103,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-16 — Claude Code (cloud) — teacher kit
+- Changed: new `scripts/teacher-kit.mjs`, `scripts/teacher-kit-content.mjs`, `docs/teacher-kit-{en,tr,fr}.html`, `tests/teacher-kit.test.mjs` (4 tests), `tests/solutions.mjs` (the reference solutions, moved out of `tests/missions.test.mjs`); `package.json` (`npm run kit`), README, `dev/AGENTS.md`, this file.
+- Verified: `npm test` 105/105. Each quoted number is computed from the model, and three first-draft claims were wrong and are corrected: calm air does not remove the wall-follower's miss (about 5 cm becomes about 3 cm), the integral term leaves about 1 cm that the sensor cannot see, and a parking gain of 0.3 does not arrive in 15 s. The Turkish file was read on screen and printed to a 10-page A4 PDF. Not done: a classroom trial, and a native review of the French and Turkish.
+- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Next / open: the owner tries one session with students and reports what the plan got wrong. The instructor-kit item of the credit plan is done.
 
 ### 2026-11-16 — Claude Code (cloud) — layout fixes and event marks
 - Changed: `dist/style.css`, `dist/index.html` (the outcome message is a line under the stage, the header fits 377 px, "About the model" shows below 850 px); `dist/replay.mjs` (`runEvents`), `dist/app.js`, `dist/plots.mjs` (bands), five `event.*` keys in three languages, `docs/french-review.html`, tests, README, `dev/AGENTS.md`. Commits `dc0c70e` and the one after it.
@@ -215,19 +222,3 @@ Entry template:
   - Not verified: real phones, Safari, Firefox; a native French review.
 - Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
 - Next / open: the owner merges into `main` if wanted. The P example also shows a pattern for the "turn once around" mission, though not its reference solution. Next planned step: Experiment 03, wall following with P control.
-
-### 2026-11-01 — Claude Code (cloud) — instructions load on their own, browser smoke test
-
-- Changed:
-  - New `.claude/CLAUDE.md`: imports `dev/CLAUDE.md` and `dev/AGENTS.md`, so Claude Code sessions, including cloud sessions, load them without a pasted prompt. The root stays free of agent files.
-  - New `tests/browser/smoke.test.mjs` (9 tests) and `npm run test:browser`. Headless Chromium against `scripts/serve.mjs` on a free port, with a Playwright fake clock driving `requestAnimationFrame`. Expected texts come from `dist/lang/*.mjs` and `dist/missions.mjs`, the CSV header from `toCsv`. Any console error, exception, failed request, or HTTP error fails the test. A failure leaves a screenshot in `test-results/` (ignored by Git).
-  - `scripts/serve.mjs`: prints the real address, `http://127.0.0.1:<port>`, and `PORT=0` picks a free port. This closes the old "serve.mjs prints localhost" finding.
-  - `dev/AGENTS.md`, `README.md`: the browser test, and how the instructions load. `.gitignore`: `test-results/`.
-  - No change under `dist/`.
-- Verified:
-  - `npm test` 54/54, `npm run check` pass, `npm run test:browser` 9/9 pass (about 10 s).
-  - The test can fail: six deliberate breaks, each reverted with `git checkout`, failed the expected tests. A 800 px minimum width failed both phone tests; a dead CSV button failed the drive test; a dead `?` key failed the keyboard test; not restoring the saved language failed the language test; a missing module (404) failed all 9; an exception in `finish()` during drive runs failed the 4 tests that finish a drive run. That last result showed the phone tests run a drive, not the ramp, because opening the Code tab switches to driving; the test name and check were corrected.
-  - Writing `.claude/CLAUDE.md` made Claude Code load both imported files in this session. Not verified: a freshly started session.
-  - Not verified: Firefox, WebKit, and Safari (only Chromium is installed in the cloud container), and real phones.
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
-- Next / open: the owner merges into `main` if wanted. Next planned step: bounded expressions in rover scripts (for example `drive(0.3, 2*(lidar_left-0.3))`), as the prerequisite for P and PID lessons.

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kinetic Robotics Lab · Kit de l’enseignant</title>
+<style>
+body{font:14px/1.55 system-ui,"Segoe UI",Arial,sans-serif;color:#1d2938;margin:0 auto;max-width:860px;padding:28px 22px 60px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.4px}h2{font-size:22px;margin:0}h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#7a8390;margin:22px 0 6px}
+h4{font-size:15px;margin:0 0 2px}h5{font-size:12px;margin:10px 0 4px;color:#4f5b68}p{margin:6px 0}.sub{color:#56708a;margin:0 0 4px}.small{font-size:12px;color:#7a8390}
+ul,ol{margin:6px 0;padding-left:22px}li{margin:4px 0}b{font-weight:600}
+table{width:100%;border-collapse:collapse;margin:6px 0}th,td{border:1px solid #dfe4e8;padding:6px 9px;text-align:left;vertical-align:top}
+.flow th{width:64px;white-space:nowrap;background:#f6f8fa;font-weight:600}.stuck th{background:#f6f8fa;font-size:12px}.stuck td{width:50%}
+.script td:first-child{font:12px ui-monospace,Menlo,monospace;white-space:nowrap;background:#f6f8fa}
+pre{font:12px/1.5 ui-monospace,Menlo,monospace;background:#121c2b;color:#e8edf3;border-radius:8px;padding:10px 12px;margin:4px 0;white-space:pre-wrap}
+.session{border-top:3px solid #f46a3c;margin-top:44px;padding-top:18px}.session header{display:flex;gap:16px;align-items:flex-start}
+.num{font:700 30px/1 system-ui;color:#f46a3c;background:#fff3ec;border-radius:10px;padding:12px 14px}.q{font-size:15px;margin:2px 0}.concept{color:#7a8390;font-size:12px;margin:0}
+.idea{background:#f1f8f5;border-left:3px solid #218b7d;padding:9px 12px;border-radius:0 8px 8px 0}
+.mission{border:1px solid #dfe4e8;border-radius:10px;padding:12px 14px;margin:10px 0}.where{font-size:12px;color:#7a8390;margin:0 0 6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.cols{grid-template-columns:1fr}}
+@media print{body{max-width:none;padding:0;font-size:11.5px}.session{break-before:page;margin-top:0}.mission,tr{break-inside:avoid}pre{border:1px solid #999;background:#fff;color:#000}}
+</style></head><body>
+<h1>Kinetic Robotics Lab · Kit de l’enseignant</h1><p class="sub">Quatre séances de 40 minutes pour un club de robotique au lycée</p><p class="small">Produit à partir des missions du labo et de solutions vérifiées, avec npm run kit.</p>
+<h3>Avant la première séance</h3><ul><li>Chaque élève, ou binôme, a besoin d’un ordinateur ou d’une tablette avec un navigateur récent. Le labo est une seule page web : pas de compte, pas d’installation. Un téléphone convient, mais l’éditeur de code y est étroit.</li><li>Tout ce que fait l’élève reste dans ce navigateur, sur cet appareil. Rien n’est envoyé. Effacer les données du navigateur efface le carnet : faites télécharger les résultats à la fin de chaque séance.</li><li>Le choix de la langue est dans l’en-tête : anglais, turc, français. Les mots-clés du langage du rover et les noms des capteurs restent en anglais dans toutes les langues, comme dans du vrai code.</li><li>Essayez d’abord chaque séance vous-même. Chaque mission de ce kit a une solution de référence qui réussit ; lancez-la une fois pour savoir à quoi ressemble la réussite.</li></ul>
+<h3>Le déroulé de chaque séance</h3><ol><li>Prévoir. Avant d’appuyer sur <b>Lancer l’expérience</b>, l’élève dit ce qui va se passer. L’expérience 01 a des boutons de prévision ; les missions demandent d’estimer le résultat.</li><li>Lancer, puis lire. La ligne de résultat sous la scène dit ce qui s’est passé. Le bandeau de mission dit de combien l’essai a manqué, et pourquoi.</li><li>Changer une seule chose. Un nombre ou une ligne, puis relancer. L’essai précédent reste à l’écran comme un fantôme pâle : on voit l’effet du changement.</li><li>Dire pourquoi. Les cinq dernières minutes servent à une phrase par élève : ce qui a changé, et pourquoi cela a aidé.</li></ol>
+<h3>Ce que les élèves ont à l’écran</h3><ul><li>« <b>CE QUE LE ROBOT LIT</b> » montre chaque capteur utilisé par le programme, à côté de la vérité que connaît le simulateur. L’écart entre les deux colonnes est la leçon de l’expérience 02.</li><li>La ligne de temps sous la scène permet de revenir en arrière dans un essai terminé. Faites-la glisser, ou appuyez sur lecture. Les marques au-dessus signalent le patinage, un moteur à sa limite et les sauts de consigne.</li><li>L’onglet <b>Courbes</b> trace chaque capteur en fonction du temps. Un clic dans une courbe amène le rover de la scène à cet instant.</li><li>« <b>Afficher l’indice</b> » donne trois indices dans l’ordre : l’idée, l’outil, puis la forme du code avec des blancs. Les blancs ne contiennent jamais les bonnes valeurs. Demandez deux essais avant chaque indice.</li></ul>
+<h3>Ce que le simulateur est, et n’est pas</h3><ul><li>C’est un modèle pour apprendre. Le rover Kinetic est une conception inventée, avec des valeurs typiques de fiches techniques ; personne ne l’a mesuré. Dites-le aux élèves : un simulateur est un ensemble d’hypothèses, et « <b>À propos du modèle</b> » les énumère.</li><li>Le préréglage TurtleBot3 est calibré sur quelques essais de labo universitaire, pas validé. Trois comportements du vrai robot ne sont pas reproduits ; le plus utile à mentionner : de vraies roues s’arrêtent net quand on leur demande de tourner très lentement, alors que le modèle continue d’avancer.</li><li>Le juge d’une mission lit la vraie position. Le programme de l’élève ne le peut jamais. Cette différence est voulue : rappelez-la chaque fois qu’un essai qui « avait l’air bon » échoue.</li></ul>
+<h3>Récupérer le travail</h3><ul><li>Dans l’onglet <b>Résultats</b>, l’élève peut saisir un nom et appuyer sur « <b>Télécharger mes résultats (CSV)</b> ». Le fichier contient une ligne par essai : heure, expérience, mission et réussite, estimation, conception, résultat et programme.</li><li>Le fichier est créé sur l’appareil de l’élève et ne va nulle part tant qu’il ne vous le remet pas. Il s’ouvre dans n’importe quel tableur.</li><li>Regardez le nombre d’essais avant la réussite, pas seulement la réussite. Un élève qui réussit au douzième essai en changeant un nombre à la fois a plus appris que celui qui a copié son voisin.</li></ul>
+<h3>Le langage du rover en une page</h3><table class="script"><tr><td>drive(v, w)</td><td>Vitesse d’avance v en m/s et vitesse de rotation w en rad/s. w positif tourne à gauche.</td></tr><tr><td>wheels(l, r)</td><td>Vitesses des roues gauche et droite en rad/s, de −10 à 10.</td></tr><tr><td>wait(s)</td><td>Continuer pendant s secondes, de 0.05 à 10. Chaque boucle en a besoin.</td></tr><tr><td>stop()</td><td>Les deux roues à zéro.</td></tr><tr><td>while distance &gt; 0.5 … end</td><td>Répéter tant qu’une mesure se compare à un nombre.</td></tr><tr><td>if … end · repeat 4 … end</td><td>Un test, ou un nombre fixe de répétitions.</td></tr><tr><td>let e = distance - 0.5</td><td>Une variable. Les calculs utilisent + − * /, les parenthèses, abs, min, max.</td></tr></table><ul><li>Mesures : distance, heading, odom_heading, gyro_z, odom_x, odom_y, encoder_left, encoder_right, time, lidar_front, lidar_left, lidar_back, lidar_right, lidar_min, lidar_min_angle, fused_heading, fused_x, fused_y. Angles en degrés, longueurs en mètres.</li><li>Un essai s’arrête après 30 secondes. Une boucle sans wait arrête l’essai aussitôt, avec un message qui nomme la ligne.</li></ul>
+<article class="session"><header><span class="num">01</span><div><h2>Porter la charge</h2><p class="q">Ton rover peut-il garder l’équilibre sur une surface inclinée ?</p><p class="concept">Centre de masse et polygone de sustentation · 40 min</p></div></header>
+<h3>Objectif</h3><p>Les élèves prévoient si un rover chargé bascule sur une rampe, le testent, et expliquent le résultat avec deux notions : centre de masse et polygone de sustentation.</p><h3>L’idée à retenir</h3><p class="idea">Le rover tient tant que le point situé sous son centre de masse reste dans le triangle de ses trois appuis. Une base plus large ou une charge plus basse donne plus de marge.</p>
+<h3>Déroulé</h3><table class="flow"><tr><th>5 min</th><td>Montrez les trois préréglages sans les lancer : <b>Équilibré</b>, <b>Lourd en haut</b>, <b>Décentré</b>. Chaque élève écrit lesquels basculent à 25°.</td></tr><tr><th>10 min</th><td>Ils testent leurs prévisions. <b>Équilibré</b> tient à 25° et bascule à 28.8° ; <b>Lourd en haut</b> bascule à 7.5° ; <b>Décentré</b> à 2.3°. Le moment à observer : le point orange qui sort du triangle en pointillés.</td></tr><tr><th>15 min</th><td>Défi : porter la charge la plus lourde (3 kg) jusqu’à 30° sans basculer. Ils peuvent changer l’écartement des roues, la hauteur et la position latérale.</td></tr><tr><th>10 min</th><td>Chaque binôme montre sa conception et dit quel changement, à lui seul, a donné le plus de marge.</td></tr></table>
+<h3>Questions à poser</h3><ul><li>Où est le point orange quand le rover est sur le point de basculer ?</li><li>Pourquoi déplacer la charge vers le côté relevé aide-t-il ? (Le rover par défaut bascule à 42.5° au lieu de 28.8° ; vers le côté bas, à 10.5°.)</li><li>Un robot de livraison doit porter un colis haut. Que changeriez-vous sur le robot, et que demanderiez-vous au colis ?</li></ul>
+<h3>Là où les élèves bloquent</h3><table class="stuck"><tr><th>Ce que vous voyez</th><th>Que dire</th></tr><tr><td>« Il bascule, donc j’ajoute du poids en bas » — mais le seul poids est la charge.</td><td>Demandez ce que le curseur de masse fait à la hauteur du centre de masse : plus de charge en hauteur le fait monter.</td></tr><tr><td>Ils changent trois curseurs à la fois et ne savent pas dire ce qui a marché.</td><td>Un changement par essai. L’onglet <b>Résultats</b> garde chaque essai : ils peuvent comparer.</td></tr></table>
+
+<h3>S’il reste du temps</h3><p>Demandez le rover le plus étroit qui porte encore 1.5 kg jusqu’à 25°. Le compromis devient concret : un robot étroit passe les portes et bascule plus tôt.</p></article>
+<article class="session"><header><span class="num">02</span><div><h2>Où suis-je ?</h2><p class="q">Ton rover peut-il savoir où il est avec ses seuls capteurs ?</p><p class="concept">Odométrie, gyroscope et position réelle · 40 min</p></div></header>
+<h3>Objectif</h3><p>Les élèves découvrent qu’un robot ne sait pas où il est : il l’estime. Ils font mesurer leur programme au lieu de compter des secondes.</p><h3>L’idée à retenir</h3><p class="idea">Le temps n’est pas la distance, et les tours de roue ne sont pas les tours du robot. Utilisez le capteur qui mesure ce qui vous importe, et ralentissez avant la cible.</p>
+<h3>Déroulé</h3><table class="flow"><tr><th>5 min</th><td>Tout le monde charge la première mission et lance son code de départ tel quel. Il échoue. Lisez ensemble le bandeau de mission : de combien, et pourquoi.</td></tr><tr><th>15 min</th><td>Première mission. Laissez deux essais avant le premier indice. Circulez : un élève qui a réussi explique à un autre.</td></tr><tr><th>15 min</th><td>Deuxième mission, sur le TurtleBot3. Ouvrez « <b>CE QUE LE ROBOT LIT</b> » et comparez heading et odom_heading pendant la rotation.</td></tr><tr><th>5 min</th><td>Une phrase chacun : à quel capteur faisiez-vous confiance au début, et à la fin ?</td></tr></table>
+<h3>Questions à poser</h3><ul><li>Le rover a vu 0.20 m et s’est arrêté. Pourquoi est-il maintenant plus près que 0.20 m ?</li><li>Les encodeurs disent 360°. Le robot a moins tourné. Où est passée la différence ?</li><li>Dans la colonne de la vérité, qu’est-ce que le robot ne sait pas ?</li></ul>
+<h3>Là où les élèves bloquent</h3><table class="stuck"><tr><th>Ce que vous voyez</th><th>Que dire</th></tr><tr><td>L’essai s’arrête aussitôt et le message nomme une ligne.</td><td>La boucle n’a pas de wait. Chaque boucle a besoin de wait(0.05), sinon le programme ne laisse jamais passer le temps.</td></tr><tr><td>Ils modifient sans cesse le seuil d’arrêt (0.2, 0.25, 0.3 …).</td><td>Cela règle une vitesse sur un sol. Demandez ce qui se passe à une autre vitesse, puis renvoyez à l’indice sur l’outil : freiner en deux temps.</td></tr><tr><td>La rotation dépasse la cible, même avec heading.</td><td>Le rover tourne encore quand la boucle se termine. Tournez plus lentement à la fin.</td></tr></table>
+<h3>Missions et solutions de référence</h3><section class="mission"><h4>S’arrêter à 20 cm de la boîte</h4><p class="where">Réglé par la mission: Rover Kinetic · Béton</p><p><b>But.</b> Termine l’essai avec le capteur avant à 20 cm de la boîte, à ±3 cm près, sans la toucher.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : s’arrêter avec le capteur avant à 0.20 m de la boîte (±3 cm).
+# Ce premier essai ignore la distance de freinage. Lance-le, lis le résultat, puis améliore-le.
+drive(0.4, 0)
+while distance &gt; 0.2
+  wait(0.05)
+end
+stop()</pre><p>Il roule à 0.4 m/s et freine en lisant 0.20 m. Le freinage prend de la distance : il finit trop près.</p></div><div><h5>Une solution de référence</h5><pre>drive(0.3, 0)
+while distance &gt; 0.35
+  wait(0.05)
+end
+drive(0.08, 0)
+while distance &gt; 0.21
+  wait(0.05)
+end
+stop()</pre><p>Vite jusqu’à 0.35 m, puis lentement jusqu’à 0.21 m : à faible vitesse, le rover s’arrête en un centimètre environ.</p></div></div></section><section class="mission"><h4>Faire exactement un tour</h4><p class="where">Réglé par la mission: TurtleBot3 Waffle Pi · Béton</p><p><b>But.</b> Tourne sur place et termine à moins de 3° d’un tour complet de 360°, jugé sur le cap réel.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : tourner sur place d’exactement 360° (±3°), jugé sur le cap réel.
+# Ce premier essai fait confiance aux encodeurs des roues. Dans Courbes, compare heading et odom_heading.
+drive(0, 1)
+while odom_heading &lt; 360
+  wait(0.05)
+end
+stop()</pre><p>Il se fie aux encodeurs. Les roulettes à bille frottent, les roues glissent, et le robot tourne moins que ne le disent les roues.</p></div><div><h5>Une solution de référence</h5><pre>drive(0, 1)
+while heading &lt; 330
+  wait(0.05)
+end
+drive(0, 0.3)
+while heading &lt; 359.5
+  wait(0.05)
+end
+stop()</pre><p>Il lit heading, fourni par l’IMU, et tourne lentement pour les 30 derniers degrés.</p></div></div></section><section class="mission"><h4>Fermer un carré sur la glace</h4><p class="where">Réglé par la mission: Rover Kinetic · Glace</p><p><b>But.</b> Fais un carré de 0.5 m de côté et termine à moins de 10 cm de ton point de départ.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : faire un carré de 0.5 m de côté sur la glace et finir à moins de 10 cm du départ.
+# Ce premier essai n’utilise que le minutage. Sur la glace, le temps n’est pas une distance.
+repeat 4
+  drive(0.3, 0)
+  wait(1.7)
+  drive(0, 1.5)
+  wait(1.05)
+end
+stop()</pre><p>Il n’utilise que le temps. Sur la glace les roues patinent : des durées égales ne donnent ni distances ni angles égaux.</p></div><div><h5>Une solution de référence</h5><pre>drive(0.15, 0)
+while odom_x &lt; 0.5
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 88
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_y &lt; 0.5
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 178
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_x &gt; 0
+  wait(0.05)
+end
+drive(0, 0.6)
+while heading &lt; 268
+  wait(0.05)
+end
+drive(0.15, 0)
+while odom_y &gt; 0
+  wait(0.05)
+end
+stop()</pre><p>Chaque côté est mesuré avec odom_x ou odom_y et chaque angle avec heading, à 0.15 m/s pour que les roues accrochent.</p></div></div></section>
+<h3>S’il reste du temps</h3><p>La troisième mission, un carré sur la glace, demande les deux idées à la fois. Elle est difficile ; un carré qui se referme à 20 cm près est un bon résultat pour une première séance.</p></article>
+<article class="session"><header><span class="num">03</span><div><h2>Suivre le mur</h2><p class="q">Ton rover peut-il se corriger en proportion de son erreur ?</p><p class="concept">Commande proportionnelle et rétroaction · 40 min</p></div></header>
+<h3>Objectif</h3><p>Les élèves remplacent « avancer, puis freiner à la ligne » par une commande qui diminue avec l’erreur : la commande proportionnelle.</p><h3>L’idée à retenir</h3><p class="idea">Commande = gain × erreur. Loin, le rover va vite ; près, lentement ; à la cible, la commande est nulle. Le gain règle l’intensité de l’effort.</p>
+<h3>Déroulé</h3><table class="flow"><tr><th>5 min</th><td>Au tableau : erreur = distance − 0.5. Demandez quelle vitesse ils choisiraient à 2 m, à 0.6 m, à 0.5 m. Ils viennent d’inventer la commande P.</td></tr><tr><th>15 min</th><td>Première mission : se garer à 0.5 m. Une fois réussie, ils essaient les gains 0.3, 1 et 3 et comparent les essais avec le fantôme et la courbe de mission. En 15 secondes, 0.3 en est encore à 54 cm ; 1 et 3 réussissent.</td></tr><tr><th>15 min</th><td>Deuxième mission : suivre le mur. Le code de départ ne corrige que sur la distance et zigzague. Laissez-les observer le zigzag sur la trajectoire avant tout indice.</td></tr><tr><th>5 min</th><td>Une phrase chacun : que décide le gain ?</td></tr></table>
+<h3>Questions à poser</h3><ul><li>Quelle est la commande quand le rover est exactement à la cible ? Et si quelque chose le repousse ensuite ?</li><li>Avec un gain de 0.3, le rover n’arrive jamais tout à fait en 15 secondes. Pourquoi ralentit-il autant près de la cible ?</li><li>Pourquoi corriger sur la distance seule fait-il zigzaguer le long du mur ?</li></ul>
+<h3>Là où les élèves bloquent</h3><table class="stuck"><tr><th>Ce que vous voyez</th><th>Que dire</th></tr><tr><td>La boucle de stationnement se termine avant que le rover se stabilise.</td><td>Une commande P a besoin de temps pour arriver. Faites tourner la boucle sur le temps, par exemple while time &lt; 15, pas sur la distance.</td></tr><tr><td>Ils écrivent drive(1*(0.5 - distance), 0) et le rover recule.</td><td>Demandez le signe de l’erreur quand le rover est trop loin. La commande doit le pousser vers la cible.</td></tr><tr><td>Le suiveur de mur zigzague quel que soit le gain essayé.</td><td>La distance ne change qu’après que le rover a tourné. Il faut un second terme sur l’angle par rapport au mur, lidar_min_angle − 90.</td></tr></table>
+<h3>Missions et solutions de référence</h3><section class="mission"><h4>Se garer à 0.5 m du mur</h4><p class="where">Réglé par la mission: Rover Kinetic · Béton</p><p><b>But.</b> Termine l’essai avec le capteur avant à 0.50 m du mur devant, à ±2 cm près.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : se garer avec le capteur avant à 0.50 m du mur devant (±2 cm).
+# Ce premier essai roule à 0.5 m/s et freine sur la ligne. Lance-le, lis le résultat, puis améliore-le.
+drive(0.5, 0)
+while distance &gt; 0.5
+  wait(0.05)
+end
+stop()</pre><p>Il roule à 0.5 m/s et freine à la ligne : il dépasse de plusieurs centimètres.</p></div><div><h5>Une solution de référence</h5><pre>while time &lt; 15
+  drive(1*(distance - 0.5), 0)
+  wait(0.05)
+end
+stop()</pre><p>La vitesse vaut 1 × la distance restante, pendant 15 secondes. Le rover ralentit de lui-même en arrivant.</p></div></div></section><section class="mission"><h4>Suivre le mur à 0.5 m</h4><p class="where">Réglé par la mission: Rover Kinetic · Béton</p><p><b>But.</b> Longe le mur à ta gauche et reste à 0.5 m de lui, à ±10 cm près, sur les 1.8 derniers mètres.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : longer le mur à gauche à 0.50 m (±10 cm) sur les 1.8 derniers mètres.
+# Ce premier essai dirige seulement en proportion de la mesure LiDAR gauche. Lance-le et regarde le trajet.
+while odom_x &lt; 3.8
+  drive(0.2, 1*(lidar_left - 0.5))
+  wait(0.05)
+end
+stop()</pre><p>Il ne corrige que sur le faisceau gauche. La distance ne réagit qu’après la rotation du rover : il zigzague.</p></div><div><h5>Une solution de référence</h5><pre>while odom_x &lt; 3.8
+  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
+  wait(0.05)
+end
+stop()</pre><p>Deux termes issus du LiDAR : l’erreur de distance, et l’angle par rapport au mur, nul quand le rover roule en parallèle.</p></div></div></section>
+<h3>S’il reste du temps</h3><p>Lancez le programme de stationnement réussi sur la glace. Il se gare encore à 0.50 m, même si la mission n’est jugée que sur le béton. Demandez pourquoi une commande qui mesure s’en sort sur un sol pour lequel elle n’a pas été réglée.</p></article>
+<article class="session"><header><span class="num">04</span><div><h2>Tenir la ligne</h2><p class="q">Pourquoi une poussée constante laisse-t-elle une erreur constante, et qu’est-ce qui l’efface ?</p><p class="concept">Commande intégrale et PID · 40 min</p></div></header>
+<h3>Objectif</h3><p>Les élèves voient qu’une poussée constante laisse une erreur constante à une commande P, et la suppriment en additionnant l’erreur au fil du temps : le terme intégral.</p><h3>L’idée à retenir</h3><p class="idea">P n’agit que s’il y a une erreur : contre une poussée constante, il se stabilise un peu à côté de la ligne. Une somme cumulée de l’erreur continue de croître jusqu’à ce que cet écart disparaisse.</p>
+<h3>Déroulé</h3><table class="flow"><tr><th>5 min</th><td>Lancez le code de départ. Il suit le mur mais reste à côté de la ligne. Ouvrez la courbe de mission : elle est plate, à côté de la bande cible.</td></tr><tr><th>5 min</th><td>Coupez le vent et relancez : l’écart moyen passe d’environ 5 cm à environ 3 cm. Le vent en cause une partie. Le reste vient du capteur, qui lit un peu court.</td></tr><tr><th>20 min</th><td>Ils ajoutent une somme avec let, dans la boucle, et corrigent avec un multiple de celle-ci. Comparez les gains 0.3, 1 et 3 sur la somme : 0.3 est trop lent pour réussir, 1 réussit, et 3 réussit mais oscille jusqu’à 9 cm de la ligne.</td></tr><tr><th>10 min</th><td>Nommez les trois termes au tableau, avec leur propre code : P est l’erreur actuelle, I sa somme, D sa vitesse de variation.</td></tr></table>
+<h3>Questions à poser</h3><ul><li>Si le rover était exactement sur la ligne, que demanderait P ? Que ferait ensuite le vent ?</li><li>Même avec la somme, le juge trouve encore environ 1 cm. La somme ramène à zéro l’erreur mesurée. Pourquoi aucune commande ne peut-elle supprimer une erreur que son capteur ne voit pas ?</li><li>Avec un grand gain sur la somme, le rover oscille. Pourquoi se souvenir de trop nuit-il ?</li></ul>
+<h3>Là où les élèves bloquent</h3><table class="stuck"><tr><th>Ce que vous voyez</th><th>Que dire</th></tr><tr><td>L’essai s’arrête : une variable est utilisée avant que let lui donne une valeur.</td><td>La somme doit partir de zéro avant la boucle : let sum = 0.</td></tr><tr><td>Ils ajoutent l’erreur une seule fois, hors de la boucle.</td><td>La somme est une mémoire. Elle doit être mise à jour à chaque tour : let sum = sum + e*0.05.</td></tr><tr><td>Le labo dit que l’essai n’a pas été jugé.</td><td>Elle n’est jugée que sur la glace, dans son propre vent. Rechargez la mission, qui règle les deux à nouveau.</td></tr></table>
+<h3>Missions et solutions de référence</h3><section class="mission"><h4>Tenir la ligne dans le vent</h4><p class="where">Réglé par la mission: Rover Kinetic · Glace · Vent 5.0 m/s</p><p><b>But.</b> Sur la glace, avec le vent qui te pousse loin du mur, reste à 0.5 m du mur à ta gauche : à ±2.4 cm près en moyenne sur les 3 derniers mètres, et jamais à plus de 10 cm.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : rester à 0.50 m du mur à gauche dans le vent (à ±2.4 cm près en moyenne).
+# Ce premier essai dirige selon la distance et l’angle par rapport au mur : P et D. Lance-le et lis son écart moyen.
+while odom_x &lt; 3.8
+  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
+  wait(0.05)
+end
+stop()</pre><p>P et D maintiennent le rover près du mur, mais le vent constant laisse un écart constant.</p></div><div><h5>Une solution de référence</h5><pre>let sum = 0
+while odom_x &lt; 3.8
+  let e = lidar_min - 0.5
+  let sum = sum + e*0.05
+  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + 1*sum)
+  wait(0.05)
+end
+stop()</pre><p>Les mêmes P et D, plus une somme cumulée de l’erreur. La somme croît jusqu’à braquer d’elle-même contre le vent.</p></div></div></section>
+<h3>S’il reste du temps</h3><p>Demandez où apparaît encore une poussée constante : une pente, une charge plus lourde d’un côté, un pneu moins gonflé. La même somme les supprime toutes.</p></article>
+</body></html>
