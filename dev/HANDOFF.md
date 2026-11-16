@@ -39,6 +39,8 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 
 ## Open items
 
+- **Fifth merge, 2026-11-16:** `main` was fast-forwarded to the branch with the owner's go-ahead (quadcopter tool, timeline and ghost, layout fixes, event marks, teacher kit, program in the replay). The push deploys production; the deploy was not checked from the cloud session, whose network blocks vercel.app. Check with `vercel ls`.
+
 - **Codex instructions do not load on their own (since the move to `dev/`):** Codex must be told to read `dev/AGENTS.md` at the start of each session. Claude Code loads them through `.claude/CLAUDE.md` since 2026-11-01.
 - **Private link still public:** the ChatGPT Sites URL remains in this file and in Git history, in a public repository. The owner asked to remove it from the README only.
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
@@ -107,31 +109,31 @@ Entry template:
 ### 2026-11-16 — Claude Code (cloud) — the program in the replay
 - Changed: `dist/drive.mjs` (a `line` channel, CSV column `program_line`; `varLog` and `commandLog` on the run), `dist/replay.mjs`, `dist/app.js`, one key `event.line` in three languages, `docs/french-review.html`, tests, README, `dev/AGENTS.md`. The CSV gains one column at the end; files exported before this lack it.
 - Verified: `npm test` 106/106, `npm run check`, `npm run test:browser` 14/14. The replayed line and variables equal those of a fresh simulation at four moments of a P-I program.
-- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Status: on `main` since 2026-11-16 (fifth merge, owner's go-ahead).
 - Next / open: none for this change.
 
 ### 2026-11-16 — Claude Code (cloud) — teacher kit
 - Changed: new `scripts/teacher-kit.mjs`, `scripts/teacher-kit-content.mjs`, `docs/teacher-kit-{en,tr,fr}.html`, `tests/teacher-kit.test.mjs` (4 tests), `tests/solutions.mjs` (the reference solutions, moved out of `tests/missions.test.mjs`); `package.json` (`npm run kit`), README, `dev/AGENTS.md`, this file.
 - Verified: `npm test` 105/105. Each quoted number is computed from the model, and three first-draft claims were wrong and are corrected: calm air does not remove the wall-follower's miss (about 5 cm becomes about 3 cm), the integral term leaves about 1 cm that the sensor cannot see, and a parking gain of 0.3 does not arrive in 15 s. The Turkish file was read on screen and printed to a 10-page A4 PDF. Not done: a classroom trial, and a native review of the French and Turkish.
-- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Status: on `main` since 2026-11-16 (fifth merge, owner's go-ahead).
 - Next / open: the owner tries one session with students and reports what the plan got wrong. The instructor-kit item of the credit plan is done.
 
 ### 2026-11-16 — Claude Code (cloud) — layout fixes and event marks
 - Changed: `dist/style.css`, `dist/index.html` (the outcome message is a line under the stage, the header fits 377 px, "About the model" shows below 850 px); `dist/replay.mjs` (`runEvents`), `dist/app.js`, `dist/plots.mjs` (bands), five `event.*` keys in three languages, `docs/french-review.html`, tests, README, `dev/AGENTS.md`. Commits `dc0c70e` and the one after it.
 - Verified: `npm test` 101/101, `npm run check`, `npm run test:browser` 14/14; measured in headless Chromium at 377, 390, and 1280 px. The three layout findings that stood in Open items are closed.
-- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Status: on `main` since 2026-11-16 (fifth merge, owner's go-ahead).
 - Next / open: Turkish and French review of ten new strings in all. The running line is still not in the log, so a mark cannot name the program line.
 
 ### 2026-11-16 — Claude Code (cloud) — timeline, linked plots, and the previous run as a ghost
 - Changed: new `dist/replay.mjs` and `tests/replay.test.mjs` (7 tests); `dist/app.js` (timeline, ghost drawing, previous run in plots, `simOf`), `dist/plots.mjs` (`setTime`, `onPick`), `dist/index.html`, `dist/style.css`, five keys in `dist/lang/{en,tr,fr}.mjs`, `docs/french-review.html`, `tests/browser/smoke.test.mjs` (1 test), `package.json`, README, `dev/AGENTS.md`, this file.
 - Verified: `npm test` 100/100, `npm run check`, `npm run test:browser` 14/14. The replay matches a fresh simulation at the same moment within 3 mm and 0.3° on both robots, three terrains, and in wind. Looked at in headless Chromium at 1400 px in Turkish and on an iPhone 13 emulation: no sideways scroll. Not checked: touch dragging of the timeline on a real phone, Safari, Firefox.
-- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Status: on `main` since 2026-11-16 (fifth merge, owner's go-ahead).
 - Next / open: the owner reviews the five Turkish strings, a native speaker the French ones. Proposed next: fix the three small layout findings in Open items, then event marks on the plots (slip, saturation, line changes); the line number would have to be logged first.
 
 ### 2026-11-15 — Claude Code (cloud) — quadcopter study tool in `tools/quadcopter/`
 - Changed: new `tools/quadcopter/quad.mjs` (slide model, RK4, PID, hover and trajectory control), `quad.test.mjs` (13 tests), `index.html`, `app.mjs` (Three.js from a CDN: 3D scene, ghost vehicle on the full model, live equation terms, plots, eight experiments), `README.md`; `package.json` gains `npm run test:quad`. The owner asked for it as a course study aid; it stays out of `dist` on purpose.
 - Verified: `npm run test:quad` 13/13, `npm test` 93/93. Headless Chromium at 1500 px with Three.js served locally (the cloud network blocks the CDN): no console errors, all experiments run, sliders, pause, hover to Z = 2 m, clipping and singularity warnings appear, no sideways scroll at 390 px. Not checked: the real CDN load, Firefox, Safari, a phone.
-- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Status: on `main` since 2026-11-16 (fifth merge, owner's go-ahead).
 - Next / open: the owner tries it and says what to change. A single-file build was in the first request and is not made.
 
 ### 2026-11-04 — Claude Code (cloud) — Lab 2 checks in the TurtleBot3 calibration, next-lab checklist
