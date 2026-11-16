@@ -143,10 +143,10 @@ test('timeline: a finished run can be turned back, played again, and picked from
     await page.click('#run');await page.clock.runFor(1000);assert.ok(await page.isHidden('#timeline'),'no timeline while running');
     await runToEnd(page);
     const [now,end]=await clock();assert.ok(await page.isVisible('#timeline'));assert.equal(now,end);assert.ok(end>3&&end<5,`run lasted ${end} s`);
-    // At rest at the end, moving at 0.3 m/s in the middle, and the outcome message steps aside.
+    // At rest at the end, moving at 0.3 m/s in the middle.
     assert.match(await page.textContent('#metric-mass'),/^0\.0\d/);
     await scrubTo(1.5);await page.clock.runFor(100);
-    assert.deepEqual(await clock(),[1.5,end]);assert.match(await page.textContent('#metric-mass'),/^0\.(29|30|31)/);assert.ok(await page.isHidden('#stage-outcome'));
+    assert.deepEqual(await clock(),[1.5,end]);assert.match(await page.textContent('#metric-mass'),/^0\.(29|30|31)/);
     // Play runs the clock forward to the end and stops there.
     await page.click('#timeline-play');assert.equal(await page.getAttribute('#timeline-play','aria-label'),en['timeline.pause']);
     await page.clock.runFor(1000);const [mid]=await clock();assert.ok(mid>2.3&&mid<2.7,`after 1 s of play: ${mid}`);

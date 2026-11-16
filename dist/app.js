@@ -269,8 +269,6 @@ function syncTimeline(){
 }
 function setScrub(time){
   if(!replay)return;scrub=time===null||time>=replay.duration?null:Math.max(0,time);
-  // The outcome message steps aside while an earlier moment is on the stage.
-  $('stage-outcome').hidden=scrub!==null;
   syncTimeline();updateTelemetry();updateWatch(true);figures.forEach(f=>f.setTime(plotted===sim?scrub??replay.duration:null));needsRender=true;
 }
 $('timeline-range').addEventListener('input',e=>{playing=false;setScrub(+e.target.value);});
