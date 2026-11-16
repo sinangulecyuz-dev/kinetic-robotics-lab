@@ -147,6 +147,12 @@ test('timeline: a finished run can be turned back, played again, and picked from
     assert.match(await page.textContent('#metric-mass'),/^0\.0\d/);
     await scrubTo(1.5);await page.clock.runFor(100);
     assert.deepEqual(await clock(),[1.5,end]);assert.match(await page.textContent('#metric-mass'),/^0\.(29|30|31)/);
+    // The log's events are marked on the timeline: this program jumps its commands at the start and at the stop.
+    const marks=await page.$$eval('#timeline-marks button',bs=>bs.map(b=>b.getAttribute('aria-label')));
+    assert.ok(marks.includes(fill(en['event.at'],{kind:en['event.command'],t:'0.00'}))&&marks.includes(fill(en['event.at'],{kind:en['event.command'],t:'3.00'})),`marks: ${marks}`);
+    assert.ok((await page.innerText('#timeline-legend')).includes(en['event.command']));
+    await page.locator('#timeline-marks button').last().click();assert.equal((await clock())[0],3);
+    await scrubTo(1.5);
     // Play runs the clock forward to the end and stops there.
     await page.click('#timeline-play');assert.equal(await page.getAttribute('#timeline-play','aria-label'),en['timeline.pause']);
     await page.clock.runFor(1000);const [mid]=await clock();assert.ok(mid>2.3&&mid<2.7,`after 1 s of play: ${mid}`);

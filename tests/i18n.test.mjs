@@ -6,6 +6,7 @@ import {EXAMPLES,example} from '../dist/examples.mjs';
 import {MISSIONS,missionText} from '../dist/missions.mjs';
 import {parseProgram} from '../dist/physics.mjs';
 import {TERRAINS,ROBOTS} from '../dist/drive.mjs';
+import {EVENT_KINDS} from '../dist/replay.mjs';
 
 const en=DICTIONARIES.en,source=f=>readFileSync(new URL('../dist/'+f,import.meta.url),'utf8');
 const placeholders=s=>[...s.matchAll(/\{(\w+)\}/g)].map(m=>m[1]).sort();
@@ -59,6 +60,7 @@ test('every key the interface asks for exists in English, and every English key 
   for(const d of ['balanced','tall','offset','lesson2','lesson3','lesson4','tiltPass','tiltFail','drive'])for(const k of ['title','copy'])used.add(`discovery.${d}.${k}`);
   for(const id of Object.keys(TERRAINS))used.add('terrain.'+id).add('surface.'+id);
   for(const id of Object.keys(ROBOTS))used.add('robot.'+id);
+  for(const kind of EVENT_KINDS)used.add('event.'+kind);
   for(const name of ['guide','model','reference','path','lesson1','lesson2','lesson3','lesson4','margin'])for(const k of ['eyebrow','html'])used.add(`modal.${name}.${k}`);
   const missing=[...used].filter(k=>!(k in en));
   assert.deepEqual(missing,[],'keys used but not defined');

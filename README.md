@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 100 model, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 101 model, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -71,6 +71,8 @@ The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. 
 ### Looking back at a run
 
 After a drive run, a timeline appears under the stage. Dragging it, or pressing play, shows the rover as it was at that moment: its pose, paths, LiDAR scan, readings, and the support point. Every figure in Plots marks the same moment with an orange line, and a click in a time plot moves the stage there. The replay reads the run's 100 Hz log and never steps the physics again. Three things are not in the log and so are not replayed: program variables, the running line, and the caster's swivel; the support point comes from the logged IMU acceleration, with its noise.
+
+The timeline also marks what the log shows happened: a wheel slipping by more than 0.05 m/s, a motor at its voltage limit, and a jump of more than 0.5 rad/s in a wheel command. A click on a mark goes to that moment, and the wheel-speed, slip, and current figures shade the same spans. These are read from the log, not from the program, so a command that changes smoothly, as under P control, shows no jump.
 
 A new run also shows the previous one as a pale ghost at the same moment of its own run, and as a gray dashed line on the path, heading, and mission figures. The previous run is the newest earlier run on the same robot from the same start, on any terrain. "Previous run" under "Look beneath the surface" turns it off.
 

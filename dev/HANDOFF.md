@@ -32,7 +32,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: a timeline that turns a finished run back, the same moment marked in every plot, and the previous run as a ghost (`dist/replay.mjs`).
   - New, outside the lab: `tools/quadcopter/`, the owner's study tool for the ME 425 quadcopter slides (its own README). It is not in `dist`, so it is not deployed, and it does not follow the lab's i18n or design rules.
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-16: `npm test` 100/100 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-16: `npm test` 101/101 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -43,8 +43,6 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
 - **Vercel, not yet explicitly decided:** `vercel link --yes` connected the GitHub repository on its own, and the first CLI deploy went straight to production instead of a preview. Told that a push deploys the public site, the owner said "commit and push" (2026-10-29). The connection and the public site stay until the owner says otherwise. To deploy by hand instead: `vercel git disconnect`. To take the site down: `vercel remove`.
 - **Review:** the French text needs a native speaker at Saint Michel (new on 2026-11-04: the Lab 2 paragraph in "About the model"); `docs/french-review.html` (`npm run review:fr`) lists all of it beside the English. The owner reviews the Turkish.
 - **Finding, not fixed:** with four experiments, the lesson strip still fits a 377 px phone, but the text beside it is narrow; a fifth experiment needs a new layout.
-- **Finding, not fixed:** on a 377 px phone emulation the header's help (?) button is cut off at the right edge; the page itself does not scroll sideways. This predates the 2026-11-01 work.
-- **Finding, not fixed:** in the shorter stage (Plots and Results tabs), the "Program complete" pill overlaps the rover. This positioning predates the current work.
 - Not verified: touch interaction on a real phone, Safari, Firefox, and a visual review by the owner. `npm run test:browser` covers Chromium and two Chromium phone emulations only.
 - **Not verified:** whether Vercel builds a preview deployment for pushes to `claude/...` branches, and whether such previews ask for a Vercel login. If they build, a preview link is the way to try a branch on a real phone and in Safari before merging.
 - **TurtleBot3 calibration, open points.** The full table is in the README, "TurtleBot3 Waffle Pi calibration".
@@ -104,6 +102,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-16 — Claude Code (cloud) — layout fixes and event marks
+- Changed: `dist/style.css`, `dist/index.html` (the outcome message is a line under the stage, the header fits 377 px, "About the model" shows below 850 px); `dist/replay.mjs` (`runEvents`), `dist/app.js`, `dist/plots.mjs` (bands), five `event.*` keys in three languages, `docs/french-review.html`, tests, README, `dev/AGENTS.md`. Commits `dc0c70e` and the one after it.
+- Verified: `npm test` 101/101, `npm run check`, `npm run test:browser` 14/14; measured in headless Chromium at 377, 390, and 1280 px. The three layout findings that stood in Open items are closed.
+- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Next / open: Turkish and French review of ten new strings in all. The running line is still not in the log, so a mark cannot name the program line.
 
 ### 2026-11-16 — Claude Code (cloud) — timeline, linked plots, and the previous run as a ghost
 - Changed: new `dist/replay.mjs` and `tests/replay.test.mjs` (7 tests); `dist/app.js` (timeline, ghost drawing, previous run in plots, `simOf`), `dist/plots.mjs` (`setTime`, `onPick`), `dist/index.html`, `dist/style.css`, five keys in `dist/lang/{en,tr,fr}.mjs`, `docs/french-review.html`, `tests/browser/smoke.test.mjs` (1 test), `package.json`, README, `dev/AGENTS.md`, this file.

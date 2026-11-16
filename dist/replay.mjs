@@ -16,6 +16,7 @@ export class Replay{
     const L=this.log,S=run.start,pts=(fx,fy)=>{const out=[];for(let i=0;i<this.samples;i+=PATH_STRIDE)out.push({x:S.x+fy[i],z:S.z+fx[i]});return out;};
     this.paths={true:pts(L.trueX,L.trueY),odom:pts(L.odomX,L.odomY),fused:pts(L.fusedX,L.fusedY)};
   }
+  get events(){return this.found??=runEvents(this.run);}
   get duration(){return this.samples?this.log.t[this.samples-1]:0;}
   index(time){return Math.max(0,Math.min(this.samples-1,Math.round(time*RATE)));}
   // The rover at `time` seconds into the run, as an object the interface reads like a simulation.
@@ -48,4 +49,21 @@ export class Replay{
 export function previousRun(runs,current){
   const key=r=>JSON.stringify([r.robot||'kinetic',r.start?.x||0,r.start?.z||0]),want=key(current);
   return runs.find(r=>r!==current&&key(r)===want)||null;
+}
+
+// What happened in a run, read from its log: spans of time when a wheel slipped, when a motor was at its voltage limit,
+// and the moments a wheel command jumped. Each is {kind, t0, t1}; a jump has t0 = t1.
+// Thresholds: 0.05 m/s of slip is a visible skid; a command jump is more than 0.5 rad/s within one 10 ms sample.
+export const EVENT_KINDS=['slip','saturation','command'];
+export const SLIP_EVENT=.05,COMMAND_JUMP=.5,EVENT_GAP=.15;
+export function runEvents(run){
+  const L=run.log,n=L.t.length,limit=run.motor.volts*.999,out=[];
+  // Samples that satisfy `on` become spans; spans closer than EVENT_GAP are one event.
+  const spans=(kind,on)=>{let start=null,last=null;const close=()=>{if(start!==null)out.push({kind,t0:L.t[start],t1:L.t[last]});start=null;};
+    for(let i=0;i<n;i++){if(!on(i))continue;if(start!==null&&L.t[i]-L.t[last]>EVENT_GAP)close();if(start===null)start=i;last=i;}close();};
+  spans('slip',i=>Math.max(Math.abs(L.slipL[i]),Math.abs(L.slipR[i]))>SLIP_EVENT);
+  spans('saturation',i=>Math.max(Math.abs(L.voltsL[i]),Math.abs(L.voltsR[i]))>=limit);
+  // The first sample is compared with rest, so the program's first command counts.
+  for(let i=0;i<n;i++)if(Math.max(Math.abs(L.cmdL[i]-(i?L.cmdL[i-1]:0)),Math.abs(L.cmdR[i]-(i?L.cmdR[i-1]:0)))>COMMAND_JUMP)out.push({kind:'command',t0:L.t[i],t1:L.t[i]});
+  return out.sort((a,b)=>a.t0-b.t0);
 }

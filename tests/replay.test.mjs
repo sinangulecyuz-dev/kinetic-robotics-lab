@@ -58,3 +58,26 @@ test('the previous run is the newest earlier one on the same robot from the same
   const a={id:1,robot:'kinetic'},b={id:2,robot:'turtlebot3'},c={id:3,robot:'kinetic',start:{x:1,z:0}},d={id:4,robot:'kinetic',start:{x:0,z:0}},now={robot:'kinetic'};
   assert.equal(previousRun([d,c,b,a],now),d);assert.equal(previousRun([c,b,a],now),a);assert.equal(previousRun([c,b],now),null);assert.equal(previousRun([d,a],d),a);
 });
+
+import {runEvents,EVENT_KINDS,SLIP_EVENT,COMMAND_JUMP} from '../dist/replay.mjs';
+test('run events: command jumps, slip on ice, and a motor at its limit are found where the log shows them',()=>{
+  const drive=(src,terrain='flat',robot='kinetic')=>simulateRun({design:DEFAULT,robot,terrain,program:parseProgram(src),seed:3});
+  // Two commands and a stop: three jumps, at 0, 2, and 4 s.
+  const steps=drive('drive(0.2, 0)\nwait(2)\ndrive(0.2, 1)\nwait(2)\nstop()'),jumps=runEvents(steps).filter(e=>e.kind==='command').map(e=>e.t0);
+  assert.equal(jumps.length,3,`jumps at ${jumps}`);[0,2,4].forEach((t,i)=>close(jumps[i],t,.011,'jump time'));
+  // A hard start on ice slips; the same start on concrete at a gentle speed does not.
+  const ice=runEvents(drive('wheels(9, 9)\nwait(2)\nstop()','slippery')).filter(e=>e.kind==='slip'),calm=runEvents(drive('drive(0.1, 0)\nwait(2)\nstop()')).filter(e=>e.kind==='slip');
+  assert.ok(ice.length>=1&&ice[0].t0<.1&&ice[0].t1-ice[0].t0>.3,`slip on ice: ${JSON.stringify(ice)}`);assert.equal(calm.length,0);
+  // Each event agrees with the log it came from, sample by sample.
+  const run=drive('wheels(9, 9)\nwait(2)\nstop()','slippery'),L=run.log,ev=runEvents(run),inside=(kind,t)=>ev.some(e=>e.kind===kind&&t>=e.t0-1e-9&&t<=e.t1+1e-9);
+  for(let i=0;i<L.t.length;i++){
+    if(Math.max(Math.abs(L.slipL[i]),Math.abs(L.slipR[i]))>SLIP_EVENT)assert.ok(inside('slip',L.t[i]),`slip sample at ${L.t[i]} s is inside an event`);
+    if(i&&Math.abs(L.cmdL[i]-L.cmdL[i-1])>COMMAND_JUMP)assert.ok(inside('command',L.t[i]));
+  }
+  for(const e of ev){assert.ok(EVENT_KINDS.includes(e.kind)&&e.t1>=e.t0&&e.t0>=0&&e.t1<=L.t.at(-1));
+    if(e.kind==='slip'){const i=Math.round(e.t0*100);assert.ok(Math.max(Math.abs(L.slipL[i]),Math.abs(L.slipR[i]))>SLIP_EVENT,'a slip event starts on a slipping sample');}}
+  // A command beyond the TurtleBot3's motor holds it at its voltage limit.
+  const tb=drive('wheels(10, 10)\nwait(2)\nstop()','flat','turtlebot3'),sat=runEvents(tb).filter(e=>e.kind==='saturation');
+  assert.ok(sat.length>=1&&sat[0].t1-sat[0].t0>1,`saturation: ${JSON.stringify(sat)}`);
+  assert.equal(runEvents(drive('drive(0.1, 0)\nwait(2)\nstop()','flat','turtlebot3')).filter(e=>e.kind==='saturation').length,0);
+});

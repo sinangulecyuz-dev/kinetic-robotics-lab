@@ -95,3 +95,6 @@ button.lesson-number:active{transform:scale(.97)}
 .timeline{display:flex;align-items:center;gap:12px;margin:12px 24px;padding:8px 12px;background:#fff;border:1px solid var(--line);border-radius:10px}.timeline input[type=range]{flex:1;min-width:0;accent-color:var(--orange)}.timeline output{font:11px/1 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;min-width:108px;text-align:right}.timeline .icon-btn{flex-shrink:0}
 .legend-dot.ghost{background:#8fa0b3}
 @media(max-width:420px){.topbar{gap:12px;padding:0 14px}.topbar .header-actions{gap:8px}.language-select{padding:6px 18px 6px 7px}}
+.timeline-track{flex:1;min-width:0;display:flex;flex-direction:column}.timeline-track input[type=range]{width:100%;margin:0}
+.timeline-marks{position:relative;height:12px;margin:0 8px 2px}.timeline-marks button{position:absolute;top:1px;height:10px;min-width:4px;padding:0;border:0;border-radius:2px;opacity:.75}.timeline-marks button:hover,.timeline-marks button:focus-visible{opacity:1}.timeline-marks .command{min-width:2px;width:2px;border-radius:0}
+.timeline-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:9px;color:var(--muted);min-height:12px}.timeline-legend i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:4px}

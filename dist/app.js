@@ -6,7 +6,7 @@ import {EXAMPLES,example} from './examples.mjs';
 import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
 import {skyAt,drawSky} from './sky.mjs';
 import {toResultsCsv} from './results.mjs';
-import {Replay,previousRun} from './replay.mjs';
+import {Replay,previousRun,runEvents} from './replay.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -260,10 +260,20 @@ function simOf(r){
   if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0,start:r.start,wind:r.wind}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
   return plotCache.get(r.id).sim;
 }
+// What a run's log shows happened: wheel slip, a motor at its voltage limit, a jump in the wheel commands.
+const EVENT_COLOR={slip:'#d95319',saturation:'#7e2f8e',command:'#4f5b68'};
+const eventLabel=e=>e.t1>e.t0?t('event.span',{kind:t('event.'+e.kind),from:e.t0.toFixed(2),to:e.t1.toFixed(2)}):t('event.at',{kind:t('event.'+e.kind),t:e.t0.toFixed(2)});
+let marksFor=null;
+function drawMarks(){
+  if(marksFor===replay)return;marksFor=replay;const end=replay.duration||1,ev=replay.events.slice(0,80),kinds=[...new Set(ev.map(e=>e.kind))];
+  $('timeline-marks').innerHTML=ev.map((e,i)=>`<button class="${e.kind}" data-event="${i}" style="left:${(100*e.t0/end).toFixed(2)}%;width:${(100*(e.t1-e.t0)/end).toFixed(2)}%;background:${EVENT_COLOR[e.kind]}" title="${esc(eventLabel(e))}" aria-label="${esc(eventLabel(e))}"></button>`).join('');
+  $('timeline-legend').innerHTML=kinds.map(k=>`<span><i style="background:${EVENT_COLOR[k]}"></i>${esc(t('event.'+k))}</span>`).join('');
+}
+$('timeline-marks').onclick=e=>{const i=e.target.dataset?.event;if(i===undefined||!replay)return;playing=false;setScrub(replay.events[i].t0);};
 // The timeline under the stage: drag it, or play it, to see the finished run again at any moment.
 function syncTimeline(){
   const on=!!replay&&mode==='drive',el=$('timeline');el.hidden=!on;if(!on)return;
-  const end=replay.duration,now=scrub??end,range=$('timeline-range');range.max=end.toFixed(2);range.value=now.toFixed(2);
+  drawMarks();const end=replay.duration,now=scrub??end,range=$('timeline-range');range.max=end.toFixed(2);range.value=now.toFixed(2);
   $('timeline-time').textContent=`t = ${now.toFixed(2)} / ${end.toFixed(2)} s`;
   const b=$('timeline-play'),label=t(playing?'timeline.pause':'timeline.play');b.innerHTML=icon(playing?'pause':'play');b.setAttribute('aria-label',label);b.title=label;
 }
@@ -288,15 +298,16 @@ function plotSpecs(s,prev=null){
   const scan=s.scans.at(-1),hits=scan.ranges.map((r,i)=>[i,r]).filter(([,r])=>r>0),gaps=a=>a.map(v=>v>0?v:NaN);
   const ink='#262626',dotted=[2,3],gap=(ax,ay,bx,by)=>ax.map((v,i)=>Math.hypot(v-bx[i],ay[i]-by[i]));
   // The previous comparable run, in gray, on the path and heading figures.
+  const ev=runEvents(s),band=(...kinds)=>ev.filter(e=>kinds.includes(e.kind)).map(e=>({x0:e.t0,x1:e.t1,color:EVENT_COLOR[e.kind],label:t('event.'+e.kind)}));
   const P=prev?.log,gray='#8a8a8a',was=P?[{label:t('plot.previous'),color:gray,dash:[5,3]}]:[];
   return [
     {title:t('plot.trajectory'),kind:'xy',xlabel:t('plot.xForward'),ylabel:t('plot.yLeft'),digits:3,series:[{label:t('plot.truePath'),x:L.trueX,y:L.trueY,t:time,color:orange},{label:t('plot.encoderOdometry'),x:L.odomX,y:L.odomY,t:time,color:blue,dash:true},{label:t('plot.filteredOdometry'),x:L.fusedX,y:L.fusedY,t:time,color:green},{label:t('plot.desiredCommanded'),x:L.desX,y:L.desY,t:time,color:ink,dash:dotted},...was.map(w=>({...w,x:P.trueX,y:P.trueY,t:P.t}))],patches:[obstacle]},
     {title:t('plot.positionError'),xlabel,ylabel:t('plot.distance'),unit:'m',digits:3,series:[{label:t('plot.errOdomDesired'),x:time,y:gap(L.odomX,L.odomY,L.desX,L.desY),color:blue},{label:t('plot.errTrueDesired'),x:time,y:gap(L.trueX,L.trueY,L.desX,L.desY),color:orange},{label:t('plot.errOdomTrue'),x:time,y:gap(L.odomX,L.odomY,L.trueX,L.trueY),color:purple},{label:t('plot.errFilteredTrue'),x:time,y:gap(L.fusedX,L.fusedY,L.trueX,L.trueY),color:green}]},
     {title:t('plot.heading'),xlabel,ylabel:t('plot.yaw'),unit:'°',digits:1,series:[{label:t('plot.true'),x:time,y:deg(L.trueYaw),color:orange},{label:t('plot.encoderOdometry'),x:time,y:deg(L.odomYaw),color:blue,dash:true},{label:t('plot.gyroIntegration'),x:time,y:deg(L.gyroYaw),color:purple},{label:t('plot.complementary'),x:time,y:deg(L.fusedYaw),color:green},{label:t('plot.desired'),x:time,y:deg(L.desYaw),color:ink,dash:dotted},...was.map(w=>({...w,x:P.t,y:deg(P.trueYaw)}))]},
-    {title:t('plot.wheelSpeed'),xlabel,ylabel:t('plot.omega'),unit:'rad/s',digits:2,series:[{label:t('plot.leftCommand'),x:time,y:L.cmdL,color:blue,dash:true},{label:t('plot.rightCommand'),x:time,y:L.cmdR,color:orange,dash:true},{label:t('plot.leftEncoder'),x:time,y:L.speedL,color:blue},{label:t('plot.rightEncoder'),x:time,y:L.speedR,color:orange}]},
-    lr(t('plot.slip'),t('plot.slipSpeed'),'m/s',3,L.slipL,L.slipR),
+    {title:t('plot.wheelSpeed'),xlabel,ylabel:t('plot.omega'),unit:'rad/s',digits:2,series:[{label:t('plot.leftCommand'),x:time,y:L.cmdL,color:blue,dash:true},{label:t('plot.rightCommand'),x:time,y:L.cmdR,color:orange,dash:true},{label:t('plot.leftEncoder'),x:time,y:L.speedL,color:blue},{label:t('plot.rightEncoder'),x:time,y:L.speedR,color:orange}],bands:band('command','saturation')},
+    {...lr(t('plot.slip'),t('plot.slipSpeed'),'m/s',3,L.slipL,L.slipR),bands:band('slip')},
     lr(t('plot.encoderCounts'),t('plot.counts'),'',0,L.encL,L.encR),
-    lr(t('plot.current'),t('plot.currentAxis'),'A',2,L.currentL,L.currentR),
+    {...lr(t('plot.current'),t('plot.currentAxis'),'A',2,L.currentL,L.currentR),bands:band('saturation')},
     {title:t('plot.gyro'),xlabel,ylabel:t('plot.angularRate'),unit:'rad/s',digits:4,series:[{label:t('plot.roll'),x:time,y:L.gx,color:blue},{label:t('plot.pitch'),x:time,y:L.gy,color:orange},{label:t('plot.yawRate'),x:time,y:L.gz,color:purple}]},
     {title:t('plot.accelXY'),xlabel,ylabel:t('plot.accel'),unit:'m/s²',digits:3,series:[{label:t('plot.forward'),x:time,y:L.ax,color:blue},{label:t('plot.leftAxis'),x:time,y:L.ay,color:orange}]},
     {title:t('plot.accelZ'),xlabel,ylabel:t('plot.accel'),unit:'m/s²',digits:3,series:[{label:t('plot.up'),x:time,y:L.az,color:purple}]},
@@ -562,7 +573,7 @@ function applyLanguage(){
   document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.dataset.i18nTitle));
   for(const id of shown.keys())redraw(id);
   $('toast').hidden=true;
-  modeText();setRunButton();syncTimeline();updateInputs();renderMissions();renderResults();if(tab==='plots')renderPlots();needsRender=true;
+  modeText();setRunButton();marksFor=null;syncTimeline();updateInputs();renderMissions();renderResults();if(tab==='plots')renderPlots();needsRender=true;
 }
 $('language').onchange=e=>{setLanguage(e.target.value);const src=$('code-editor').value,next=translateCode(src,language());if(next!==src){$('code-editor').value=next;updateLines();}applyLanguage();persist();};
 setEnvironment(environment);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();updateWatch(true);requestAnimationFrame(frame);
