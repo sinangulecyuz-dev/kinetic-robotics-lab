@@ -6,6 +6,7 @@ import {EXAMPLES,example} from './examples.mjs';
 import {t,setLanguage,language,preferredLanguage,LANGUAGES} from './i18n.mjs';
 import {skyAt,drawSky} from './sky.mjs';
 import {toResultsCsv} from './results.mjs';
+import {Replay,previousRun} from './replay.mjs';
 
 const $=id=>document.getElementById(id);
 const icons={
@@ -52,6 +53,9 @@ let cw=800,ch=536,zoom=1,yaw=VIEW_YAW,elevation=0.43,drag=null,lastFrame=0,needs
 // A mission of the current experiment can place the rover near a wall; otherwise it starts at the center.
 // The mission verdict sits under the Run button: predict first, then the judge's result, the hint, and the mission plot.
 let verdict=null,missionGuess=null,hintLevel=0;
+// replay: the finished run on the stage, which the timeline can turn back. scrub: its chosen moment, or null for the end.
+// ghost: the previous comparable run, drawn pale beside the rover at the same moment.
+let replay=null,scrub=null,playing=false,ghost=null,showGhost=true;
 const currentMission=()=>{const m=lesson>1?missionById(mission):null;return m?.experiment===lesson?m:null;};
 function renderVerdict(){
   const m=mode==='drive'?currentMission():null,el=$('mission-verdict');el.hidden=!m;if(!m)return;
@@ -81,7 +85,7 @@ $('mission-verdict').addEventListener('click',e=>{
 function startPose(){const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.start?m.start:null;}
 // Wind blows only outdoors with the switch on: a mission's own wind, or a random one chosen from each run's seed.
 function windOption(){if(environment!=='outdoor'||!windOn)return null;const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.wind?m.wind:true;}
-function view(){if(sim)return sim;const start=startPose(),key=JSON.stringify([p,start])+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false,start});idleKey=key;}return idle;}
+function view(){if(sim)return replay&&scrub!==null?replay.at(scrub):sim;const start=startPose(),key=JSON.stringify([p,start])+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false,start});idleKey=key;}return idle;}
 const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
 function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,environment,windOn,student,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
 // Text that depends on the language is kept as a function, so a language change can redraw it.
@@ -121,7 +125,7 @@ function setRobot(next){
   show('stage-title',()=>tb3()?robotLabel('turtlebot3'):t('stage.kinetic'));
   show('model-note',modelNote);updateTelemetry();needsRender=true;
 }
-function changeMode(next){reset();mode=next;queueMicrotask(renderVerdict);queueMicrotask(()=>updateWatch(true));$('experiment-mode').value=next;$('tilt-setting').hidden=next!=='tilt';$('drive-setting').hidden=next!=='drive';$('odom-row').hidden=$('lidar-row').hidden=$('fused-row').hidden=next!=='drive';document.querySelector('.prediction-card').hidden=next==='drive';modeText();
+function changeMode(next){reset();mode=next;queueMicrotask(renderVerdict);queueMicrotask(()=>updateWatch(true));$('experiment-mode').value=next;$('tilt-setting').hidden=next!=='tilt';$('drive-setting').hidden=next!=='drive';$('ghost-row').hidden=$('odom-row').hidden=$('lidar-row').hidden=$('fused-row').hidden=next!=='drive';document.querySelector('.prediction-card').hidden=next==='drive';modeText();
   updateTelemetry();needsRender=true;}
 function modeText(){
   show('model-note',modelNote);show('stage-subtitle',()=>t(mode==='tilt'?'stage.subtitle.tilt':'stage.subtitle.drive'));
@@ -167,7 +171,7 @@ function loadMission(id){
   discover(()=>t('discovery.mission',{title:mt(m).title}),()=>mt(m).goal);
   toast(t('toast.missionLoaded'));
 }
-function reset(){markLines(0,0);if(verdict)queueMicrotask(renderVerdict);state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};sim=null;$('stage-outcome').hidden=true;$('code-error').hidden=true;show('code-progress',()=>t('code.idle'));setRunButton();updateTelemetry();needsRender=true;}
+function reset(){markLines(0,0);if(verdict)queueMicrotask(renderVerdict);state={status:'idle',angle:0,time:0,tip:0,targetTip:0,minMargin:1,runDesign:null};sim=null;replay=null;ghost=null;scrub=null;playing=false;syncTimeline();$('stage-outcome').hidden=true;$('code-error').hidden=true;show('code-progress',()=>t('code.idle'));setRunButton();updateTelemetry();needsRender=true;}
 function setRunButton(){const running=state.status==='running',paused=state.status==='paused';$('run').innerHTML=icon(running?'pause':'play')+`<span id="run-text">${t(running?'run.pause':paused?'run.resume':'run.start')}</span>`;$('scene-status').innerHTML=`<i></i>${t(running?'status.running':paused?'status.paused':state.status==='done'?'status.done':'status.ready')}`;}
 $('reset').onclick=()=>{reset();toast(t('toast.reset'));};
 $('run').onclick=()=>{
@@ -179,6 +183,7 @@ $('run').onclick=()=>{
     if(!tb3()&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
     if(!showLidar&&readsLidar($('code-editor').value)){showLidar=true;$('show-lidar').checked=true;}
     sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0,start:startPose(),wind:windOption()});
+    const before=previousRun(records.filter(r=>r.mode==='drive').map(r=>({...r,robot:robotOf(r),record:r})),{robot,start:startPose()}),old=before&&simOf(before.record);ghost=old?new Replay(old):null;
   }
   state.status='running';state.runDesign={...p};state.minMargin=balance(p,0).margin;state.runPrediction=prediction;setRunButton();needsRender=true;
 };
@@ -193,7 +198,7 @@ function finish(success,key,params={}){
   if(judged?.pass&&!missionsDone.includes(m.id))missionsDone.push(m.id);
   const drive=mode==='drive'?{terrain:sim.terrain,robot:sim.robot,seed:sim.seed,start:sim.origin,wind:sim.windOption,environment,odomError:sim.summary().odomError,...(judged?{mission:m.id,missionPass:judged.pass}:{})}:{};
   const record={id:Date.now(),experiment:lesson,guess:judged?missionGuess:null,mode,design:{...state.runDesign},success,message:message(),messageKey:key,messageParams:params,angle:state.angle,time:mode==='drive'?sim.time:state.time,margin:state.minMargin,prediction:state.runPrediction||null,code:mode==='drive'?$('code-editor').value:null,...drive};
-  if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;}
+  if(mode==='drive'){plotCache.set(record.id,{sim,replayed:false});plotRunId=record.id;replay=new Replay(sim);scrub=null;syncTimeline();}
   records.unshift(record);records=records.slice(0,30);persist();renderResults();if(tab==='plots')renderPlots();
   const d=mode==='tilt'?(success?'tiltPass':'tiltFail'):'drive';discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));
   if(judged){
@@ -213,6 +218,7 @@ function tick(dt){
     }else{sim.advance(dt);markLines(sim.status==='running'?sim.line:0);updateWatch();if(sim.status==='done')finish(sim.success,sim.messageKey,sim.messageParams);else if(tab==='plots'&&performance.now()-lastPlot>250)renderPlots();}
     updateTelemetry();needsRender=true;
   }
+  if(playing&&replay){const end=replay.duration,next=(scrub??0)+dt;if(next>=end){playing=false;setScrub(null);}else setScrub(next);}
   if(Math.abs(state.tip-state.targetTip)>.001){state.tip+=(state.targetTip-state.tip)*Math.min(1,dt*4);needsRender=true;}
 }
 function setMargin(m){$('metric-margin').innerHTML=`${m>=0?'+':''}${(m*100).toFixed(1)} <small>cm</small>`;$('metric-margin').style.color=m<=.001?'#ca6544':m<.02?'#b9954e':'#308574';}
@@ -249,24 +255,46 @@ function renderResults(){
   document.querySelectorAll('[data-plot]').forEach(b=>b.onclick=()=>{plotRunId=records[+b.dataset.plot].id;changeTab('plots');});
 }
 // Plots come from the live run, or are regenerated from a saved run's design, terrain, script, and seed.
+// The simulation behind a saved run: kept from when it ran, or run again from its design, program, and seed.
+function simOf(r){
+  if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0,start:r.start,wind:r.wind}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
+  return plotCache.get(r.id).sim;
+}
+// The timeline under the stage: drag it, or play it, to see the finished run again at any moment.
+function syncTimeline(){
+  const on=!!replay&&mode==='drive',el=$('timeline');el.hidden=!on;if(!on)return;
+  const end=replay.duration,now=scrub??end,range=$('timeline-range');range.max=end.toFixed(2);range.value=now.toFixed(2);
+  $('timeline-time').textContent=`t = ${now.toFixed(2)} / ${end.toFixed(2)} s`;
+  const b=$('timeline-play'),label=t(playing?'timeline.pause':'timeline.play');b.innerHTML=icon(playing?'pause':'play');b.setAttribute('aria-label',label);b.title=label;
+}
+function setScrub(time){
+  if(!replay)return;scrub=time===null||time>=replay.duration?null:Math.max(0,time);
+  // The outcome message steps aside while an earlier moment is on the stage.
+  $('stage-outcome').hidden=scrub!==null;
+  syncTimeline();updateTelemetry();updateWatch(true);figures.forEach(f=>f.setTime(plotted===sim?scrub??replay.duration:null));needsRender=true;
+}
+$('timeline-range').addEventListener('input',e=>{playing=false;setScrub(+e.target.value);});
+$('timeline-play').onclick=()=>{if(!replay)return;playing=!playing;if(playing&&scrub===null)scrub=0;setScrub(scrub);};
+$('show-ghost').onchange=e=>{showGhost=e.target.checked;needsRender=true;if(tab==='plots')renderPlots();};
 function plotSource(){
   if(sim&&['running','paused'].includes(state.status))return {sim,label:t('plots.live'),name:'current'};
   const drives=records.filter(r=>r.mode==='drive');if(!drives.length)return null;
   const r=drives.find(x=>x.id===plotRunId)||drives[0],n=records.length-records.indexOf(r);plotRunId=r.id;
-  if(!plotCache.has(r.id)){try{plotCache.set(r.id,{sim:simulateRun({design:{...DEFAULT,...r.design},terrain:terrainOf(r),robot:robotOf(r),program:parseProgram(r.code||''),seed:Number.isFinite(r.seed)?r.seed:r.id>>>0,start:r.start,wind:r.wind}),replayed:true});}catch{plotCache.set(r.id,{sim:null});}}
-  const entry=plotCache.get(r.id);return {sim:entry.sim,replayed:entry.replayed,record:r,label:t('plots.runLabel',{n}),name:`run-${n}`};
+  simOf(r);const entry=plotCache.get(r.id);return {sim:entry.sim,replayed:entry.replayed,record:r,label:t('plots.runLabel',{n}),name:`run-${n}`};
 }
-function plotSpecs(s){
+function plotSpecs(s,prev=null){
   const L=s.log,time=L.t,[blue,orange,purple,green]=COLORS,deg=a=>a.map(v=>v*180/Math.PI),xlabel=t('plot.time');
   const lr=(title,ylabel,unit,digits,a,b)=>({title,xlabel,ylabel,unit,digits,series:[{label:t('plot.left'),x:time,y:a,color:blue},{label:t('plot.right'),x:time,y:b,color:orange}]});
   const obstacle={label:t('plot.obstacle'),x0:OBSTACLE.z-OBSTACLE.halfZ-s.start.z,x1:OBSTACLE.z+OBSTACLE.halfZ-s.start.z,y0:OBSTACLE.x-OBSTACLE.halfX-s.start.x,y1:OBSTACLE.x+OBSTACLE.halfX-s.start.x};
   // Desired = the commanded motion integrated in time, as in Lab 1. It is a reference line, so it wears ink, not a series hue.
   const scan=s.scans.at(-1),hits=scan.ranges.map((r,i)=>[i,r]).filter(([,r])=>r>0),gaps=a=>a.map(v=>v>0?v:NaN);
   const ink='#262626',dotted=[2,3],gap=(ax,ay,bx,by)=>ax.map((v,i)=>Math.hypot(v-bx[i],ay[i]-by[i]));
+  // The previous comparable run, in gray, on the path and heading figures.
+  const P=prev?.log,gray='#8a8a8a',was=P?[{label:t('plot.previous'),color:gray,dash:[5,3]}]:[];
   return [
-    {title:t('plot.trajectory'),kind:'xy',xlabel:t('plot.xForward'),ylabel:t('plot.yLeft'),digits:3,series:[{label:t('plot.truePath'),x:L.trueX,y:L.trueY,t:time,color:orange},{label:t('plot.encoderOdometry'),x:L.odomX,y:L.odomY,t:time,color:blue,dash:true},{label:t('plot.filteredOdometry'),x:L.fusedX,y:L.fusedY,t:time,color:green},{label:t('plot.desiredCommanded'),x:L.desX,y:L.desY,t:time,color:ink,dash:dotted}],patches:[obstacle]},
+    {title:t('plot.trajectory'),kind:'xy',xlabel:t('plot.xForward'),ylabel:t('plot.yLeft'),digits:3,series:[{label:t('plot.truePath'),x:L.trueX,y:L.trueY,t:time,color:orange},{label:t('plot.encoderOdometry'),x:L.odomX,y:L.odomY,t:time,color:blue,dash:true},{label:t('plot.filteredOdometry'),x:L.fusedX,y:L.fusedY,t:time,color:green},{label:t('plot.desiredCommanded'),x:L.desX,y:L.desY,t:time,color:ink,dash:dotted},...was.map(w=>({...w,x:P.trueX,y:P.trueY,t:P.t}))],patches:[obstacle]},
     {title:t('plot.positionError'),xlabel,ylabel:t('plot.distance'),unit:'m',digits:3,series:[{label:t('plot.errOdomDesired'),x:time,y:gap(L.odomX,L.odomY,L.desX,L.desY),color:blue},{label:t('plot.errTrueDesired'),x:time,y:gap(L.trueX,L.trueY,L.desX,L.desY),color:orange},{label:t('plot.errOdomTrue'),x:time,y:gap(L.odomX,L.odomY,L.trueX,L.trueY),color:purple},{label:t('plot.errFilteredTrue'),x:time,y:gap(L.fusedX,L.fusedY,L.trueX,L.trueY),color:green}]},
-    {title:t('plot.heading'),xlabel,ylabel:t('plot.yaw'),unit:'°',digits:1,series:[{label:t('plot.true'),x:time,y:deg(L.trueYaw),color:orange},{label:t('plot.encoderOdometry'),x:time,y:deg(L.odomYaw),color:blue,dash:true},{label:t('plot.gyroIntegration'),x:time,y:deg(L.gyroYaw),color:purple},{label:t('plot.complementary'),x:time,y:deg(L.fusedYaw),color:green},{label:t('plot.desired'),x:time,y:deg(L.desYaw),color:ink,dash:dotted}]},
+    {title:t('plot.heading'),xlabel,ylabel:t('plot.yaw'),unit:'°',digits:1,series:[{label:t('plot.true'),x:time,y:deg(L.trueYaw),color:orange},{label:t('plot.encoderOdometry'),x:time,y:deg(L.odomYaw),color:blue,dash:true},{label:t('plot.gyroIntegration'),x:time,y:deg(L.gyroYaw),color:purple},{label:t('plot.complementary'),x:time,y:deg(L.fusedYaw),color:green},{label:t('plot.desired'),x:time,y:deg(L.desYaw),color:ink,dash:dotted},...was.map(w=>({...w,x:P.t,y:deg(P.trueYaw)}))]},
     {title:t('plot.wheelSpeed'),xlabel,ylabel:t('plot.omega'),unit:'rad/s',digits:2,series:[{label:t('plot.leftCommand'),x:time,y:L.cmdL,color:blue,dash:true},{label:t('plot.rightCommand'),x:time,y:L.cmdR,color:orange,dash:true},{label:t('plot.leftEncoder'),x:time,y:L.speedL,color:blue},{label:t('plot.rightEncoder'),x:time,y:L.speedR,color:orange}]},
     lr(t('plot.slip'),t('plot.slipSpeed'),'m/s',3,L.slipL,L.slipR),
     lr(t('plot.encoderCounts'),t('plot.counts'),'',0,L.encL,L.encR),
@@ -284,13 +312,16 @@ function renderPlots(){
   $('plot-run').value=live?'live':String(plotRunId);$('plot-run').disabled=live||!drives.length;$('plot-csv').disabled=$('plot-lidar').disabled=!src?.sim;
   $('plots-empty').hidden=!!src?.sim;$('plot-grid').hidden=!src?.sim;$('plots-meta').hidden=!src?.sim;
   if(!src?.sim){$('plots-empty').textContent=t(src?'plots.emptyReplay':'plots.emptyNone');return;}
-  const pm=src.record?.mission?missionById(src.record.mission):live?currentMission():null,specs=plotSpecs(src.sim);
+  // The run before this one, on the same robot from the same start.
+  const older=src.record?drives.slice(drives.indexOf(src.record)+1):drives,near=showGhost?previousRun(older.map(r=>({...r,robot:robotOf(r),record:r})),src.record?{...src.record,robot:robotOf(src.record)}:{robot,start:startPose()}):null,prev=near?simOf(near.record):null;
+  const pm=src.record?.mission?missionById(src.record.mission):live?currentMission():null,specs=plotSpecs(src.sim,prev);
   if(pm){const tr=missionTrace(pm,src.sim),ends=[tr.t[0],tr.t.at(-1)],ink='#262626';
     specs.unshift({title:t('plot.mission',{title:mt(pm).title}),xlabel:t('plot.time'),ylabel:t({gap:'trace.gap',heading:'trace.heading',home:'trace.home',wall:'trace.wall'}[tr.kind]),unit:tr.kind==='heading'?'°':'m',digits:tr.kind==='heading'?1:3,
-      series:[{label:t('plot.missionTrue'),x:tr.t,y:tr.y,color:COLORS[1]},{label:t('plot.target'),x:[...ends,ends[1],...ends],y:[tr.lo,tr.lo,NaN,tr.hi,tr.hi],color:ink,dash:[2,3]}]});}
-  while(figures.length<specs.length)figures.push(new Figure($('plot-grid')));figures.forEach((f,i)=>f.root.hidden=i>=specs.length);
+      series:[{label:t('plot.missionTrue'),x:tr.t,y:tr.y,color:COLORS[1]},...(prev?[missionTrace(pm,prev)].map(o=>({label:t('plot.previous'),x:o.t,y:o.y,color:'#8a8a8a',dash:[5,3]})):[]),{label:t('plot.target'),x:[...ends,ends[1],...ends],y:[tr.lo,tr.lo,NaN,tr.hi,tr.hi],color:ink,dash:[2,3]}]});}
+  while(figures.length<specs.length){const f=new Figure($('plot-grid'));f.onPick=time=>{if(replay&&plotted===sim){playing=false;setScrub(time);}};figures.push(f);}figures.forEach((f,i)=>f.root.hidden=i>=specs.length);
   if(src.sim!==plotted){plotted=src.sim;figures.forEach(f=>f.setCursor(null));}
   specs.forEach((spec,i)=>figures[i].set(spec));
+  figures.forEach(f=>f.setTime(replay&&plotted===sim?scrub??replay.duration:null));
   const s=src.sim,error=s.summary().odomError,spec=ROBOTS[s.robot];
   $('plots-meta').innerHTML=t('plots.meta',{label:esc(src.label),robot:esc(robotLabel(s.robot)),surface:esc(t('surface.'+s.terrain)),cpr:spec.encoderCpr,rate:spec.imu.rate,imu:t(s.robot==='turtlebot3'?'plots.imuTb3':'plots.imuKinetic'),error:(error*100).toFixed(1),replayed:src.replayed?t('plots.replayed'):'',name:src.name});
 }
@@ -449,12 +480,15 @@ function render(){
   const night=mode==='drive'&&environment==='outdoor'&&drawSky(ctx,cw,ch*.3,skyAt(new Date()));$('stage-wrap').classList.toggle('night-sky',!!night);
   // Soft footprint shadow, projected onto the supporting plane.
   const foot=tb3()&&mode==='drive'?{x:.17,z:.17,c:-.064}:{x:p.width/150,z:.28,c:0},shadow=Array.from({length:40},(_,i)=>{const a=i/40*Math.PI*2;return world({x:Math.cos(a)*foot.x,y:.001,z:foot.c+Math.sin(a)*foot.z},true);});poly(shadow,'#2f403317');
+  // The previous run's rover at the same moment of its own run, held at its end once that run is over.
+  const gv=mode==='drive'&&sim&&ghost&&showGhost?ghost.at(scrub??sim.time):null;
   if(mode==='drive'){
     // Arena walls at ±WALL, 0.3 m tall, above both LiDAR planes, which the LiDAR and the front range sensor both see.
     for(const [a,b] of [[[-WALL,-WALL],[WALL,-WALL]],[[WALL,-WALL],[WALL,WALL]],[[WALL,WALL],[-WALL,WALL]],[[-WALL,WALL],[-WALL,-WALL]]])poly([{x:a[0],y:0,z:a[1]},{x:b[0],y:0,z:b[1]},{x:b[0],y:.3,z:b[1]},{x:a[0],y:.3,z:a[1]}],'#b4c0ca73','#8e9ca8',1);
     // A dark top edge makes the walls read as walls, which the LiDAR dots then trace.
     for(const [a,b] of [[[-WALL,-WALL],[WALL,-WALL]],[[WALL,-WALL],[WALL,WALL]],[[WALL,WALL],[-WALL,WALL]],[[-WALL,WALL],[-WALL,-WALL]]])line({x:a[0],y:.3,z:a[1]},{x:b[0],y:.3,z:b[1]},'#6f7f8c',2);
     const trail=(points,color)=>{if(points.length<2)return;ctx.beginPath();points.forEach((pt,i)=>{const q=project(lift(pt.x,pt.z));i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y);});ctx.strokeStyle=color;ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);};
+    if(gv)trail(gv.path,'#aeb9c4');
     trail(v.path,'#f2a27f');if(showOdom)trail(v.odomPath,'#5b9bd0');if(showFused)trail(v.fusedPath,'#77AC30');
     box(OBSTACLE.x,terrainHeight(surface,OBSTACLE.x,OBSTACLE.z)+.12,OBSTACLE.z,OBSTACLE.halfX*2,.24,OBSTACLE.halfZ*2,['#d87950','#ed9369','#c66c47','#f3a879','#d77d57','#dc825b'],v=>v);
     const ahead=v.spec.rangeAhead,rayY=tb3()?.1:.10;line(world({x:0,y:rayY,z:ahead-.01},true),world({x:0,y:rayY,z:ahead+rangeTo(v,OBSTACLE,ahead)},true),'#68a8a6',1,[4,5]);
@@ -463,7 +497,7 @@ function render(){
   const b=mode==='drive'?{com:v.com,polygon:v.polygon,projection:v.point,stable:v.margin>0}:balance(p,state.angle),support=b.polygon.map(v=>world({...v,y:.004},mode==='drive'));
   if(showSupport)poly(support,'#269c8c14','#58a89a',1.4,[4,3]);
   const width=mode==='drive'?v.width:p.width/100;
-  if(tb3()&&mode==='drive')drawTurtlebot(v);else{
+  const body=(v,width)=>{if(tb3()&&mode==='drive')drawTurtlebot(v);else{
   // Robot assembly: chassis, battery, motors, support rods, payload, and front sensor.
   box(0,.148,-.06,width*.90,.075,.47,['#c9512b','#ec673b','#bf4e2b','#ff8753','#dd5b32','#ed6b3c']);
   box(0,.105,-.055,width*.7,.038,.35,['#5b6870','#737f84','#4d5a61','#879298','#68757c','#63727b']);
@@ -483,7 +517,11 @@ function render(){
   box(-.032,.198,.202,.018,.018,.006,'#9fb4ba');box(.032,.198,.202,.018,.018,.006,'#9fb4ba');
   // Four screw heads on the top face.
   for(const x of [-width*.36,width*.36])for(const z of [-.24,.11])box(x,.187,z,.012,.002,.012,'#ffd0b0');
-  }
+  }};
+  // The ghost is one pale color, drawn first so the rover of this run always lies over it.
+  if(gv){const frame=bodyFrame,design=p;bodyFrame=gv.frame;p={...p,...gv.design};body(gv,gv.width);p=design;bodyFrame=frame;
+    ctx.save();ctx.globalAlpha=.34;faces.sort((a,b)=>a.depth-b.depth||a.order-b.order).forEach(f=>poly(f.vs,'#8fa0b3','#6f8196',.5));ctx.restore();faces=[];}
+  body(v,width);
   faces.sort((a,b)=>a.depth-b.depth||a.order-b.order).forEach(f=>poly(f.vs,f.color));faces=[];
   // Latest LiDAR scan: one dot per valid return, in the scan plane at the LiDAR's height.
   if(showLidar&&mode==='drive'){const M=v.spec.lidarMount,o=world({x:M.x,y:M.y,z:M.z},true);v.scan.forEach((r,i)=>{if(!(r>=LIDAR.min&&r<Infinity))return;const a=v.heading+i*2*Math.PI/LIDAR.beams;circle3({x:o.x+r*Math.sin(a),y:o.y,z:o.z+r*Math.cos(a)},1.6,'#7E2F8E');});}
@@ -526,7 +564,7 @@ function applyLanguage(){
   document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.dataset.i18nTitle));
   for(const id of shown.keys())redraw(id);
   $('toast').hidden=true;
-  modeText();setRunButton();updateInputs();renderMissions();renderResults();if(tab==='plots')renderPlots();needsRender=true;
+  modeText();setRunButton();syncTimeline();updateInputs();renderMissions();renderResults();if(tab==='plots')renderPlots();needsRender=true;
 }
 $('language').onchange=e=>{setLanguage(e.target.value);const src=$('code-editor').value,next=translateCode(src,language());if(next!==src){$('code-editor').value=next;updateLines();}applyLanguage();persist();};
 setEnvironment(environment);setRobot(robot);setLesson(lesson,false);modeText();show('code-progress',()=>t('code.idle'));show('save-status',()=>t('header.saved'));applyLanguage();updateLines();updateTelemetry();updateWatch(true);requestAnimationFrame(frame);

@@ -29,9 +29,10 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: Experiment 04 "Hold the line" (integral term, one mission in wind on ice), and `let` variables.
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
+  - New: a timeline that turns a finished run back, the same moment marked in every plot, and the previous run as a ghost (`dist/replay.mjs`).
   - New, outside the lab: `tools/quadcopter/`, the owner's study tool for the ME 425 quadcopter slides (its own README). It is not in `dist`, so it is not deployed, and it does not follow the lab's i18n or design rules.
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-04: `npm test` 93/93 pass, `npm run check` passes, `npm run test:browser` 13/13 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-16: `npm test` 100/100 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -103,6 +104,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-16 — Claude Code (cloud) — timeline, linked plots, and the previous run as a ghost
+- Changed: new `dist/replay.mjs` and `tests/replay.test.mjs` (7 tests); `dist/app.js` (timeline, ghost drawing, previous run in plots, `simOf`), `dist/plots.mjs` (`setTime`, `onPick`), `dist/index.html`, `dist/style.css`, five keys in `dist/lang/{en,tr,fr}.mjs`, `docs/french-review.html`, `tests/browser/smoke.test.mjs` (1 test), `package.json`, README, `dev/AGENTS.md`, this file.
+- Verified: `npm test` 100/100, `npm run check`, `npm run test:browser` 14/14. The replay matches a fresh simulation at the same moment within 3 mm and 0.3° on both robots, three terrains, and in wind. Looked at in headless Chromium at 1400 px in Turkish and on an iPhone 13 emulation: no sideways scroll. Not checked: touch dragging of the timeline on a real phone, Safari, Firefox.
+- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Next / open: the owner reviews the five Turkish strings, a native speaker the French ones. Proposed next: fix the three small layout findings in Open items, then event marks on the plots (slip, saturation, line changes); the line number would have to be logged first.
 
 ### 2026-11-15 — Claude Code (cloud) — quadcopter study tool in `tools/quadcopter/`
 - Changed: new `tools/quadcopter/quad.mjs` (slide model, RK4, PID, hover and trajectory control), `quad.test.mjs` (13 tests), `index.html`, `app.mjs` (Three.js from a CDN: 3D scene, ghost vehicle on the full model, live equation terms, plots, eight experiments), `README.md`; `package.json` gains `npm run test:quad`. The owner asked for it as a course study aid; it stays out of `dist` on purpose.
@@ -220,17 +227,3 @@ Entry template:
   - Not verified: Firefox, WebKit, and Safari (only Chromium is installed in the cloud container), and real phones.
 - Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
 - Next / open: the owner merges into `main` if wanted. Next planned step: bounded expressions in rover scripts (for example `drive(0.3, 2*(lidar_left-0.3))`), as the prerequisite for P and PID lessons.
-
-### 2026-11-01 — Claude Code — agent files moved to `dev/`, README opens with the project
-
-- Changed:
-  - `AGENTS.md`, `CLAUDE.md`, and `HANDOFF.md` moved to `dev/` with `git mv`, and their references to each other updated. Older session log entries keep the old names.
-  - `README.md`: removed "Continue in Codex or Claude Code" with the private ChatGPT Sites link, and the prototype sentence under "Hosting". Rewrote the opening around the project and its model. Added a one-line "Development notes" pointer to `dev/`.
-  - Outside the repository: a Claude Code project memory that points at `dev/`.
-- Verified:
-  - `npm test` 54/54, `npm run check` pass.
-  - `chatgpt.site` now appears only in `dev/HANDOFF.md`. The README has no bare references to the moved files.
-  - The opening's 10 kHz and 100 Hz PI figures match `DT` and `CONTROL_STEPS` in `dist/drive.mjs`.
-  - Not verified: a fresh Claude Code or Codex session on the new layout, and the README as rendered on GitHub.
-- Status: committed together with this entry and pushed to `origin/main` (owner's go-ahead, 2026-11-01); the push deploys production through the Git connection.
-- Next / open: see Open items.

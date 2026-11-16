@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 93 model, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 100 model, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -67,6 +67,12 @@ The "P control · smooth 90° turn" example holds each command for 0.1 s. A samp
 The 30-second run limit, parser depth limit, and instruction budget bound student programs. A `while` loop without a `wait` hits the instruction guard. User code is parsed into a small AST, never evaluated as JavaScript.
 
 The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. **LiDAR CSV** writes one row per scan, with 360 ranges from 0° counterclockwise and 0 for no return, like the LDS-01 and the filter in a typical MATLAB `polarplot` script. The Plots tab also draws the last scan as a polar plot. That is a file export, not a live MATLAB connection.
+
+### Looking back at a run
+
+After a drive run, a timeline appears under the stage. Dragging it, or pressing play, shows the rover as it was at that moment: its pose, paths, LiDAR scan, readings, and the support point. Every figure in Plots marks the same moment with an orange line, and a click in a time plot moves the stage there. The replay reads the run's 100 Hz log and never steps the physics again. Three things are not in the log and so are not replayed: program variables, the running line, and the caster's swivel; the support point comes from the logged IMU acceleration, with its noise.
+
+A new run also shows the previous one as a pale ghost at the same moment of its own run, and as a gray dashed line on the path, heading, and mission figures. The previous run is the newest earlier run on the same robot from the same start, on any terrain. "Previous run" under "Look beneath the surface" turns it off.
 
 ### TurtleBot3 Waffle Pi calibration
 

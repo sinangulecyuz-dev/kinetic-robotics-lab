@@ -29,6 +29,9 @@ export class Figure{
     this.tip=document.createElement('div');this.tip.className='plot-tip';this.tip.hidden=true;
     this.root.append(this.canvas,this.tip);container.append(this.root);
     this.ctx=this.canvas.getContext('2d');this.cursor=null;this.cursorSeries=0;this.spec=null;
+    // time: the moment shown in the scene, marked in every figure. onPick: called with the time a click chose.
+    this.time=null;this.onPick=null;
+    this.canvas.addEventListener('click',e=>this.pick(e));
     new ResizeObserver(()=>this.draw()).observe(this.canvas);
     this.canvas.addEventListener('pointermove',e=>this.hover(e));
     this.canvas.addEventListener('pointerleave',()=>{if(document.activeElement!==this.canvas)this.setCursor(null);});
@@ -66,6 +69,7 @@ export class Figure{
     ctx.lineJoin='round';ctx.lineWidth=1.5;
     for(const s of spec.series){ctx.strokeStyle=s.color;ctx.setLineDash(pattern(s.dash));ctx.beginPath();this.trace(s,X,Y,pw);ctx.stroke();}
     ctx.setLineDash([]);
+    if(this.time!==null)this.drawTime(X,Y,box);
     if(this.cursor!==null)this.drawCursor(X,Y,box);
     ctx.restore();
     ctx.strokeStyle=INK;ctx.lineWidth=1;ctx.strokeRect(box.l+.5,box.t+.5,pw-1,ph-1);
@@ -132,6 +136,19 @@ export class Figure{
     else{const time=spec.series[0].x[i];head.textContent=`t = ${time.toFixed(2)} s`;rows=spec.series.map(s=>row(s,Number.isFinite(s.y[i])?`${s.y[i].toFixed(digits)}${spec.unit?' '+spec.unit:''}`:t('plot.noReturn')));px=map.X(time);}
     tip.replaceChildren(head,...rows);tip.hidden=false;
     const width=tip.offsetWidth;tip.style.left=`${px+14+width>map.box.r?px-14-width:px+14}px`;tip.style.top=`${map.box.t+6}px`;
+  }
+  // The scene's moment: a vertical line in a time plot, a ring on each path in an x-y plot.
+  drawTime(X,Y,box){
+    const {ctx,spec}=this,ink='#f46a3c';
+    if(spec.kind==='xy'){for(const s of spec.series){if(!s.t?.length)continue;const i=Math.min(s.t.length-1,Math.max(0,Math.round((this.time-s.t[0])/((s.t[1]??1)-s.t[0]))));if(!Number.isFinite(s.y[i]))continue;ctx.beginPath();ctx.arc(X(s.x[i]),Y(s.y[i]),5,0,Math.PI*2);ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.stroke();}return;}
+    const x=Math.round(X(this.time))+.5;ctx.strokeStyle=ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,box.t);ctx.lineTo(x,box.b);ctx.stroke();
+  }
+  setTime(time){if(time===this.time)return;this.time=time;this.draw();}
+  pick(e){
+    if(!this.onPick||!this.map||!this.spec||this.spec.kind==='polar')return;
+    if(this.spec.kind==='xy'){const s=this.spec.series[this.cursorSeries];if(this.cursor!==null&&s?.t)this.onPick(s.t[this.cursor]);return;}
+    const r=this.canvas.getBoundingClientRect(),px=e.clientX-r.left,{box,xr}=this.map;if(px<box.l||px>box.r)return;
+    this.onPick(xr.lo+(px-box.l)/(box.r-box.l)*(xr.hi-xr.lo));
   }
   setCursor(i){if(i===this.cursor)return;this.cursor=i;this.draw();if(i===null)this.tip.hidden=true;}
   hover(e){

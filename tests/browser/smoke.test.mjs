@@ -133,6 +133,40 @@ test('drive run: the default example finishes, plots render, and the CSV holds t
   });
 });
 
+test('timeline: a finished run can be turned back, played again, and picked from a plot; a second run shows the first as a ghost',async()=>{
+  await withLab('timeline',{},async page=>{
+    const scrubTo=v=>page.evaluate(v=>{const e=document.getElementById('timeline-range');e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},v);
+    const clock=async()=>{const m=(await page.textContent('#timeline-time')).match(/t = ([\d.]+) \/ ([\d.]+) s/);return [Number(m[1]),Number(m[2])];};
+    await page.selectOption('#experiment-mode','drive');
+    assert.ok(await page.isHidden('#timeline'),'no timeline before a run');
+    await page.click('#code-tab');await page.fill('#code-editor','drive(0.3, 0.5)\nwait(3)\nstop()');
+    await page.click('#run');await page.clock.runFor(1000);assert.ok(await page.isHidden('#timeline'),'no timeline while running');
+    await runToEnd(page);
+    const [now,end]=await clock();assert.ok(await page.isVisible('#timeline'));assert.equal(now,end);assert.ok(end>3&&end<5,`run lasted ${end} s`);
+    // At rest at the end, moving at 0.3 m/s in the middle, and the outcome message steps aside.
+    assert.match(await page.textContent('#metric-mass'),/^0\.0\d/);
+    await scrubTo(1.5);await page.clock.runFor(100);
+    assert.deepEqual(await clock(),[1.5,end]);assert.match(await page.textContent('#metric-mass'),/^0\.(29|30|31)/);assert.ok(await page.isHidden('#stage-outcome'));
+    // Play runs the clock forward to the end and stops there.
+    await page.click('#timeline-play');assert.equal(await page.getAttribute('#timeline-play','aria-label'),en['timeline.pause']);
+    await page.clock.runFor(1000);const [mid]=await clock();assert.ok(mid>2.3&&mid<2.7,`after 1 s of play: ${mid}`);
+    await page.clock.runFor(4000);assert.equal((await clock())[0],end);assert.equal(await page.getAttribute('#timeline-play','aria-label'),en['timeline.play']);assert.ok(await page.isVisible('#stage-outcome'));
+    // A click in a time plot moves the stage to that moment.
+    await page.click('#plots-tab');await page.clock.runFor(300);
+    const heading=page.locator('#plot-grid canvas').nth(2);await heading.scrollIntoViewIfNeeded();const box=await heading.boundingBox();
+    await page.mouse.click(box.x+box.width*.5,box.y+box.height*.5);await page.clock.runFor(100);
+    const [picked]=await clock();assert.ok(picked>.5&&picked<end-.5,`picked ${picked} s`);
+    // A second run from the same start has the first as its ghost, and the plots name it.
+    await page.click('#code-tab');await page.fill('#code-editor','drive(0.3, -0.5)\nwait(3)\nstop()');
+    assert.ok(await page.isHidden('#timeline'),'editing the program clears the replay');
+    await page.click('#run');await runToEnd(page);await page.click('#plots-tab');await page.clock.runFor(300);
+    const label=await page.locator('#plot-grid canvas').nth(2).getAttribute('aria-label');assert.ok(label.includes(en['plot.previous']),label);
+    await page.uncheck('#show-ghost');await page.clock.runFor(300);
+    assert.ok(!(await page.locator('#plot-grid canvas').nth(2).getAttribute('aria-label')).includes(en['plot.previous']),'the switch removes the previous run from the plots');
+    await page.click('#reset');assert.ok(await page.isHidden('#timeline'));
+  });
+});
+
 test('a program the parser rejects shows a line-numbered error and does not start',async()=>{
   await withLab('parse-error',{},async page=>{
     await page.selectOption('#experiment-mode','drive');
