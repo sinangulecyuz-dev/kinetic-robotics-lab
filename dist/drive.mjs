@@ -65,7 +65,7 @@ export const ROBOTS={
   }
 };
 export const OBSTACLE={x:0,z:1.3,halfX:.28,halfZ:.16};
-export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw','windSpeed','windToward'];
+export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw','windSpeed','windToward','line'];
 const ARENA=2.3;
 // A start position stays at least 0.3 m inside the edge stop.
 export const START_LIMIT=2;
@@ -144,6 +144,8 @@ export class DriveSim{
     this.wheels=[0,1].map(()=>({w:0,theta:0,ref:0,volts:0,current:0,integral:0,count:0,speed:0,slip:0}));
     this.caster={spin:0,swivel:0};
     this.steps=0;this.budget=0;this.status='running';this.success=false;this.message='';
+    // varLog: every value a let gave, with its time. commandLog: the line of each wheels, drive, or stop as it ran; line 0 is the end of the program.
+    this.varLog=[];this.commandLog=[];
     this.queue=[...program];this.vars=new Map();this.waitSteps=0;this.instructions=0;this.sinceAdvance=0;this.line=program[0]?.line||1;this.phase='run';this.settleSteps=0;this.quietSteps=0;
     this.seed=seed;this.noise=noise;this.rand=random(seed);this.lidarRand=random(seed^0x9E3779B9);
     this.windOption=wind||null;this.windSpeed=0;this.windToward=0;this.windForce={f:0,l:0};
@@ -192,7 +194,7 @@ export class DriveSim{
     while(this.phase==='run'&&this.waitSteps===0){
       if(++this.sinceAdvance>500||++this.instructions>10000)return this.finish(false,`Stopped at line ${this.line}: instruction limit reached. A loop ran with no wait in it; put wait(0.05) inside every loop.`,'sim.instructions',{line:this.line});
       const n=this.queue.shift();
-      if(!n){this.phase='settle';this.setTargets(0,0);this.command(0,0);return;}
+      if(!n){this.phase='settle';this.setTargets(0,0);this.command(0,0);if(this.commandLog.at(-1)?.t!==this.time)this.commandLog.push({t:this.time,line:0});return;}
       this.line=n.line;
       try{this.execute(n);if(this.status!=='running')return;}catch(e){
         // A variable read before any let gave it a value stops the run on that line.
@@ -203,6 +205,7 @@ export class DriveSim{
   }
   execute(n){
       if(n.type==='wheels'||n.type==='drive'){
+        if(this.commandLog.at(-1)?.line!==n.line)this.commandLog.push({t:this.time,line:n.line});
         // Values computed from sensors are clipped to the parser's limits, as a motor driver saturates.
         // Math with no value (a division by zero) stops the run on its line.
         const [a,b]=n.type==='wheels'?[this.value(n.l,10),this.value(n.r,10)]:[this.value(n.v,.75),this.value(n.w,6)];
@@ -224,7 +227,7 @@ export class DriveSim{
       else if(n.type==='let'){
         const v=this.compute(n.value);
         if(Number.isNaN(v))return this.finish(false,`Stopped at line ${n.line}: the math has no value here, for example a division by zero.`,'sim.noValue',{line:n.line});
-        this.vars.set(n.name,v);
+        this.vars.set(n.name,v);this.varLog.push({t:this.time,name:n.name,value:v});
       }
   }
   // Gusts: g scales the mean speed and d turns the direction; both relax toward 0 with time constant tau, driven by seeded noise.
@@ -336,7 +339,7 @@ export class DriveSim{
     if(this.steps%RANGE_STEPS===0)this.range=this.measureRange();
     for(let k=0;k<LIDAR.beams*LIDAR.rate*T;k++){this.scanBuffer.push(this.beam(this.scanBuffer.length));if(this.scanBuffer.length===LIDAR.beams){this.publishScan(this.scanBuffer);this.scanBuffer=[];}}
     const axle=this.axle(),[L,R]=this.wheels,trueX=axle.z-this.start.z,trueY=axle.x-this.start.x;
-    const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w,this.desired.x,this.desired.y,this.desired.yaw,...['front','left','back','right','min'].map(k=>this.lidar[k]<Infinity&&this.lidar[k]>=LIDAR.min?this.lidar[k]:0),this.fusion.x,this.fusion.y,this.fusion.yaw,this.windSpeed,this.windToward];
+    const row=[this.time,L.ref,R.ref,L.count,R.count,L.speed,R.speed,L.current,R.current,L.volts,R.volts,...accel,...gyro,this.range,this.odom.x,this.odom.y,this.odom.yaw,this.gyroYaw,trueX,trueY,this.heading,this.speed,L.slip,R.slip,L.w,R.w,this.desired.x,this.desired.y,this.desired.yaw,...['front','left','back','right','min'].map(k=>this.lidar[k]<Infinity&&this.lidar[k]>=LIDAR.min?this.lidar[k]:0),this.fusion.x,this.fusion.y,this.fusion.yaw,this.windSpeed,this.windToward,this.phase==='run'?this.line:0];
     CHANNELS.forEach((c,i)=>this.log[c].push(row[i]));
     const track=(list,x,z)=>{const last=list.at(-1);if(!last||Math.hypot(x-last.x,z-last.z)>.018)list.push({x,z});};
     track(this.path,axle.x,axle.z);track(this.odomPath,this.start.x+this.odom.y,this.start.z+this.odom.x);track(this.fusedPath,this.start.x+this.fusion.y,this.start.z+this.fusion.x);
@@ -348,7 +351,7 @@ export class DriveSim{
 }
 export function simulateRun(options){return new DriveSim(options).run();}
 // Column names carry units and mark simulator-only values as true_*. MATLAB: T = readtable('file.csv').
-const CSV_NAMES={t:'t_s',cmdL:'cmd_left_rad_s',cmdR:'cmd_right_rad_s',encL:'encoder_left_counts',encR:'encoder_right_counts',speedL:'speed_left_rad_s',speedR:'speed_right_rad_s',currentL:'current_left_A',currentR:'current_right_A',voltsL:'voltage_left_V',voltsR:'voltage_right_V',ax:'accel_x_m_s2',ay:'accel_y_m_s2',az:'accel_z_m_s2',gx:'gyro_x_rad_s',gy:'gyro_y_rad_s',gz:'gyro_z_rad_s',range:'range_m',odomX:'odom_x_m',odomY:'odom_y_m',odomYaw:'odom_yaw_rad',gyroYaw:'gyro_yaw_rad',trueX:'true_x_m',trueY:'true_y_m',trueYaw:'true_yaw_rad',trueSpeed:'true_speed_m_s',slipL:'true_slip_left_m_s',slipR:'true_slip_right_m_s',wheelL:'true_wheel_left_rad_s',wheelR:'true_wheel_right_rad_s',desX:'desired_x_m',desY:'desired_y_m',desYaw:'desired_yaw_rad',lidarFront:'lidar_front_m',lidarLeft:'lidar_left_m',lidarBack:'lidar_back_m',lidarRight:'lidar_right_m',lidarMin:'lidar_min_m',fusedX:'fused_x_m',fusedY:'fused_y_m',fusedYaw:'fused_yaw_rad',windSpeed:'wind_speed_m_s',windToward:'wind_toward_rad'};
+const CSV_NAMES={t:'t_s',cmdL:'cmd_left_rad_s',cmdR:'cmd_right_rad_s',encL:'encoder_left_counts',encR:'encoder_right_counts',speedL:'speed_left_rad_s',speedR:'speed_right_rad_s',currentL:'current_left_A',currentR:'current_right_A',voltsL:'voltage_left_V',voltsR:'voltage_right_V',ax:'accel_x_m_s2',ay:'accel_y_m_s2',az:'accel_z_m_s2',gx:'gyro_x_rad_s',gy:'gyro_y_rad_s',gz:'gyro_z_rad_s',range:'range_m',odomX:'odom_x_m',odomY:'odom_y_m',odomYaw:'odom_yaw_rad',gyroYaw:'gyro_yaw_rad',trueX:'true_x_m',trueY:'true_y_m',trueYaw:'true_yaw_rad',trueSpeed:'true_speed_m_s',slipL:'true_slip_left_m_s',slipR:'true_slip_right_m_s',wheelL:'true_wheel_left_rad_s',wheelR:'true_wheel_right_rad_s',desX:'desired_x_m',desY:'desired_y_m',desYaw:'desired_yaw_rad',lidarFront:'lidar_front_m',lidarLeft:'lidar_left_m',lidarBack:'lidar_back_m',lidarRight:'lidar_right_m',lidarMin:'lidar_min_m',fusedX:'fused_x_m',fusedY:'fused_y_m',fusedYaw:'fused_yaw_rad',windSpeed:'wind_speed_m_s',windToward:'wind_toward_rad',line:'program_line'};
 export function toCsv(log){
   return [CHANNELS.map(c=>CSV_NAMES[c]).join(','),...log.t.map((_,i)=>CHANNELS.map(c=>{const v=log[c][i];return Number.isInteger(v)?v:+v.toFixed(6);}).join(','))].join('\n')+'\n';
 }

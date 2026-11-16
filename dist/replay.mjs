@@ -31,6 +31,8 @@ export class Replay{
     [['encL','speedL','slipL','wheelL','cmdL','currentL','voltsL'],['encR','speedR','slipR','wheelR','cmdR','currentR','voltsR']].forEach(([enc,speed,slip,w,ref,current,volts],k)=>{
       Object.assign(v.wheels[k],{count:L[enc][i],theta:L[enc][i]*tick,speed:L[speed][i],slip:L[slip][i],w:L[w][i],ref:L[ref][i],current:L[current][i],volts:L[volts][i]});});
     v.odom={x:L.odomX[i],y:L.odomY[i],yaw:L.odomYaw[i]};v.fusion={...v.fusion,x:L.fusedX[i],y:L.fusedY[i],yaw:L.fusedYaw[i]};
+    // The program at that moment: its running line, and each variable's latest value.
+    v.line=L.line[i];v.vars=new Map();for(const e of this.run.varLog){if(e.t>L.t[i]+1e-9)break;v.vars.set(e.name,e.value);}
     v.gyroYaw=L.gyroYaw[i];v.gyroZ=L.gz[i];v.range=L.range[i];v.windSpeed=L.windSpeed[i];v.windToward=L.windToward[i];
     // The latest complete LiDAR scan at that moment. The log stores a missing return as 0.
     const scans=this.run.scans;let lo=0,hi=scans.length-1;while(lo<hi){const mid=(lo+hi+1)>>1;if(scans[mid].t<=L.t[i]+1e-9)lo=mid;else hi=mid-1;}
@@ -52,7 +54,8 @@ export function previousRun(runs,current){
 }
 
 // What happened in a run, read from its log: spans of time when a wheel slipped, when a motor was at its voltage limit,
-// and the moments a wheel command jumped. Each is {kind, t0, t1}; a jump has t0 = t1.
+// and the moments a wheel command jumped. Each is {kind, t0, t1, line}; a jump has t0 = t1.
+// line is the program line whose command was in force when the event began, or 0 after the program ended.
 // Thresholds: 0.05 m/s of slip is a visible skid; a command jump is more than 0.5 rad/s within one 10 ms sample.
 export const EVENT_KINDS=['slip','saturation','command'];
 export const SLIP_EVENT=.05,COMMAND_JUMP=.5,EVENT_GAP=.15;
@@ -65,5 +68,6 @@ export function runEvents(run){
   spans('saturation',i=>Math.max(Math.abs(L.voltsL[i]),Math.abs(L.voltsR[i]))>=limit);
   // The first sample is compared with rest, so the program's first command counts.
   for(let i=0;i<n;i++)if(Math.max(Math.abs(L.cmdL[i]-(i?L.cmdL[i-1]:0)),Math.abs(L.cmdR[i]-(i?L.cmdR[i-1]:0)))>COMMAND_JUMP)out.push({kind:'command',t0:L.t[i],t1:L.t[i]});
-  return out.sort((a,b)=>a.t0-b.t0);
+  const C=run.commandLog||[],lineAt=t=>{let line=0;for(const c of C){if(c.t>t+1e-9)break;line=c.line;}return line;};
+  return out.sort((a,b)=>a.t0-b.t0).map(e=>({...e,line:lineAt(e.t0)}));
 }

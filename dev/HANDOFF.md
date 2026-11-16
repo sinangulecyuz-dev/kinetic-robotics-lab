@@ -33,7 +33,7 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: a teacher kit in three languages, `docs/teacher-kit-{en,tr,fr}.html` (`npm run kit`).
   - New, outside the lab: `tools/quadcopter/`, the owner's study tool for the ME 425 quadcopter slides (its own README). It is not in `dist`, so it is not deployed, and it does not follow the lab's i18n or design rules.
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-16: `npm test` 105/105 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-16: `npm test` 106/106 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -103,6 +103,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-16 — Claude Code (cloud) — the program in the replay
+- Changed: `dist/drive.mjs` (a `line` channel, CSV column `program_line`; `varLog` and `commandLog` on the run), `dist/replay.mjs`, `dist/app.js`, one key `event.line` in three languages, `docs/french-review.html`, tests, README, `dev/AGENTS.md`. The CSV gains one column at the end; files exported before this lack it.
+- Verified: `npm test` 106/106, `npm run check`, `npm run test:browser` 14/14. The replayed line and variables equal those of a fresh simulation at four moments of a P-I program.
+- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Next / open: none for this change.
 
 ### 2026-11-16 — Claude Code (cloud) — teacher kit
 - Changed: new `scripts/teacher-kit.mjs`, `scripts/teacher-kit-content.mjs`, `docs/teacher-kit-{en,tr,fr}.html`, `tests/teacher-kit.test.mjs` (4 tests), `tests/solutions.mjs` (the reference solutions, moved out of `tests/missions.test.mjs`); `package.json` (`npm run kit`), README, `dev/AGENTS.md`, this file.
@@ -203,22 +209,3 @@ Entry template:
   - Not verified: real phones, Safari, Firefox; a native French review.
 - Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
 - Next / open: Experiment 04 needs the owner's decision on variables or an `integral` reading. The owner merges the branch into `main` at the end.
-
-### 2026-11-01 — Claude Code (cloud) — math in rover scripts (P control)
-
-- Changed:
-  - `dist/physics.mjs`: `parseValues` (tokenizer and recursive-descent parser, no `eval`), `evaluate`, `MATH_FUNCTIONS`, `MATH_LIMITS`. `wheels` and `drive` take math. The parser's `fail` moved to module scope.
-  - `dist/drive.mjs`: `value()` evaluates math on the latest sensor samples and clips it; NaN stops the run with `sim.noValue` and the line.
-  - `dist/lang/{en,tr,fr}.mjs`: 7 parser messages, `sim.noValue`, `example.pturn`, and a "Math from sensors" section in the rover script reference. French needs the native speaker's review.
-  - `dist/examples.mjs`, `dist/index.html`: the "P control · smooth 90° turn" example. `dist/style.css`: inline code in dialogs no longer breaks across lines.
-  - New `tests/expressions.test.mjs` (8 tests), added to `npm test`. One browser test added. `npm run check` also checks the browser test's syntax. README and `dev/AGENTS.md` updated.
-- Verified:
-  - `npm test` 62/62, `npm run check`, `npm run test:browser` 10/10 pass.
-  - 156 runs (every example and mission starter × 2 robots × 3 terrains × noise on/off) hashed before and after: all bit-identical, so number-only programs, missions, and saved runs behave as before.
-  - Expressions: 3000 generated expressions give exactly JavaScript's value; 20 000 random strings only ever raise line-numbered parser messages; hostile names (`constructor`, `__proto__`, `alert`) are refused.
-  - P turn against an independent sampled-data model: k = 0.02 ends at 82.5° against 82.1° predicted; k = 0.3 overshoots (108° simulated, 98° in the model, which leaves out motor lag).
-  - The tests can fail: six deliberate breaks (reversed subtraction, right-associative `*` and `/`, function lookup through the prototype, no clipping, no NaN stop, no depth limit), each reverted, failed the expected tests. Only the JavaScript comparison caught the associativity break.
-  - Looked at in headless Chromium: the reference section in Turkish and French, the example in French (its long comment line was split after this check), and the three dialogs on a phone emulation with no sideways overflow.
-  - Not verified: real phones, Safari, Firefox; a native French review.
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
-- Next / open: the owner merges into `main` if wanted. The P example also shows a pattern for the "turn once around" mission, though not its reference solution. Next planned step: Experiment 03, wall following with P control.

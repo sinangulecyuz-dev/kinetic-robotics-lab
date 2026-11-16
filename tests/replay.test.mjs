@@ -81,3 +81,22 @@ test('run events: command jumps, slip on ice, and a motor at its limit are found
   assert.ok(sat.length>=1&&sat[0].t1-sat[0].t0>1,`saturation: ${JSON.stringify(sat)}`);
   assert.equal(runEvents(drive('drive(0.1, 0)\nwait(2)\nstop()','flat','turtlebot3')).filter(e=>e.kind==='saturation').length,0);
 });
+
+import {toCsv} from '../dist/drive.mjs';
+test('the program is replayed too: its running line and its variables, and events name the line in force',()=>{
+  const src='let sum = 0\nwhile time < 3\n  let e = 1 - odom_x\n  let sum = sum + e*0.05\n  drive(0.3*e, 0)\n  wait(0.05)\nend\nstop()';
+  const cfg={design:DEFAULT,robot:'kinetic',terrain:'flat',program:parseProgram(src),seed:4},run=simulateRun(cfg),replay=new Replay(run);
+  for(const time of [0,.42,1.5,2.93]){
+    const want=liveAt(cfg,time),got=replay.at(time);
+    assert.equal(got.line,want.line,`line at ${time} s`);
+    assert.deepEqual([...got.vars].sort(),[...want.vars].sort(),`variables at ${time} s`);
+    assert.ok(got.vars.has('sum')&&(time===0||got.vars.get('sum')>0));
+  }
+  // Once the program is over there is no running line.
+  assert.equal(replay.at(replay.duration).line,0);assert.ok(run.log.line.includes(6)&&run.log.line.every(Number.isInteger));
+  const csv=toCsv(run.log).split('\n');assert.ok(csv[0].endsWith(',program_line'));assert.equal(csv[1].split(',').at(-1),String(run.log.line[0]));
+  const steps=simulateRun({design:DEFAULT,robot:'kinetic',terrain:'flat',program:parseProgram('drive(0.2, 0)\nwait(2)\ndrive(0.2, 1)\nwait(2)\nstop()'),seed:3});
+  assert.deepEqual(runEvents(steps).filter(e=>e.kind==='command').map(e=>e.line),[1,3,5]);
+  // A slip that starts under the first command belongs to line 1.
+  const ice=runEvents(simulateRun({design:DEFAULT,robot:'kinetic',terrain:'slippery',program:parseProgram('wheels(9, 9)\nwait(2)\nstop()'),seed:3})).find(e=>e.kind==='slip');assert.equal(ice.line,1);
+});

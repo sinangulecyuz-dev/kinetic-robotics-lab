@@ -229,6 +229,7 @@ export default {
   'event.slip':`Tekerlek kayması`,
   'event.saturation':`Motor gerilim sınırında`,
   'event.command':`Komut sıçraması`,
+  'event.line':`{text} · satır {line}`,
   'event.span':`{kind}, {from}–{to} s`,
   'event.at':`{kind}, {t} s`,
   'overlay.lidar':`LiDAR taraması`,

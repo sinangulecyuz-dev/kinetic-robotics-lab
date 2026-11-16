@@ -229,6 +229,7 @@ export default {
   'event.slip':`Wheel slip`,
   'event.saturation':`Motor at its voltage limit`,
   'event.command':`Command jump`,
+  'event.line':`{text} · line {line}`,
   'event.span':`{kind}, {from}–{to} s`,
   'event.at':`{kind} at {t} s`,
   'overlay.lidar':`LiDAR scan`,

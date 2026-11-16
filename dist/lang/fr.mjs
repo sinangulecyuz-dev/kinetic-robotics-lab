@@ -230,6 +230,7 @@ export default {
   'event.slip':`Patinage d’une roue`,
   'event.saturation':`Moteur à sa tension maximale`,
   'event.command':`Saut de consigne`,
+  'event.line':`{text} · ligne {line}`,
   'event.span':`{kind}, {from}–{to} s`,
   'event.at':`{kind} à {t} s`,
   'overlay.lidar':`Balayage LiDAR`,

@@ -262,7 +262,7 @@ function simOf(r){
 }
 // What a run's log shows happened: wheel slip, a motor at its voltage limit, a jump in the wheel commands.
 const EVENT_COLOR={slip:'#d95319',saturation:'#7e2f8e',command:'#4f5b68'};
-const eventLabel=e=>e.t1>e.t0?t('event.span',{kind:t('event.'+e.kind),from:e.t0.toFixed(2),to:e.t1.toFixed(2)}):t('event.at',{kind:t('event.'+e.kind),t:e.t0.toFixed(2)});
+const eventLabel=e=>{const text=e.t1>e.t0?t('event.span',{kind:t('event.'+e.kind),from:e.t0.toFixed(2),to:e.t1.toFixed(2)}):t('event.at',{kind:t('event.'+e.kind),t:e.t0.toFixed(2)});return e.line?t('event.line',{text,line:e.line}):text;};
 let marksFor=null;
 function drawMarks(){
   if(marksFor===replay)return;marksFor=replay;const end=replay.duration||1,ev=replay.events.slice(0,80),kinds=[...new Set(ev.map(e=>e.kind))];
@@ -279,6 +279,8 @@ function syncTimeline(){
 }
 function setScrub(time){
   if(!replay)return;scrub=time===null||time>=replay.duration?null:Math.max(0,time);
+  // Turned back, the code shows the line that was running then.
+  markLines(scrub!==null?replay.at(scrub).line:0);
   syncTimeline();updateTelemetry();updateWatch(true);figures.forEach(f=>f.setTime(plotted===sim?scrub??replay.duration:null));needsRender=true;
 }
 $('timeline-range').addEventListener('input',e=>{playing=false;setScrub(+e.target.value);});

@@ -146,10 +146,13 @@ test('timeline: a finished run can be turned back, played again, and picked from
     // At rest at the end, moving at 0.3 m/s in the middle.
     assert.match(await page.textContent('#metric-mass'),/^0\.0\d/);
     await scrubTo(1.5);await page.clock.runFor(100);
-    assert.deepEqual(await clock(),[1.5,end]);assert.match(await page.textContent('#metric-mass'),/^0\.(29|30|31)/);
+    assert.deepEqual(await clock(),[1.5,end]);
+    // Turned back to 1.5 s, the code marks the line that was running then: the wait on line 2.
+    assert.equal(await page.locator('#line-numbers .active').textContent(),'2');assert.match(await page.textContent('#metric-mass'),/^0\.(29|30|31)/);
     // The log's events are marked on the timeline: this program jumps its commands at the start and at the stop.
     const marks=await page.$$eval('#timeline-marks button',bs=>bs.map(b=>b.getAttribute('aria-label')));
-    assert.ok(marks.includes(fill(en['event.at'],{kind:en['event.command'],t:'0.00'}))&&marks.includes(fill(en['event.at'],{kind:en['event.command'],t:'3.00'})),`marks: ${marks}`);
+    const jump=(time,line)=>fill(en['event.line'],{text:fill(en['event.at'],{kind:en['event.command'],t:time}),line});
+    assert.ok(marks.includes(jump('0.00',1))&&marks.includes(jump('3.00',3)),`marks: ${marks}`);
     assert.ok((await page.innerText('#timeline-legend')).includes(en['event.command']));
     await page.locator('#timeline-marks button').last().click();assert.equal((await clock())[0],3);
     await scrubTo(1.5);
