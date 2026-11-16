@@ -30,10 +30,11 @@ Last verified 2026-11-01 by Claude Code. Verify again with Git before relying on
   - New: indoor/outdoor environments, a grass terrain, and a switchable gusty wind outdoors.
   - New: Experiment 03 "Follow the wall" (P control): two missions that start near a wall, "Park 0.5 m from the wall" and "Follow the wall at 0.5 m".
   - New: a timeline that turns a finished run back, the same moment marked in every plot, and the previous run as a ghost (`dist/replay.mjs`).
+  - New: "Build your own robot" (`custom`: wheel diameter, motor strength, frame mass) and its mission in Experiment 03.
   - New: a teacher kit in three languages, `docs/teacher-kit-{en,tr,fr}.html` (`npm run kit`).
   - New, outside the lab: `tools/quadcopter/`, the owner's study tool for the ME 425 quadcopter slides (its own README). It is not in `dist`, so it is not deployed, and it does not follow the lab's i18n or design rules.
 - The README ("What the model means") and `dev/AGENTS.md` ("Physics boundaries") describe the model and its limits.
-- Verification on 2026-11-16: `npm test` 106/106 pass, `npm run check` passes, `npm run test:browser` 14/14 pass (headless Chromium, needs Playwright).
+- Verification on 2026-11-16: `npm test` 114/114 pass, `npm run check` passes, `npm run test:browser` 15/15 pass (headless Chromium, needs Playwright).
 - Hosting: Vercel project `kinetic-robotics-lab` (account `sinangulecyuz-dev`), production https://kinetic-robotics-lab.vercel.app, public. First deployed 2026-10-29 from the working tree (`dpl_3G6yP79eBdPdD1jneEAh5woLMove`). `vercel.json` serves `dist` only. The project is connected to the GitHub repository, so pushes to `main` deploy production. The older private ChatGPT Sites prototype (https://kinetic-robotics-lab.famousbadge2.chatgpt.site) is separate and not updated from this repository.
 - Dev server: `npm run dev` listens on **127.0.0.1 only** (IPv4), so open http://127.0.0.1:5173. On 2026-10-28 another server held 5173 and served a different copy of the lab (`C:\Users\sinan\OneDrive\Documents\ChatGPT\robotikLab\dist`). That server has since stopped. Since 2026-10-29 both 5173 and 5174 serve this repository (started by Claude Code). Before trusting what a port shows, check which folder its process serves (`Get-NetTCPConnection -LocalPort 5173`). The ChatGPT-hosted prototype is older and is not updated by pushes.
 
@@ -105,6 +106,12 @@ Entry template:
 - Status: local | committed | pushed | deployed
 - Next / open: what remains, decisions waiting for the owner
 ```
+
+### 2026-11-16 — Claude Code (cloud) — build your own robot, and a mission for it
+- Changed: `dist/drive.mjs` (`CUSTOM`, `customDesign`, `ROBOTS.custom`, `build`), `dist/missions.mjs` (mission `sprint`, `settleTime`), `dist/app.js`, `dist/index.html`, the three language files (about 20 keys; the "coming soon" keys are gone), `docs/french-review.html`, `docs/teacher-kit-*.html`, `scripts/teacher-kit*.mjs`, `tests/custom.test.mjs` (6 tests), `tests/solutions.mjs` (`DESIGNS`), `tests/missions.test.mjs`, `tests/browser/smoke.test.mjs`, README, `dev/AGENTS.md`.
+- Verified: `npm test` 114/114, `npm run check`, `npm run test:browser` 15/15. All 3 × 3 × 3 × 2 corners of the design range drive on four terrains with two programs each, no tip and no NaN. The motor range was widened from the first plan (×0.5–2) to ×0.1–2, because above ×0.5 the motor made almost no difference on concrete. The mission's reference passes in 3.45–3.51 s over six seeds; the stock robot's best of 12 two-stage programs is 5.0 s.
+- Status: committed and pushed to the `claude/...` branch only, not on `main`.
+- Next / open: about 25 new Turkish and French strings need review. The teacher kit lists the new mission but its Experiment 03 flow does not schedule it.
 
 ### 2026-11-16 — Claude Code (cloud) — the program in the replay
 - Changed: `dist/drive.mjs` (a `line` channel, CSV column `program_line`; `varLog` and `commandLog` on the run), `dist/replay.mjs`, `dist/app.js`, one key `event.line` in three languages, `docs/french-review.html`, tests, README, `dev/AGENTS.md`. The CSV gains one column at the end; files exported before this lack it.
@@ -191,23 +198,3 @@ Entry template:
 - Findings: `lidar_min` reads about 1.5 cm short (minimum of noisy beams); without static friction a parked rover creeps in wind. Both are documented, not changed.
 - Status: pushed to `main` (fast-forward to `7faff6a`, owner's go-ahead, 2026-11-01), which triggers the Vercel production deploy. Not verified from the cloud session: its network policy refuses `kinetic-robotics-lab.vercel.app`, and its GitHub tools do not show deployments. Check with `vercel ls` or by opening the site.
 - Next / open: Experiment 04 has one mission; six other mission ideas were measured and dropped (README). "Build your own robot" is only announced.
-
-### 2026-11-01 — Claude Code (cloud) — Experiment 03 "Follow the wall"
-
-- Changed:
-  - `dist/drive.mjs`: `DriveSim` option `start` ({x, z}, still facing +z, clamped to `START_LIMIT` = 2 m), kept as `origin`.
-  - `dist/missions.mjs`: `experiment` on every mission, `missionsFor`, and two Experiment 03 missions, `park` and `wall`, with starts, judges, and Turkish and French texts.
-  - `dist/app.js`, `dist/index.html`: lesson 03 button, per-experiment mission card titles, `startPose()` for the idle view, runs, records, and replays; the camera follows the rover when the run starts off-center; the lesson 3 details dialog. Fixed: after a reload, Experiment 02 or 03 came back in ramp mode; it now comes back in drive mode.
-  - `dist/lang/{en,tr,fr}.mjs`: lesson 3, mission card, discovery, judge, and details texts; the learning path gets "Steer by feedback" as item 03 and renumbers the planned items 04–06. French needs the native speaker's review.
-  - Tests: two reference solutions and three tests in `tests/missions.test.mjs`, the lesson 3 keys in `tests/i18n.test.mjs`, one browser test. README "Experiment 03", `dev/AGENTS.md`.
-- Verified:
-  - `npm test` 66/66, `npm run check`, `npm run test:browser` 11/11 pass.
-  - The 156-run fingerprint (every example and Experiment 02 starter, both robots, three terrains, noise on and off) is still bit-identical.
-  - Park: the starter stops at 41–46 cm, a P solution at 49.4–50.2 cm. Wall: the starter hits the wall for seeds 1–4; distance-only control hit the wall for every gain tried (0.2–4, on `lidar_left` and `lidar_min`); with a heading term the largest miss over 40 seeds is 8.3 cm (gyro) or 5.1 cm (LiDAR wall angle), against a ±10 cm tolerance. Driving straight misses by 30 cm and fails.
-  - Start geometry checked independently: `lidar_left` reads 2.5 − 1.7 = 0.8 m at the wall start with noise off.
-  - The tests can fail: start ignored in the simulator, start never passed by the app, lesson 3 not restored, a 1 m wall tolerance, and the judge measuring the wrong wall each failed the expected tests; all were reverted.
-  - Looked at in headless Chromium: the rover centered at the wall start, the wall and LiDAR dots in view, the reference solution passing in the app with a 3.2 cm miss.
-  - A saved Experiment 03 run replays from its start after a reload: the browser test reads the replayed LiDAR CSV, whose 270° beam sees the right wall about 1.0 m away.
-  - Not verified: real phones, Safari, Firefox; a native French review.
-- Status: committed and pushed to branch `claude/serene-mccarthy-1vb6oq`, not to `main`, so nothing deployed.
-- Next / open: Experiment 04 needs the owner's decision on variables or an `integral` reading. The owner merges the branch into `main` at the end.

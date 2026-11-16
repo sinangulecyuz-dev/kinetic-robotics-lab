@@ -7,7 +7,7 @@
   "engines": {"node": ">=20"},
   "scripts": {
     "dev": "node scripts/serve.mjs",
-    "test": "node --test tests/physics.test.mjs tests/drive.test.mjs tests/turtlebot3.test.mjs tests/turtlebot3-lab2.test.mjs tests/missions.test.mjs tests/lidar.test.mjs tests/fusion.test.mjs tests/examples.test.mjs tests/i18n.test.mjs tests/expressions.test.mjs tests/wind.test.mjs tests/sky.test.mjs tests/results.test.mjs tests/french-review.test.mjs tests/replay.test.mjs tests/teacher-kit.test.mjs",
+    "test": "node --test tests/physics.test.mjs tests/drive.test.mjs tests/turtlebot3.test.mjs tests/turtlebot3-lab2.test.mjs tests/missions.test.mjs tests/lidar.test.mjs tests/fusion.test.mjs tests/examples.test.mjs tests/i18n.test.mjs tests/expressions.test.mjs tests/wind.test.mjs tests/sky.test.mjs tests/results.test.mjs tests/french-review.test.mjs tests/replay.test.mjs tests/teacher-kit.test.mjs tests/custom.test.mjs",
     "test:quad": "node --test tools/quadcopter/quad.test.mjs",
     "test:browser": "node --test tests/browser/smoke.test.mjs",
     "kit": "node scripts/teacher-kit.mjs",

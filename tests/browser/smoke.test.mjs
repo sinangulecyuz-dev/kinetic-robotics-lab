@@ -85,10 +85,10 @@ test('the page loads every module, paints the scene, and logs no errors',async()
       return seen.size;
     });
     assert.ok(colors>20,`scene shows only ${colors} sampled colors`);
-    // The robot picker announces building your own robot, but it cannot be chosen yet.
+    // The robot picker offers the two robots and one the student designs.
     await page.click('#robot-picker');
-    assert.ok((await page.textContent('#modal-content')).includes(en['robots.custom']));
-    assert.equal(await page.locator('#modal-content [data-robot]').count(),2);
+    assert.ok((await page.textContent('#modal-content')).includes(en['robot.custom']));
+    assert.equal(await page.locator('#modal-content [data-robot]').count(),3);
     await page.keyboard.press('Escape');
   });
 });
@@ -176,6 +176,29 @@ test('timeline: a finished run can be turned back, played again, and picked from
   });
 });
 
+test('build your own robot: three choices change the robot, and its mission needs the robot and the program together',async()=>{
+  await withLab('custom',{},async page=>{
+    const set=(id,v)=>page.evaluate(([id,v])=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},[id,v]);
+    await page.click('#robot-picker');await page.click("[data-robot='custom']");await page.clock.runFor(100);
+    // Driving only, with its own three sliders in place of the payload.
+    assert.equal(await page.inputValue('#experiment-mode'),'drive');assert.ok(await page.isVisible('#custom-section'));assert.ok(await page.isHidden('#payload-section'));
+    assert.ok((await page.innerText('#robot-note')).includes('invented'));assert.ok((await page.innerText('#model-note')).includes('nothing measured'));
+    const facts=()=>page.innerText('#custom-facts');assert.equal(await facts(),fill(en['custom.facts'],{speed:'0.75',push:'36',mass:'2.60'}));
+    // Bigger wheels: faster, less push. Top speed is 10 rad/s times the radius; the push is the stall torque over it.
+    await set('wheel',24);assert.equal(await facts(),fill(en['custom.facts'],{speed:'1.20',push:'23',mass:'2.60'}));
+    await page.reload();await page.clock.runFor(200);assert.equal((await page.innerText('#wheel-output')).replace(/\s+/g,' '),'24 cm');
+    // The mission: the starter on the robot as it comes is told to change the robot first.
+    await set('wheel',15);await page.click('[data-lesson="3"]');await page.click('[data-mission="sprint"]');
+    assert.ok(await page.isVisible('#custom-section'),'the mission selects the built robot');
+    await page.click('#run');await runToEnd(page);
+    assert.ok((await page.innerText('#mission-verdict')).includes(en['diag.stockRobot']));
+    // The same proportional law passes once the robot has bigger wheels.
+    await set('wheel',24);await page.fill('#code-editor','while time < 6\n  wheels(20*(distance - 0.5), 20*(distance - 0.5))\n  wait(0.05)\nend\nstop()');
+    await page.click('#run');await runToEnd(page);
+    const verdict=await page.innerText('#mission-verdict');assert.match(verdict,/settled after 3\.\d\d s/);assert.ok((await page.innerText('#mission-verdict')).length>0);
+  });
+});
+
 test('a program the parser rejects shows a line-numbered error and does not start',async()=>{
   await withLab('parse-error',{},async page=>{
     await page.selectOption('#experiment-mode','drive');
@@ -245,7 +268,7 @@ test('Experiment 03: a mission starts the rover near a wall, and the judge reads
     await page.click('[data-lesson="3"]');
     assert.equal(await page.isChecked('#show-lidar'),true,'Experiment 03 turns the LiDAR layer on');
     assert.equal((await page.textContent('#missions-eyebrow')).trim(),en['missions.eyebrow3']);
-    assert.equal(await page.locator('#mission-list .mission').count(),2);
+    assert.equal(await page.locator('#mission-list .mission').count(),3);
     await page.click('[data-mission="park"]');
     assert.equal(await page.inputValue('#code-editor'),park.starter);
     await page.click('#build-tab');

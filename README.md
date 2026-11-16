@@ -21,7 +21,7 @@ npm test
 npm run check
 ```
 
-The first command runs 106 model, replay, teacher kit, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
+The first command runs 114 model, built-robot, replay, teacher kit, replay, dynamics, sensor, LiDAR, filter, parser, rover-script math and variables, wind, header sky, TurtleBot3 calibration, mission, example, and translation tests. The second checks JavaScript syntax.
 
 An optional browser smoke test drives the real page in headless Chromium. It is the only part that needs a package, so it stays out of `npm test`:
 
@@ -67,6 +67,14 @@ The "P control · smooth 90° turn" example holds each command for 0.1 s. A samp
 The 30-second run limit, parser depth limit, and instruction budget bound student programs. A `while` loop without a `wait` hits the instruction guard. User code is parsed into a small AST, never evaluated as JavaScript.
 
 The Plots tab draws nine figures from the 100 Hz log: trajectory (true path vs. odometry), heading (true, odometry, and gyro integration), wheel speed (command vs. encoder), wheel slip, encoder counts, motor current, gyroscope, and accelerometer. Lines use MATLAB colororder slots 1, 2, and 4. Slot 3 (#EDB120) is skipped because it fails contrast on a white background. **Download CSV** writes one unit-labelled column per channel, with simulator-only values prefixed `true_`, so you can run `T = readtable('kinetic-run-1.csv')` in MATLAB. **LiDAR CSV** writes one row per scan, with 360 ranges from 0° counterclockwise and 0 for no return, like the LDS-01 and the filter in a typical MATLAB `polarplot` script. The Plots tab also draws the last scan as a polar plot. That is a file export, not a live MATLAB connection.
+
+### Build your own robot
+
+The third choice in the robot picker is the Kinetic rover's layout with three decisions left to the student: the drive wheels' diameter (8–24 cm), a motor strength from ×0.1 to ×2 that scales the stall torque and adds motor mass, and the frame's mass (1–4 kg). It drives only, and it carries no payload. The panel shows what the choices come to: top speed at the 10 rad/s wheel limit, the push of both motors at standstill, and the total mass.
+
+It is an invented design, like the Kinetic rover: nothing was measured, and the interface says so. Its use is the trade-offs. Bigger wheels are faster and push less; a weak motor on big wheels cannot stop in time, and on grass it cannot start (7 N of stall force against 4 N of rolling resistance plus caster drag); a strong one spins its wheels on ice, where odometry then reads 2 m for 1.6 m travelled. `tests/custom.test.mjs` checks these against what the design's own numbers imply, and runs every corner of the range on all four terrains without a tip or a NaN.
+
+Experiment 03 has a mission for it, "Build a robot that parks fast": park 0.50 m from the wall within ±2 cm and be settled in under 4.0 s. As it comes, the robot takes about 5 s with the best programs tried, so the design has to change as well as the code.
 
 ### For teachers
 

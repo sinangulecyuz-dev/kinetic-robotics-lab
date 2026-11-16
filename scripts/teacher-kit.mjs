@@ -7,7 +7,7 @@ import {DICTIONARIES,LANGUAGES} from '../dist/i18n.mjs';
 import {MISSIONS,missionText} from '../dist/missions.mjs';
 import {DEFAULT,PRESETS,criticalAngle,parseProgram} from '../dist/physics.mjs';
 import {simulateRun} from '../dist/drive.mjs';
-import {SOLUTIONS} from '../tests/solutions.mjs';
+import {SOLUTIONS,DESIGNS} from '../tests/solutions.mjs';
 import {KIT} from './teacher-kit-content.mjs';
 
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -34,7 +34,7 @@ export function teacherKit(lang,facts=kitFacts()){
   const where=m=>{const parts=[ui['robot.'+m.robot],ui['terrain.'+m.terrain]];if(m.wind)parts.push(ui['wind.label'].replace('{speed}',m.wind.speed.toFixed(1)));return parts.map(esc).join(' · ');};
   const missionBlock=m=>{const t=missionText(m,lang),[flaw,why]=KIT.missions[m.id];
     return `<section class="mission"><h4>${esc(t.title)}</h4><p class="where">${h('setting')}: ${where(m)}</p><p><b>${h('missionGoal')}.</b> ${esc(t.goal)}</p>
-<div class="cols"><div><h5>${h('starter')}</h5><pre>${esc(t.starter)}</pre><p>${text(flaw)}</p></div><div><h5>${h('solution')}</h5><pre>${esc(SOLUTIONS[m.id])}</pre><p>${text(why)}</p></div></div></section>`;};
+<div class="cols"><div><h5>${h('starter')}</h5><pre>${esc(t.starter)}</pre><p>${text(flaw)}</p></div><div><h5>${h('solution')}</h5>${DESIGNS[m.id]?`<p class="where">${h('design')}: ${esc(ui['param.wheel'])} ${DESIGNS[m.id].wheel} cm · ${esc(ui['param.motor'])} × ${DESIGNS[m.id].motor} · ${esc(ui['param.chassis'])} ${DESIGNS[m.id].chassis} kg</p>`:''}<pre>${esc(SOLUTIONS[m.id])}</pre><p>${text(why)}</p></div></div></section>`;};
   const session=s=>{const L=lesson(s.experiment),ms=MISSIONS.filter(m=>m.experiment===s.experiment),n=String(s.experiment).padStart(2,'0');
     return `<article class="session"><header><span class="num">${n}</span><div><h2>${esc(L.title)}</h2><p class="q">${esc(L.question)}</p><p class="concept">${esc(L.concept)} · 40 ${h('min')}</p></div></header>
 <h3>${h('goal')}</h3><p>${text(s.goal)}</p><h3>${h('idea')}</h3><p class="idea">${text(s.idea)}</p>

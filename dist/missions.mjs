@@ -2,7 +2,7 @@
 // Every starter script is a reasonable first try that falls short, so the student has something to improve.
 // start places the rover in the arena, still facing +z; without it the rover starts at the center.
 // wind is the mission's own outdoor wind ({speed, toward, gust}); a mission without one is judged only without wind.
-import {rangeTo,OBSTACLE,WALL} from './drive.mjs';
+import {rangeTo,OBSTACLE,WALL,customDesign} from './drive.mjs';
 import {withComments} from './examples.mjs';
 
 export const MISSIONS=[
@@ -96,6 +96,25 @@ export const MISSIONS=[
     }
   },
   {
+    // Design and control together: the judge times how long the robot the student built takes to settle at the line.
+    id:'sprint',experiment:3,title:'Build a robot that parks fast',robot:'custom',terrain:'flat',start:{x:-1.5,z:-2},
+    goal:'With a robot you design, park with the front sensor 0.50 m from the wall, within ±2 cm, and be settled there in under 4.0 s.',
+    lesson:'Ground speed is wheel speed times wheel radius, so bigger wheels are faster. The same wheels divide the motors’ push, so a fast robot needs enough torque to stop, and a heavy one needs more. Change one choice at a time, and keep a law that slows the robot as it arrives.',
+    tr:{title:'Hızlı park eden bir robot yap',goal:'Kendi tasarladığın robotla, ön sensör duvardan 0.50 m uzaktayken ±2 cm içinde park et ve 4.0 s’den kısa sürede orada durul.',
+      lesson:'Yer hızı, tekerlek hızı çarpı tekerlek yarıçapıdır; yani büyük tekerlekler daha hızlıdır. Aynı tekerlekler motorların itmesini böler; bu yüzden hızlı bir robot durmak için yeterli torka, ağır bir robot daha fazlasına ihtiyaç duyar. Her seferinde tek bir seçimi değiştir ve robotu varırken yavaşlatan bir kural kullan.',
+      comments:['Görev: kendi robotunla duvardan 0.50 m uzakta park et (±2 cm) ve 4.0 s’den kısa sürede durul.','Bu ilk deneme çizgide frenliyor. Robotu tasarım panelinde, kodu burada değiştir.']},
+    fr:{title:'Construis un robot qui se gare vite',goal:'Avec un robot que tu conçois, gare-toi avec le capteur avant à 0.50 m du mur, à ±2 cm près, et sois stabilisé là en moins de 4.0 s.',
+      lesson:'La vitesse au sol est la vitesse des roues multipliée par leur rayon : de grandes roues vont plus vite. Les mêmes roues divisent la poussée des moteurs : un robot rapide a besoin d’assez de couple pour s’arrêter, et un robot lourd de davantage. Change un choix à la fois, et garde une loi qui ralentit le robot à l’arrivée.',
+      comments:['Mission : avec ton propre robot, gare-toi à 0.50 m du mur (±2 cm) et stabilise-toi en moins de 4.0 s.','Ce premier essai freine sur la ligne. Change le robot dans le panneau de conception, et le code ici.']},
+    starter:'# Mission: with your own robot, park 0.50 m from the wall (±2 cm) and settle in under 4.0 s.\n# This first try brakes at the line. Change the robot in the builder, and the code here.\nwheels(6, 6)\nwhile distance > 0.5\n  wait(0.05)\nend\nstop()',
+    judge(sim){
+      if(!sim.success)return {pass:false,text:`The run stopped early: ${sim.message}`,key:'judge.early'};
+      const {time,gap}=settleTime(sim,.5,.02),cm=(gap*100).toFixed(1);
+      if(time===null)return {pass:false,text:`True gap ${cm} cm (target 50 ± 2 cm). The robot did not end inside the band.`,key:'judge.sprintMiss',params:{gap:cm}};
+      return {pass:time<=SPRINT_LIMIT,text:`True gap ${cm} cm (target 50 ± 2 cm), settled after ${time.toFixed(2)} s (limit ${SPRINT_LIMIT.toFixed(1)} s).`,key:'judge.sprint',params:{gap:cm,time:time.toFixed(2),limit:SPRINT_LIMIT.toFixed(1)}};
+    }
+  },
+  {
     id:'wind',experiment:4,title:'Hold the line in the wind',robot:'kinetic',terrain:'slippery',start:{x:2,z:-2},wind:{speed:5,toward:-90,gust:.15},
     goal:'On ice, with the wind pushing you away from the wall, keep 0.5 m from the wall on your left: within ±2.4 cm on average over the last 3 m, and never more than 10 cm off.',
     lesson:'The wind pushes steadily, so the rover must keep steering slightly into it. P and D can only ask for that steering while the rover sits a little off the line: a steady error. Add the error up over time with let, and steer with that sum too. The sum grows until the steady error is gone. Start it from zero and keep its gain small.',
@@ -121,9 +140,19 @@ export const MISSIONS=[
 // Ground truth from the 100 Hz log: the axle position, turned back into the body origin that rangeTo expects.
 const origin=(sim,i)=>{const L=sim.log,h=L.trueYaw[i];return {x:sim.start.x+L.trueY[i]-Math.sin(h)*sim.axleZ,z:sim.start.z+L.trueX[i]-Math.cos(h)*sim.axleZ,heading:h};};
 const series=(sim,f)=>sim.log.t.map((_,i)=>f(i));
+// When the true front gap entered the band target ± tol for good: the time of the first sample after the last one outside it.
+// time is null if the run ends outside the band.
+export const SPRINT_LIMIT=4;
+export function settleTime(sim,target,tol){
+  const L=sim.log,n=L.t.length,gap=i=>rangeTo(origin(sim,i),OBSTACLE,sim.spec.rangeAhead),last=gap(n-1);
+  if(Math.abs(last-target)>tol)return {time:null,gap:last};
+  let i=n-1;while(i>=0&&Math.abs(gap(i)-target)<=tol)i--;
+  return {time:L.t[Math.min(i+1,n-1)],gap:last};
+}
 const TRACES={
   stop:sim=>({kind:'gap',lo:.17,hi:.23,y:series(sim,i=>rangeTo(origin(sim,i),OBSTACLE,sim.spec.rangeAhead))}),
   park:sim=>({kind:'gap',lo:.48,hi:.52,y:series(sim,i=>rangeTo(origin(sim,i),OBSTACLE,sim.spec.rangeAhead))}),
+  sprint:sim=>({kind:'gap',lo:.48,hi:.52,y:series(sim,i=>rangeTo(origin(sim,i),OBSTACLE,sim.spec.rangeAhead))}),
   turn:sim=>({kind:'heading',lo:357,hi:363,y:series(sim,i=>sim.log.trueYaw[i]*180/Math.PI)}),
   square:sim=>({kind:'home',lo:0,hi:.1,y:series(sim,i=>Math.hypot(sim.log.trueX[i],sim.log.trueY[i]))}),
   wall:sim=>({kind:'wall',lo:.4,hi:.6,y:series(sim,i=>WALL-(sim.start.x+sim.log.trueY[i]))}),
@@ -150,6 +179,10 @@ const HINTS={
     en:['Make the speed a gain times the distance left: drive(k*(distance - 0.5), 0), inside a loop that runs for a fixed time.','while time < ___\n  drive(___*(distance - 0.5), 0)\n  wait(0.05)\nend\nstop()'],
     tr:['Hızı, bir kazanç çarpı kalan mesafe yap: drive(k*(distance - 0.5), 0); bunu sabit süre dönen bir döngünün içine koy.','while time < ___\n  drive(___*(distance - 0.5), 0)\n  wait(0.05)\nend\nstop()'],
     fr:['Rends la vitesse égale à un gain fois la distance restante : drive(k*(distance - 0.5), 0), dans une boucle qui tourne un temps fixe.','while time < ___\n  drive(___*(distance - 0.5), 0)\n  wait(0.05)\nend\nstop()']},
+  sprint:{
+    en:['Use wheels, not drive: wheel speed times radius is the ground speed, so bigger wheels go faster at the same wheels(…). Make the wheel speed a gain times the distance left, and give the robot enough motor to stop.','while time < ___\n  wheels(___*(distance - 0.5), ___*(distance - 0.5))\n  wait(0.05)\nend\nstop()'],
+    tr:['drive yerine wheels kullan: tekerlek hızı çarpı yarıçap yer hızıdır; yani aynı wheels(…) ile büyük tekerlekler daha hızlı gider. Tekerlek hızını, bir kazanç çarpı kalan mesafe yap ve robota durabileceği kadar motor ver.','while time < ___\n  wheels(___*(distance - 0.5), ___*(distance - 0.5))\n  wait(0.05)\nend\nstop()'],
+    fr:['Utilise wheels, pas drive : la vitesse des roues multipliée par le rayon donne la vitesse au sol, donc de grandes roues vont plus vite pour le même wheels(…). Rends la vitesse des roues égale à un gain fois la distance restante, et donne au robot assez de moteur pour s’arrêter.','while time < ___\n  wheels(___*(distance - 0.5), ___*(distance - 0.5))\n  wait(0.05)\nend\nstop()']},
   wall:{
     en:['Steer with two terms: one for the distance error, lidar_min - 0.5, and one for the angle to the wall, lidar_min_angle - 90, which is 0 when you drive parallel.','while odom_x < 3.8\n  drive(0.2, ___*(lidar_min - 0.5) + ___*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()'],
     tr:['İki terimle dön: biri mesafe hatası için, lidar_min - 0.5; diğeri duvara göre açı için, lidar_min_angle - 90; paralel giderken bu 0’dır.','while odom_x < 3.8\n  drive(0.2, ___*(lidar_min - 0.5) + ___*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()'],
@@ -160,7 +193,7 @@ const HINTS={
     fr:['Garde le P et le D du script de départ. Avant la boucle, mets une variable à 0. Dans la boucle, ajoute-lui l’erreur de distance, et dirige aussi avec un petit multiple d’elle.','let sum = 0\nwhile odom_x < 3.8\n  let e = lidar_min - 0.5\n  let sum = sum + ___\n  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + ___*sum)\n  wait(0.05)\nend\nstop()']}
 };
 // The sensors each mission is about. A script that reads none of them cannot succeed except by luck.
-const NEEDS={stop:['distance','lidar_front','lidar_min'],turn:['heading','fused_heading','gyro_z','odom_heading'],square:['odom_x','odom_y','fused_x','fused_y'],park:['distance','lidar_front','lidar_min'],wall:['lidar_min','lidar_left'],wind:['lidar_min','lidar_left']};
+const NEEDS={stop:['distance','lidar_front','lidar_min'],turn:['heading','fused_heading','gyro_z','odom_heading'],square:['odom_x','odom_y','fused_x','fused_y'],park:['distance','lidar_front','lidar_min'],sprint:['distance','lidar_front','lidar_min'],wall:['lidar_min','lidar_left'],wind:['lidar_min','lidar_left']};
 // Signed distance error to the wall at 0.5 m over a stretch of the true path: positive means too far from the wall.
 function wallStats(sim,from,to){
   const L=sim.log;let sum=0,n=0,max=0;
@@ -175,7 +208,12 @@ export function diagnose(m,sim,names){
   else if(!NEEDS[m.id].some(s=>used.has(s)))out.push({key:'diag.needSensor',params:{sensors:NEEDS[m.id].slice(0,2).join(', ')}});
   if(m.id==='turn'&&used.has('odom_heading')&&!used.has('heading'))out.push({key:'diag.encoders'});
   if(m.id==='wind'&&!names.variables.length)out.push({key:'diag.noSum'});
+  // A built robot left as it came cannot make the time: say so before anything about the code.
+  if(m.id==='sprint'){const d=customDesign(sim.design),stock=customDesign({});if(Object.keys(stock).every(k=>d[k]===stock[k]))out.push({key:'diag.stockRobot'});}
   if(!sim.success)return out;
+  if(m.id==='sprint'){const r=settleTime(sim,.5,.02),gap=r.gap-.5;
+    if(gap>.02)out.push({key:'diag.short',params:{cm:cm(gap)}});else if(gap<-.02)out.push({key:'diag.over',params:{cm:cm(gap)}});
+    else if(r.time>SPRINT_LIMIT)out.push({key:'diag.slow',params:{time:r.time.toFixed(2),limit:SPRINT_LIMIT.toFixed(1)}});}
   if(m.id==='stop'||m.id==='park'){const target=m.id==='stop'?.2:.5,tol=m.id==='stop'?.03:.02,gap=rangeTo(sim,OBSTACLE,sim.spec.rangeAhead)-target;
     if(gap>tol)out.push({key:'diag.short',params:{cm:cm(gap)}});else if(gap<-tol)out.push({key:'diag.over',params:{cm:cm(gap)}});}
   if(m.id==='turn'){const d=sim.heading*180/Math.PI-360;if(d<-3)out.push({key:'diag.turnShort',params:{deg:Math.abs(d).toFixed(1)}});else if(d>3)out.push({key:'diag.turnOver',params:{deg:d.toFixed(1)}});}

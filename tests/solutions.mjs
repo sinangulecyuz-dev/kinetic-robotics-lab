@@ -9,5 +9,9 @@ export const SOLUTIONS={
   wall:'while odom_x < 3.8\n  drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))\n  wait(0.05)\nend\nstop()',
   // PID: the P-and-D wall follower plus a running sum of the error, which cancels the steady push of the wind.
   wind:'let sum = 0\nwhile odom_x < 3.8\n  let e = lidar_min - 0.5\n  let sum = sum + e*0.05\n  drive(0.2, 2*e + 0.02*(lidar_min_angle - 90) + 1*sum)\n  wait(0.05)\nend\nstop()',
+  // Wheel speed in proportion to the distance left; with the design in DESIGNS the robot is fast enough and can still stop.
+  sprint:'while time < 6\n  wheels(20*(distance - 0.5), 20*(distance - 0.5))\n  wait(0.05)\nend\nstop()',
   square:'drive(0.15, 0)\nwhile odom_x < 0.5\n  wait(0.05)\nend\ndrive(0, 0.6)\nwhile heading < 88\n  wait(0.05)\nend\ndrive(0.15, 0)\nwhile odom_y < 0.5\n  wait(0.05)\nend\ndrive(0, 0.6)\nwhile heading < 178\n  wait(0.05)\nend\ndrive(0.15, 0)\nwhile odom_x > 0\n  wait(0.05)\nend\ndrive(0, 0.6)\nwhile heading < 268\n  wait(0.05)\nend\ndrive(0.15, 0)\nwhile odom_y > 0\n  wait(0.05)\nend\nstop()'
 };
+// The robot a solution was written for, where the mission asks the student to design one.
+export const DESIGNS={sprint:{wheel:24,motor:1,chassis:1.8}};

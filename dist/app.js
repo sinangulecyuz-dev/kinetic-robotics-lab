@@ -1,5 +1,5 @@
 import {DEFAULT,PRESETS,balance,criticalAngle,parseProgram,SENSORS} from './physics.mjs';
-import {DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,castRay,TERRAINS,ENVIRONMENTS,WIND,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
+import {CUSTOM,customDesign,MOTOR,DriveSim,simulateRun,toCsv,toScanCsv,terrainHeight,rangeTo,castRay,TERRAINS,ENVIRONMENTS,WIND,OBSTACLE,CASTER,ROBOTS,TB3_FIT,LIDAR,WALL} from './drive.mjs';
 import {Figure,COLORS} from './plots.mjs';
 import {MISSIONS,missionById,missionsFor,missionText,missionTrace,diagnose} from './missions.mjs';
 import {EXAMPLES,example} from './examples.mjs';
@@ -37,7 +37,7 @@ document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.datase
 
 setLanguage(preferredLanguage(navigator.languages||[navigator.language]));
 let p={...DEFAULT},records=[],code=null,terrain='flat',robot='kinetic',lesson=1,mission=null,missionsDone=[],environment='indoor',windOn=true,student='';
-try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3,4].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(typeof saved.student==='string')student=saved.student.slice(0,40);if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
+try{const saved=JSON.parse(localStorage.getItem('kinetic-v1')||'null');if(saved){if(LANGUAGES[saved.language])setLanguage(saved.language);if([2,3,4].includes(saved.lesson))lesson=saved.lesson;if(missionById(saved.mission))mission=saved.mission;if(Array.isArray(saved.missionsDone))missionsDone=saved.missionsDone.filter(id=>missionById(id));for(const k of Object.keys(DEFAULT)){const input=$(k),v=Number(saved.design?.[k]);if(Number.isFinite(v))p[k]=Math.max(+input.min,Math.min(+input.max,v));}if(['wheel','motor','chassis'].some(k=>k in (saved.design||{})))Object.assign(p,customDesign(saved.design));if(typeof saved.code==='string'&&saved.code.length<15000)code=saved.code;if(TERRAINS[saved.terrain])terrain=saved.terrain;if(ENVIRONMENTS[saved.environment])environment=saved.environment;if(typeof saved.windOn==='boolean')windOn=saved.windOn;if(typeof saved.student==='string')student=saved.student.slice(0,40);if(!ENVIRONMENTS[environment].includes(terrain))environment=ENVIRONMENTS.outdoor.includes(terrain)?'outdoor':'indoor';if(ROBOTS[saved.robot])robot=saved.robot;if(Array.isArray(saved.records))records=saved.records.slice(0,30).filter(r=>r&&['tilt','drive'].includes(r.mode)&&r.design&&typeof r.message==='string');}}catch{}
 // Labels in the chosen language. An unedited example or mission starter follows that language.
 const robotLabel=id=>t('robot.'+id),terrainLabel=id=>t('terrain.'+id),terrainLower=id=>terrainLabel(id).toLocaleLowerCase(language()),mt=m=>missionText(m,language());
 function translateCode(src,to){for(const l of Object.keys(LANGUAGES)){for(const name of Object.keys(EXAMPLES))if(example(name,l)===src)return example(name,to);for(const m of MISSIONS)if(missionText(m,l).starter===src)return missionText(m,to).starter;}return src;}
@@ -86,7 +86,7 @@ function startPose(){const m=lesson>1?missionById(mission):null;return m?.experi
 // Wind blows only outdoors with the switch on: a mission's own wind, or a random one chosen from each run's seed.
 function windOption(){if(environment!=='outdoor'||!windOn)return null;const m=lesson>1?missionById(mission):null;return m?.experiment===lesson&&m.wind?m.wind:true;}
 function view(){if(sim)return replay&&scrub!==null?replay.at(scrub):sim;const start=startPose(),key=JSON.stringify([p,start])+terrain+robot;if(key!==idleKey){idle=new DriveSim({design:p,terrain,robot,noise:false,start});idleKey=key;}return idle;}
-const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3';
+const terrainOf=r=>TERRAINS[r?.terrain]?r.terrain:'flat',robotOf=r=>ROBOTS[r?.robot]?r.robot:'kinetic',tb3=()=>robot==='turtlebot3',custom=()=>robot==='custom';
 function persist(){try{localStorage.setItem('kinetic-v1',JSON.stringify({design:p,code:$('code-editor').value,terrain,environment,windOn,student,robot,lesson,mission,missionsDone,records,language:language()}));show('save-status',()=>t('header.saved'));}catch{show('save-status',()=>t('header.saveFailed'));}}
 // Text that depends on the language is kept as a function, so a language change can redraw it.
 const shown=new Map();
@@ -103,9 +103,17 @@ function updateInputs(){
     $(`${k}-output`).innerHTML=k==='offset'?(p[k]?`${Math.abs(p[k])} <small>${t(p[k]>0?'offset.left':'offset.right')}</small>`:`0 <small>${t('offset.center')}</small>`):`${k==='mass'?p[k].toFixed(1):p[k]} <small>${unit}</small>`;
     el.style.background=`linear-gradient(${el.dir==='rtl'?'to left':'to right'},var(--orange) ${(p[k]-el.min)/(el.max-el.min)*100}%,#e9ecef ${(p[k]-el.min)/(el.max-el.min)*100}%)`;
   }
-  document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',Object.keys(p).every(k=>p[k]===PRESETS[b.dataset.preset][k])));
+  document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',Object.keys(DEFAULT).every(k=>p[k]===PRESETS[b.dataset.preset][k])));
+  // "Build your own robot": three choices, and what they come to.
+  const d=customDesign(p),units={wheel:v=>`${v} <small>cm</small>`,motor:v=>`× ${v.toFixed(2)}`,chassis:v=>`${v.toFixed(1)} <small>kg</small>`};
+  for(const k of ['wheel','motor','chassis']){const el=$(k),c=CUSTOM[k];el.min=c.min;el.max=c.max;el.step=c.step;el.value=d[k];$(`${k}-output`).innerHTML=units[k](d[k]);
+    el.style.background=`linear-gradient(to right,var(--orange) ${(d[k]-c.min)/(c.max-c.min)*100}%,#e9ecef ${(d[k]-c.min)/(c.max-c.min)*100}%)`;}
+  // Top speed at the 10 rad/s wheel limit, the push of both motors at stall, and the total mass.
+  const r=d.wheel/200,mass=d.chassis+CUSTOM.battery+2*CUSTOM.motorMass*d.motor;
+  show('custom-facts',()=>t('custom.facts',{speed:(10*r).toFixed(2),push:(2*MOTOR.kt*MOTOR.volts/(MOTOR.resistance/d.motor)/r).toFixed(0),mass:mass.toFixed(2)}));
   needsRender=true;
 }
+for(const k of ['wheel','motor','chassis'])$(k).addEventListener('input',e=>{if(['running','paused','done'].includes(state.status))reset();p[k]=Number(e.target.value);updateInputs();persist();updateTelemetry();});
 for(const k of Object.keys(DEFAULT))$(k).addEventListener('input',e=>{if(['running','paused','done'].includes(state.status))reset();p[k]=Number(e.target.value);updateInputs();persist();updateTelemetry();});
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{reset();p={...PRESETS[b.dataset.preset]};updateInputs();persist();updateTelemetry();const d=b.dataset.preset;discover(()=>t(`discovery.${d}.title`),()=>t(`discovery.${d}.copy`));});
 for(const [id,value] of [['predict-stable','stable'],['predict-tip','tip']])$(id).onclick=()=>{if(state.status==='running'||state.status==='paused'){toast(t('toast.resetFirst'));return;}prediction=prediction===value?null:value;updatePrediction();};
@@ -115,14 +123,16 @@ const readsLidar=src=>/\blidar_/.test(src.split('\n').map(l=>l.split('#')[0]).jo
 function autoLidar(){showLidar=lesson>=3||readsLidar($('code-editor').value);$('show-lidar').checked=showLidar;needsRender=true;}
 $('show-lidar').onchange=e=>{showLidar=e.target.checked;needsRender=true;};$('show-fused').onchange=e=>{showFused=e.target.checked;needsRender=true;};
 $('experiment-mode').onchange=e=>changeMode(e.target.value);
-const driveNote=()=>t(tb3()?'note.tb3':'note.kinetic',{surface:t('surface.'+terrain),mu:TERRAINS[terrain].muPeak,battery:TB3_FIT.battery}),modelNote=()=>mode==='tilt'?t('note.tilt'):driveNote();
+const driveNote=()=>t(tb3()?'note.tb3':custom()?'note.custom':'note.kinetic',{surface:t('surface.'+terrain),mu:TERRAINS[terrain].muPeak,battery:TB3_FIT.battery}),modelNote=()=>mode==='tilt'?t('note.tilt'):driveNote();
 // The TurtleBot3 has a fixed, datasheet geometry and only drives; the builder sliders and the ramp belong to the Kinetic rover.
 function setRobot(next){
-  if(!ROBOTS[next])return;if(state.status!=='idle')reset();robot=next;const isTb3=tb3();
-  $('experiment-mode').querySelector('option[value=tilt]').disabled=isTb3;if(isTb3&&mode==='tilt')changeMode('drive');
-  for(const id of ['preset-row','structure-section','payload-section'])$(id).hidden=isTb3;$('robot-note').hidden=!isTb3;
-  show('robot-name',()=>t(tb3()?'robotName.tb3':'robotName.kinetic'),true);
-  show('stage-title',()=>tb3()?robotLabel('turtlebot3'):t('stage.kinetic'));
+  if(!ROBOTS[next])return;if(state.status!=='idle')reset();robot=next;const isTb3=tb3(),built=custom(),driveOnly=isTb3||built;
+  // The TurtleBot3 and a built robot only drive: the ramp experiment belongs to the Kinetic rover and its payload.
+  $('experiment-mode').querySelector('option[value=tilt]').disabled=driveOnly;if(driveOnly&&mode==='tilt')changeMode('drive');
+  for(const id of ['preset-row','payload-section'])$(id).hidden=driveOnly;$('structure-section').hidden=isTb3;$('custom-section').hidden=!built;$('robot-note').hidden=!driveOnly;
+  show('robot-note',()=>t(custom()?'robotNote.custom':'robotNote.tb3'));
+  show('robot-name',()=>t(tb3()?'robotName.tb3':custom()?'robotName.custom':'robotName.kinetic'),true);
+  show('stage-title',()=>tb3()?robotLabel('turtlebot3'):custom()?robotLabel('custom'):t('stage.kinetic'));
   show('model-note',modelNote);updateTelemetry();needsRender=true;
 }
 function changeMode(next){reset();mode=next;queueMicrotask(renderVerdict);queueMicrotask(()=>updateWatch(true));$('experiment-mode').value=next;$('tilt-setting').hidden=next!=='tilt';$('drive-setting').hidden=next!=='drive';$('ghost-row').hidden=$('odom-row').hidden=$('lidar-row').hidden=$('fused-row').hidden=next!=='drive';document.querySelector('.prediction-card').hidden=next==='drive';modeText();
@@ -180,7 +190,7 @@ $('run').onclick=()=>{
   reset();
   if(mode==='drive'){
     let program;try{program=parseProgram($('code-editor').value);}catch(e){changeTab('code');markLines(0,e.line||0);show('code-error',()=>e.key?t('parse.'+e.key,{line:e.line,...e.params}):e.message);$('code-error').hidden=false;toast(t('toast.checkProgram'));return;}
-    if(!tb3()&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
+    if(robot==='kinetic'&&!balance(p,0).stable){toast(t('toast.unbalanced'));return;}
     if(!showLidar&&readsLidar($('code-editor').value)){showLidar=true;$('show-lidar').checked=true;}
     sim=new DriveSim({design:{...p},terrain,robot,program,seed:Math.random()*2**32>>>0,start:startPose(),wind:windOption()});
     const before=previousRun(records.filter(r=>r.mode==='drive').map(r=>({...r,robot:robotOf(r),record:r})),{robot,start:startPose()}),old=before&&simOf(before.record);ghost=old?new Replay(old):null;
@@ -357,8 +367,7 @@ $('margin-help').onclick=()=>openModal(t('modal.margin.eyebrow'),t('modal.margin
 $('robot-picker').onclick=()=>{const option=(id,detail)=>`<button class="roadmap-item robot-option" data-robot="${id}"><span>${icon('robot')}</span><div><strong>${robotLabel(id)}</strong><small>${t(detail)}</small></div><b${robot===id?'':' class="later"'}>${t(robot===id?'robots.selected':'robots.choose')}</b></button>`;
   const planned=(name,detail)=>`<div class="roadmap-item"><div><strong>${t(name)}</strong><small>${t(detail)}</small></div><b class="later">${t('robots.planned')}</b></div>`;
   // Building your own robot is announced, not yet selectable.
-  const soon=`<div class="roadmap-item robot-soon" aria-disabled="true"><span>${icon('sliders')}</span><div><strong>${t('robots.custom')}</strong><small>${t('robots.customDetail')}</small></div><b class="later">${t('robots.soon')}</b></div>`;
-  openModal(t('robots.eyebrow'),`<h2>${t('robots.title')}</h2>`+option('kinetic','robots.kineticDetail')+option('turtlebot3','robots.tb3Detail')+soon+planned('robots.omni','robots.omniDetail')+planned('robots.arm','robots.armDetail')+planned('robots.humanoid','robots.humanoidDetail')+`<p>${t('robots.footer')}</p>`);
+  openModal(t('robots.eyebrow'),`<h2>${t('robots.title')}</h2>`+option('kinetic','robots.kineticDetail')+option('turtlebot3','robots.tb3Detail')+option('custom','robots.customDetail')+planned('robots.omni','robots.omniDetail')+planned('robots.arm','robots.armDetail')+planned('robots.humanoid','robots.humanoidDetail')+`<p>${t('robots.footer')}</p>`);
   document.querySelectorAll('[data-robot]').forEach(b=>b.onclick=()=>{setRobot(b.dataset.robot);persist();modal.close();toast(t('toast.robotSelected',{robot:robotLabel(robot)}));});};
 $('modal-close').onclick=$('modal-done').onclick=()=>modal.close();modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)modal.close();}});
 document.addEventListener('keydown',e=>{if(e.key==='?'&&!['TEXTAREA','INPUT'].includes(document.activeElement.tagName)&&!modal.open)guide();});
@@ -516,13 +525,15 @@ function render(){
   box(.052,.237,-.14,.025,.008,.055,'#91a29d');
   // Left wheel at +x, right wheel at -x. The caster fork swivels to trail its own velocity.
   const sw=v?v.caster.swivel:0,cs=Math.cos(sw),sn=Math.sin(sw),swivel=q=>{const dz=q.z-CASTER.z;return {x:q.x*cs+dz*sn,y:q.y,z:CASTER.z-q.x*sn+dz*cs};};
-  wheel(-width/2,.075,.08,.075,.055,false,v?v.wheels[1].theta:0);wheel(width/2,.075,.08,.075,.055,false,v?v.wheels[0].theta:0);
+  // A built robot is drawn with the wheels it was given, and without the ramp experiment's payload.
+  const built=custom()&&mode==='drive'&&v,wr=built?v.R:.075;
+  wheel(-width/2,wr,.08,wr,.055,false,v?v.wheels[1].theta:0);wheel(width/2,wr,.08,wr,.055,false,v?v.wheels[0].theta:0);
   box(0,.073,CASTER.z,.035,.062,.025,'#98a6ad',q=>world(swivel(q),true));wheel(0,.031,CASTER.z,.031,.026,true,v?v.caster.spin:0,swivel);
   // An adjustable crossbar lets the load move sideways without changing its specified mass model.
-  const payloadY=.20+p.height/100,px=p.offset/100;
+  if(!built){const payloadY=.20+p.height/100,px=p.offset/100;
   box(px,.2,-.06,.16,.018,.13,['#727e83','#a9b3b6','#66747b','#c4cdcb','#839096','#9aa7ac']);
   for(const dx of [-.047,.047])box(px+dx,(payloadY+.19)/2,-.06,.012,Math.max(.02,payloadY-.19),.012,['#8c9b9e','#b4c1c1','#7c8e95','#d1dbd5','#91a3a6','#bdc9c7']);
-  if(p.mass>0){const size=.115+p.mass*.017;box(px,payloadY,-.06,size,.12,size,['#df9e5d','#e7ae6c','#c78a50','#f4c689','#d3985d','#e7b372']);box(px,payloadY+.061,-.06,.025,.002,size+.001,'#e3a66b');}
+  if(p.mass>0){const size=.115+p.mass*.017;box(px,payloadY,-.06,size,.12,size,['#df9e5d','#e7ae6c','#c78a50','#f4c689','#d3985d','#e7b372']);box(px,payloadY+.061,-.06,.025,.002,size+.001,'#e3a66b');}}
   box(0,.196,.183,.12,.035,.035,['#304652','#354b59','#293c48','#506674','#3f5865','#405a68']);
   box(0,.2,.05,.055,.028,.055,['#22282e','#2c333a','#1d2227','#3b434b','#262c32','#2f363d']);box(0,.216,.05,.04,.004,.04,'#11161b');
   box(-.032,.198,.202,.018,.018,.006,'#9fb4ba');box(.032,.198,.202,.018,.018,.006,'#9fb4ba');

@@ -131,7 +131,18 @@ stop()</pre><p>It steers on the left beam alone. The distance answers only after
   drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
   wait(0.05)
 end
-stop()</pre><p>Two terms from the LiDAR: the distance error, and the angle to the wall, which is zero when the rover runs parallel.</p></div></div></section>
+stop()</pre><p>Two terms from the LiDAR: the distance error, and the angle to the wall, which is zero when the rover runs parallel.</p></div></div></section><section class="mission"><h4>Build a robot that parks fast</h4><p class="where">Set by the mission: Your robot · Concrete</p><p><b>Goal.</b> With a robot you design, park with the front sensor 0.50 m from the wall, within ±2 cm, and be settled there in under 4.0 s.</p>
+<div class="cols"><div><h5>The starter and why it falls short</h5><pre># Mission: with your own robot, park 0.50 m from the wall (±2 cm) and settle in under 4.0 s.
+# This first try brakes at the line. Change the robot in the builder, and the code here.
+wheels(6, 6)
+while distance &gt; 0.5
+  wait(0.05)
+end
+stop()</pre><p>It brakes at the line, so it overshoots, and at 6 rad/s it is too slow in any case. With the robot as it comes, even a good program takes about 5 s.</p></div><div><h5>A reference solution</h5><p class="where">Robot: Wheel diameter 24 cm · Motor strength × 1 · Frame mass 1.8 kg</p><pre>while time &lt; 6
+  wheels(20*(distance - 0.5), 20*(distance - 0.5))
+  wait(0.05)
+end
+stop()</pre><p>Bigger wheels for speed, with the motor left strong enough to stop them, and wheel speed in proportion to the distance left. Many designs pass; this is one.</p></div></div></section>
 <h3>If there is time</h3><p>Run the passing parking program on ice. It still parks at 0.50 m, though the mission is judged only on concrete. Ask why a controller that measures copes with a floor it was not tuned for.</p></article>
 <article class="session"><header><span class="num">04</span><div><h2>Hold the line</h2><p class="q">Why does a steady push leave a steady error, and what removes it?</p><p class="concept">Integral control &amp; PID · 40 min</p></div></header>
 <h3>Goal</h3><p>Students see that a steady push leaves a P controller with a steady error, and remove it by adding the error up over time: the integral term.</p><h3>The idea to leave with</h3><p class="idea">P only acts while there is an error, so against a steady push it settles a little off the line. A running sum of the error keeps growing until the measured offset is gone.</p>

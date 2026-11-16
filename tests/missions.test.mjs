@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {DEFAULT,parseProgram} from '../dist/physics.mjs';
 import {simulateRun,DriveSim,ROBOTS,TERRAINS,WALL,RANGE} from '../dist/drive.mjs';
 import {MISSIONS,missionById,missionsFor,missionText,diagnose} from '../dist/missions.mjs';
-import {SOLUTIONS} from './solutions.mjs';
+import {SOLUTIONS,DESIGNS} from './solutions.mjs';
 // Reference solutions live only here, so the lab never shows students the answer.
-const attempt=(m,code,seed)=>m.judge(simulateRun({design:DEFAULT,robot:m.robot,terrain:m.terrain,program:parseProgram(code),seed,start:m.start,wind:m.wind??null}));
+// A reference solution runs on the design it was written for; a starter runs on the robot as it comes.
+const attempt=(m,code,seed)=>m.judge(simulateRun({design:code===SOLUTIONS[m.id]?{...DEFAULT,...DESIGNS[m.id]}:DEFAULT,robot:m.robot,terrain:m.terrain,program:parseProgram(code),seed,start:m.start,wind:m.wind??null}));
 
 test('missions name a real robot and terrain, and their starters parse',()=>{
   for(const m of MISSIONS){assert.ok(ROBOTS[m.robot]&&TERRAINS[m.terrain],m.id);assert.ok(parseProgram(m.starter).length>0);assert.equal(missionById(m.id),m);assert.ok(SOLUTIONS[m.id],`reference solution for ${m.id}`);}
@@ -28,7 +29,7 @@ test('a run that never moves cannot pass the square, and a crash cannot pass the
 
 test('every experiment with missions lists them, and Experiment 03 starts the rover near a wall',()=>{
   assert.deepEqual(missionsFor(2).map(m=>m.id),['stop','turn','square']);
-  assert.deepEqual(missionsFor(3).map(m=>m.id),['park','wall']);
+  assert.deepEqual(missionsFor(3).map(m=>m.id),['park','wall','sprint']);
   assert.deepEqual(missionsFor(4).map(m=>m.id),['wind']);
   for(const m of MISSIONS)assert.ok([2,3,4].includes(m.experiment),m.id);
   // Independent geometry, noise off: the walls stand at ±2.5 m, the Kinetic LiDAR sits on the body's center line,
@@ -100,4 +101,22 @@ test('every mission has graded hints in every language, and the code hint leaves
     assert.ok(x.skeleton.includes('___'),`${m.id} ${lang}: the code hint must leave blanks`);
     if(lang!=='en')assert.notEqual(x.tool,missionText(m,'en').tool,`${m.id} ${lang} is translated`);
   }
+});
+
+test('the build-and-park mission needs both the robot and the program, and says which is missing',async()=>{
+  const {settleTime,SPRINT_LIMIT}=await import('../dist/missions.mjs'),m=missionById('sprint'),go=(design,code,seed=1)=>simulateRun({design:{...DEFAULT,...design},robot:'custom',terrain:'flat',program:parseProgram(code),seed,start:m.start});
+  // The reference program on the robot as it comes, and the starter on the reference robot, both fail.
+  for(const seed of [1,2,3]){assert.equal(m.judge(go({},SOLUTIONS.sprint,seed)).pass,false);assert.equal(m.judge(go(DESIGNS.sprint,m.starter,seed)).pass,false);
+    const good=m.judge(go(DESIGNS.sprint,SOLUTIONS.sprint,seed));assert.ok(good.pass&&Number(good.params.time)<SPRINT_LIMIT-.3,good.text);}
+  // As it comes, the robot is too slow for any of these programs: full speed to a switch point, then a proportional law.
+  let best=Infinity;for(const d of [.55,.6,.7,.9])for(const k of [20,40,80]){const s=go({},`wheels(10, 10)\nwhile distance > ${d}\n  wait(0.05)\nend\nwhile time < 6\n  wheels(${k}*(distance - 0.5), ${k}*(distance - 0.5))\n  wait(0.05)\nend\nstop()`),r=settleTime(s,.5,.02);if(r.time!==null)best=Math.min(best,r.time);}
+  assert.ok(best>4.5&&best<6,`best time as it comes: ${best} s`);
+  // Travel alone takes 2.5 m at the stock top speed of 0.75 m/s.
+  assert.ok(2.5/.75<SPRINT_LIMIT&&2.5/1.2<SPRINT_LIMIT);
+  // Settle time is read from the truth: the first sample after the last one outside the band.
+  const s=go(DESIGNS.sprint,SOLUTIONS.sprint),r=settleTime(s,.5,.02),i=Math.round(r.time*100);assert.ok(Math.abs(s.log.t[i]-r.time)<1e-9&&i>0);
+  // Diagnosis: the stock robot is named first; a parked but slow run is called slow; an overshoot is called an overshoot.
+  assert.deepEqual(why(m,SOLUTIONS.sprint).slice(0,1),['diag.stockRobot']);
+  const keys=(design,code)=>diagnose(m,go(design,code),{sensors:['distance'],variables:[]}).map(d=>d.key);
+  assert.deepEqual(keys({wheel:16},SOLUTIONS.sprint.replaceAll('20*','40*')),['diag.slow']);assert.deepEqual(keys(DESIGNS.sprint,m.starter),['diag.over']);assert.deepEqual(keys(DESIGNS.sprint,SOLUTIONS.sprint),[]);
 });

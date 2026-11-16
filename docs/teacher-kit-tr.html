@@ -131,7 +131,18 @@ stop()</pre><p>Yalnızca sol ışına göre yönlendirir. Mesafe ancak rover dö
   drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
   wait(0.05)
 end
-stop()</pre><p>LiDAR’dan iki terim: mesafe hatası ve duvara olan açı; rover paralel giderken bu açı sıfırdır.</p></div></div></section>
+stop()</pre><p>LiDAR’dan iki terim: mesafe hatası ve duvara olan açı; rover paralel giderken bu açı sıfırdır.</p></div></div></section><section class="mission"><h4>Hızlı park eden bir robot yap</h4><p class="where">Görevin ayarladığı: Kendi robotun · Beton</p><p><b>Hedef.</b> Kendi tasarladığın robotla, ön sensör duvardan 0.50 m uzaktayken ±2 cm içinde park et ve 4.0 s’den kısa sürede orada durul.</p>
+<div class="cols"><div><h5>Başlangıç kodu ve neden yetmediği</h5><pre># Görev: kendi robotunla duvardan 0.50 m uzakta park et (±2 cm) ve 4.0 s’den kısa sürede durul.
+# Bu ilk deneme çizgide frenliyor. Robotu tasarım panelinde, kodu burada değiştir.
+wheels(6, 6)
+while distance &gt; 0.5
+  wait(0.05)
+end
+stop()</pre><p>Çizgide frenler, bu yüzden aşar; 6 rad/s ile zaten fazla yavaştır. Robot ilk haliyleyken iyi bir program bile yaklaşık 5 s sürer.</p></div><div><h5>Bir referans çözüm</h5><p class="where">Robot: Tekerlek çapı 24 cm · Motor gücü × 1 · Gövde kütlesi 1.8 kg</p><pre>while time &lt; 6
+  wheels(20*(distance - 0.5), 20*(distance - 0.5))
+  wait(0.05)
+end
+stop()</pre><p>Hız için daha büyük tekerlekler, onları durduracak kadar güçlü bırakılmış motor ve kalan mesafeyle orantılı tekerlek hızı. Birçok tasarım geçer; bu onlardan biri.</p></div></div></section>
 <h3>Vakit kalırsa</h3><p>Geçen park programını buzda çalıştırın. Görev yalnızca betonda değerlendirilse de yine 0.50 m’de park eder. Ölçen bir kontrolcünün ayarlanmadığı bir zeminle neden başa çıktığını sorun.</p></article>
 <article class="session"><header><span class="num">04</span><div><h2>Çizgiyi tut</h2><p class="q">Sürekli bir itme neden kalıcı bir hata bırakır ve onu ne yok eder?</p><p class="concept">İntegral kontrol ve PID · 40 dk</p></div></header>
 <h3>Amaç</h3><p>Öğrenciler sabit bir itmenin P kontrolcüde sabit bir hata bıraktığını görür ve hatayı zaman içinde toplayarak bunu giderir: integral terimi.</p><h3>Akılda kalması gereken fikir</h3><p class="idea">P yalnızca hata varken etki eder; sabit bir itmeye karşı çizginin biraz dışında yerleşir. Hatanın birikimli toplamı, o sapma yok olana kadar büyümeye devam eder.</p>

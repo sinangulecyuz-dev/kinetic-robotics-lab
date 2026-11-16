@@ -131,7 +131,18 @@ stop()</pre><p>Il ne corrige que sur le faisceau gauche. La distance ne réagit 
   drive(0.2, 2*(lidar_min - 0.5) + 0.02*(lidar_min_angle - 90))
   wait(0.05)
 end
-stop()</pre><p>Deux termes issus du LiDAR : l’erreur de distance, et l’angle par rapport au mur, nul quand le rover roule en parallèle.</p></div></div></section>
+stop()</pre><p>Deux termes issus du LiDAR : l’erreur de distance, et l’angle par rapport au mur, nul quand le rover roule en parallèle.</p></div></div></section><section class="mission"><h4>Construis un robot qui se gare vite</h4><p class="where">Réglé par la mission: Ton robot · Béton</p><p><b>But.</b> Avec un robot que tu conçois, gare-toi avec le capteur avant à 0.50 m du mur, à ±2 cm près, et sois stabilisé là en moins de 4.0 s.</p>
+<div class="cols"><div><h5>Le code de départ et pourquoi il ne suffit pas</h5><pre># Mission : avec ton propre robot, gare-toi à 0.50 m du mur (±2 cm) et stabilise-toi en moins de 4.0 s.
+# Ce premier essai freine sur la ligne. Change le robot dans le panneau de conception, et le code ici.
+wheels(6, 6)
+while distance &gt; 0.5
+  wait(0.05)
+end
+stop()</pre><p>Il freine sur la ligne, donc il dépasse, et à 6 rad/s il est de toute façon trop lent. Avec le robot tel quel, même un bon programme met environ 5 s.</p></div><div><h5>Une solution de référence</h5><p class="where">Robot: Diamètre des roues 24 cm · Force des moteurs × 1 · Masse du châssis 1.8 kg</p><pre>while time &lt; 6
+  wheels(20*(distance - 0.5), 20*(distance - 0.5))
+  wait(0.05)
+end
+stop()</pre><p>De plus grandes roues pour la vitesse, des moteurs laissés assez forts pour les arrêter, et une vitesse de roue proportionnelle à la distance restante. Beaucoup de conceptions réussissent ; en voici une.</p></div></div></section>
 <h3>S’il reste du temps</h3><p>Lancez le programme de stationnement réussi sur la glace. Il se gare encore à 0.50 m, même si la mission n’est jugée que sur le béton. Demandez pourquoi une commande qui mesure s’en sort sur un sol pour lequel elle n’a pas été réglée.</p></article>
 <article class="session"><header><span class="num">04</span><div><h2>Tenir la ligne</h2><p class="q">Pourquoi une poussée constante laisse-t-elle une erreur constante, et qu’est-ce qui l’efface ?</p><p class="concept">Commande intégrale et PID · 40 min</p></div></header>
 <h3>Objectif</h3><p>Les élèves voient qu’une poussée constante laisse une erreur constante à une commande P, et la suppriment en additionnant l’erreur au fil du temps : le terme intégral.</p><h3>L’idée à retenir</h3><p class="idea">P n’agit que s’il y a une erreur : contre une poussée constante, il se stabilise un peu à côté de la ligne. Une somme cumulée de l’erreur continue de croître jusqu’à ce que cet écart disparaisse.</p>

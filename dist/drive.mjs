@@ -64,6 +64,21 @@ export const ROBOTS={
     footprint:()=>({z:-.064,radius:Math.hypot(.153,.141)})
   }
 };
+// "Build your own robot": the Kinetic rover's layout with three choices left to the student. An invented design, like the Kinetic rover:
+// nothing here is measured. wheel is the drive wheel's diameter in cm, motor scales the stall torque (a stronger motor of the same
+// no-load speed, by a lower winding resistance, and heavier in proportion), and chassis is the frame's mass in kg.
+export const CUSTOM={wheel:{min:8,max:24,step:1,value:15},motor:{min:.1,max:2,step:.05,value:1},chassis:{min:1,max:4,step:.1,value:1.8},motorMass:.15,battery:.5};
+export function customDesign(p={}){const pick=k=>{const c=CUSTOM[k],v=Number(p[k]);return Number.isFinite(v)?Math.max(c.min,Math.min(c.max,v)):c.value;};return {wheel:pick('wheel'),motor:pick('motor'),chassis:pick('chassis')};}
+// Frame, battery, and the two motors at the axle. The payload of the ramp experiment is not carried.
+function customParts(p){const d=customDesign(p),w=p.width/100;return [{m:d.chassis,x:0,y:.115,z:-.03,w:w*.9,l:.47},{m:CUSTOM.battery,x:0,y:.09,z:-.15,w:.17,l:.135},{m:2*CUSTOM.motorMass*d.motor,x:0,y:d.wheel/200,z:AXLE_Z,w,l:.06}];}
+function customBody(p){
+  const parts=customParts(p),mass=parts.reduce((t,c)=>t+c.m,0),com={mass,...Object.fromEntries(['x','y','z'].map(k=>[k,parts.reduce((t,c)=>t+c.m*c[k],0)/mass]))};
+  return {com,iz:parts.reduce((t,c)=>t+c.m*((c.w*c.w+c.l*c.l)/12+(c.x-com.x)**2+(c.z-com.z)**2),0),track:p.width/100};
+}
+ROBOTS.custom={...ROBOTS.kinetic,label:'Your robot',body:customBody,
+  // Parts of the specification that follow from the design.
+  build:p=>{const d=customDesign(p);return {wheelRadius:d.wheel/200,motor:{...MOTOR,resistance:MOTOR.resistance/d.motor}};},
+  windArea:p=>({front:(p.width/100+.06)*.14,side:.5*.14,z:0})};
 export const OBSTACLE={x:0,z:1.3,halfX:.28,halfZ:.16};
 export const CHANNELS=['t','cmdL','cmdR','encL','encR','speedL','speedR','currentL','currentR','voltsL','voltsR','ax','ay','az','gx','gy','gz','range','odomX','odomY','odomYaw','gyroYaw','trueX','trueY','trueYaw','trueSpeed','slipL','slipR','wheelL','wheelR','desX','desY','desYaw','lidarFront','lidarLeft','lidarBack','lidarRight','lidarMin','fusedX','fusedY','fusedYaw','windSpeed','windToward','line'];
 const ARENA=2.3;
@@ -134,7 +149,8 @@ export class DriveSim{
   constructor({design,terrain='flat',robot='kinetic',program=[],seed=1,noise=true,start,wind=null}){
     this.design={...design};this.terrain=TERRAINS[terrain]?terrain:'flat';this.surface=TERRAINS[this.terrain];this.curve=frictionCurve(this.surface);
     this.robot=ROBOTS[robot]?robot:'kinetic';const spec=this.spec=ROBOTS[this.robot],body=spec.body(design);
-    this.com=body.com;this.mass=this.com.mass;this.iz=body.iz;this.width=body.track;this.R=spec.wheelRadius;this.axleZ=spec.axleZ;this.motor=spec.motor;
+    const made=spec.build?.(design)||{};
+    this.com=body.com;this.mass=this.com.mass;this.iz=body.iz;this.width=body.track;this.R=made.wheelRadius??spec.wheelRadius;this.axleZ=spec.axleZ;this.motor=made.motor??spec.motor;
     this.wheelContacts=[{x:this.width/2,z:this.axleZ},{x:-this.width/2,z:this.axleZ}];this.casters=spec.casters;
     const mid=this.casters.length===1?this.casters[0]:{x:this.casters.reduce((s,c)=>s+c.x,0)/this.casters.length,z:this.casters.reduce((s,c)=>s+c.z,0)/this.casters.length};
     this.tri=[...this.wheelContacts,{x:mid.x,z:mid.z}];this.polygon=this.casters.length===1?this.tri:[...this.wheelContacts,...[...this.casters].sort((a,b)=>a.x-b.x)];
